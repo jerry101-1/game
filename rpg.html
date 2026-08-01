@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D 像素 RPG 冒險 - 加強版</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #121212;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    h1 {
+      margin-bottom: 10px;
+      color: #00ff88;
+      text-shadow: 0 0 8px rgba(0,255,136,0.4);
+    }
+    .status-bar {
+      display: flex;
+      gap: 15px;
+      font-size: 1rem;
+      margin-bottom: 15px;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      padding: 10px 20px;
+      border-radius: 8px;
+    }
+    .status-bar span {
+      color: #ffca28;
+      font-weight: bold;
+    }
+    canvas {
+      border: 4px solid #333;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+      background-color: #000;
+    }
+    .controls-info {
+      margin-top: 15px;
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+    .legend {
+      margin-top: 10px;
+      display: flex;
+      gap: 15px;
+      font-size: 0.85rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>⚔️ 2D 地下城冒險 RPG (加強版)</h1>
+  
+  <div class="status-bar">
+    <div>Lv: <span id="level">1</span></div>
+    <div>❤️ HP: <span id="hp">100/100</span></div>
+    <div>⚔️ ATK: <span id="atk">15</span></div>
+    <div>⭐ EXP: <span id="exp">0/30</span></div>
+    <div>💰 Gold: <span id="gold">0</span></div>
+  </div>
+  
+  <canvas id="gameCanvas" width="480" height="480"></canvas>
+  
+  <div class="legend">
+    <div class="legend-item"><span class="dot" style="background:#00b4d8;"></span> 勇者</div>
+    <div class="legend-item"><span class="dot" style="background:#e63946;"></span> 怪物</div>
+    <div class="legend-item"><span class="dot" style="background:#ffb703;"></span> 寶箱</div>
+    <div class="legend-item"><span class="dot" style="background:#ff4d6d;"></span> 藥水</div>
+    <div class="legend-item"><span class="dot" style="background:#9d4edd;"></span> 商人</div>
+  </div>
+
+  <div class="controls-info">控制說明：使用鍵盤方向鍵 ↑ ↓ ← → 移動 (踩到商人自動花 40 金幣升級攻擊力)</div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const tileSize = 40;
+    const mapSize = 12;
+
+    // 玩家數據
+    let player = {
+      x: 1,
+      y: 1,
+      level: 1,
+      hp: 100,
+      maxHp: 100,
+      atk: 15,
+      exp: 0,
+      maxExp: 30,
+      gold: 0
+    };
+
+    // 地圖 (0: 空地, 1: 牆壁, 2: 商人)
+    const map = [
+      [1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,0,0,0,0,1,0,0,0,0,2,1],
+      [1,0,1,1,0,1,0,1,1,1,0,1],
+      [1,0,1,0,0,0,0,0,0,1,0,1],
+      [1,0,1,0,1,1,1,1,0,1,0,1],
+      [1,0,0,0,0,0,0,1,0,0,0,1],
+      [1,1,1,1,0,1,0,1,1,1,0,1],
+      [1,0,0,0,0,1,0,0,0,1,0,1],
+      [1,0,1,1,1,1,1,1,0,1,0,1],
+      [1,0,0,0,0,0,0,0,0,0,0,1],
+      [1,2,1,1,0,1,1,1,1,1,0,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1]
+    ];
+
+    // 動態物件
+    let monsters = [
+      { x: 3, y: 3, hp: 30, maxHp: 30, atk: 8, exp: 15, gold: 15 },
+      { x: 8, y: 1, hp: 30, maxHp: 30, atk: 8, exp: 15, gold: 15 },
+      { x: 9, y: 7, hp: 50, maxHp: 50, atk: 12, exp: 25, gold: 25 },
+      { x: 1, y: 9, hp: 70, maxHp: 70, atk: 16, exp: 40, gold: 40 }
+    ];
+
+    let chests = [
+      { x: 10, y: 1, gold: 50 },
+      { x: 3, y: 7, gold: 30 },
+      { x: 10, y: 9, gold: 80 }
+    ];
+
+    let potions = [
+      { x: 1, y: 5, heal: 40 },
+      { x: 6, y: 7, heal: 40 }
+    ];
+
+    function draw() {
+      // 清空畫布
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 繪製地圖基底
+      for (let r = 0; r < mapSize; r++) {
+        for (let c = 0; c < mapSize; c++) {
+          if (map[r][c] === 1) {
+            ctx.fillStyle = '#2b2d42'; // 牆壁
+          } else if (map[r][c] === 2) {
+            ctx.fillStyle = '#9d4edd'; // 商人站點
+          } else {
+            ctx.fillStyle = '#161b22'; // 地板
+          }
+          ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
+          ctx.strokeStyle = '#21262d';
+          ctx.strokeRect(c * tileSize, r * tileSize, tileSize, tileSize);
+        }
+      }
+
+      // 繪製寶箱
+      chests.forEach(c => {
+        ctx.fillStyle = '#ffb703';
+        ctx.fillRect(c.x * tileSize + 10, c.y * tileSize + 10, 20, 20);
+      });
+
+      // 繪製藥水
+      potions.forEach(p => {
+        ctx.fillStyle = '#ff4d6d';
+        ctx.beginPath();
+        ctx.arc(p.x * tileSize + 20, p.y * tileSize + 20, 8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 繪製怪物 (包含血條)
+      monsters.forEach(m => {
+        ctx.fillStyle = '#e63946';
+        ctx.fillRect(m.x * tileSize + 8, m.y * tileSize + 8, 24, 24);
+        
+        // 怪物小血條
+        ctx.fillStyle = 'red';
+        ctx.fillRect(m.x * tileSize + 5, m.y * tileSize + 2, 30, 3);
+        ctx.fillStyle = 'green';
+        ctx.fillRect(m.x * tileSize + 5, m.y * tileSize + 2, (m.hp / m.maxHp) * 30, 3);
+      });
+
+      // 繪製玩家
+      ctx.fillStyle = '#00b4d8';
+      ctx.beginPath();
+      ctx.arc(player.x * tileSize + 20, player.y * tileSize + 20, 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function updateUI() {
+      document.getElementById('level').textContent = player.level;
+      document.getElementById('hp').textContent = `${Math.max(0, player.hp)}/${player.maxHp}`;
+      document.getElementById('atk').textContent = player.atk;
+      document.getElementById('exp').textContent = `${player.exp}/${player.maxExp}`;
+      document.getElementById('gold').textContent = player.gold;
+    }
+
+    function checkLevelUp() {
+      if (player.exp >= player.maxExp) {
+        player.level++;
+        player.exp -= player.maxExp;
+        player.maxExp = Math.floor(player.maxExp * 1.5);
+        player.maxHp += 20;
+        player.hp = player.maxHp;
+        player.atk += 5;
+        alert(`🎉 恭喜升級至 Lv.${player.level}！\n血量與攻擊力提升！`);
+      }
+    }
+
+    function movePlayer(dx, dy) {
+      if (player.hp <= 0) return;
+
+      let newX = player.x + dx;
+      let newY = player.y + dy;
+
+      // 撞牆檢查
+      if (map[newY][newX] === 1) return;
+
+      // 踩到商人 (升級攻擊力)
+      if (map[newY][newX] === 2) {
+        if (player.gold >= 40) {
+          player.gold -= 40;
+          player.atk += 8;
+          alert("🧙 商人為你強化了武器！攻擊力 +8！");
+        } else {
+          alert("🧙 商人：「你需要 40 金幣才能強化武器！」");
+        }
+      }
+
+      // 怪物戰鬥
+      let mIndex = monsters.findIndex(m => m.x === newX && m.y === newY);
+      if (mIndex !== -1) {
+        let m = monsters[mIndex];
+        
+        // 雙方互砍
+        m.hp -= player.atk;
+        if (m.hp > 0) {
+          player.hp -= m.atk;
+        }
+
+        // 怪物死亡處理
+        if (m.hp <= 0) {
+          monsters.splice(mIndex, 1);
+          player.exp += m.exp;
+          player.gold += m.gold;
+          checkLevelUp();
+        }
+
+        // 玩家死亡處理
+        if (player.hp <= 0) {
+          player.hp = 0;
+          alert("💀 你倒下了！按下確定重新嘗試。");
+          location.reload();
+        }
+
+        updateUI();
+        draw();
+        return;
+      }
+
+      // 撿拾寶箱
+      let cIndex = chests.findIndex(c => c.x === newX && c.y === newY);
+      if (cIndex !== -1) {
+        player.gold += chests[cIndex].gold;
+        chests.splice(cIndex, 1);
+      }
+
+      // 撿拾藥水
+      let pIndex = potions.findIndex(p => p.x === newX && p.y === newY);
+      if (pIndex !== -1) {
+        player.hp = Math.min(player.maxHp, player.hp + potions[pIndex].heal);
+        potions.splice(pIndex, 1);
+      }
+
+      // 移動玩家
+      player.x = newX;
+      player.y = newY;
+
+      updateUI();
+      draw();
+    }
+
+    window.addEventListener('keydown', e => {
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+        e.preventDefault();
+      }
+      if (e.key === 'ArrowUp') movePlayer(0, -1);
+      if (e.key === 'ArrowDown') movePlayer(0, 1);
+      if (e.key === 'ArrowLeft') movePlayer(-1, 0);
+      if (e.key === 'ArrowRight') movePlayer(1, 0);
+    });
+
+    // 初始化
+    updateUI();
+    draw();
+  </script>
+</body>
+</html>
