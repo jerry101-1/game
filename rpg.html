@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>精緻像素橫捲軸大亂鬥 - 怪物會跳躍版</title>
+  <title>精緻像素橫捲軸大亂鬥 - 座標保護版</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -247,7 +247,7 @@
         x: pt.x, y: pt.y, w: t.w, h: t.h, vx: 0, vy: 0,
         type: t.type, color: t.color, flying: t.flying,
         hp: t.hp + Math.floor(totalKills * 2.5), maxHp: t.hp + Math.floor(totalKills * 2.5),
-        speed: t.speed, isAggressive: false, roamTimer: 0, roamDir: 1, jumpTimer: 0
+        speed: t.speed, isAggressive: false, roamTimer: 0, roamDir: 1
       });
     }
     setInterval(spawnMonster, 1800);
@@ -280,15 +280,29 @@
       }
     }
 
+    // ⭐ 座標保護與實體更新 ⭐
     function updateEntity(ent, gravity = 0.48) {
       if (!ent.flying) ent.vy += gravity;
       ent.x += ent.vx;
       ent.y += ent.vy;
 
+      // 🌀 左右邊界傳送
       if (ent.x > canvas.width) {
-        ent.x = -ent.w;
+        ent.x = -ent.w + 2;
       } else if (ent.x + ent.w < 0) {
-        ent.x = canvas.width;
+        ent.x = canvas.width - 2;
+      }
+
+      // 🛑 上下天花板保護 (防止跳太高消失)
+      if (ent.y < 0) {
+        ent.y = 0;
+        ent.vy = 0;
+      }
+      
+      // 🛑 掉出底部保護
+      if (ent.y > canvas.height) {
+        ent.y = 350;
+        ent.vy = 0;
       }
 
       ent.isGrounded = false;
@@ -392,7 +406,7 @@
         }
       }
 
-      // 🤖 怪物 AI（新增地面怪物跳躍邏輯）🤖
+      // 怪物 AI 與跳躍
       monsters.forEach(m => {
         updateEntity(m);
         let targets = [p1, p2].filter(p => p && p.hp > 0);
@@ -402,20 +416,17 @@
           let target = targets[0];
           let dist = Math.hypot((target.x + target.w/2) - (m.x + m.w/2), (target.y + target.h/2) - (m.y + m.h/2));
 
-          if (dist < 160 || m.hp < m.maxHp) {
-            m.isAggressive = true;
-          }
+          if (dist < 160 || m.hp < m.maxHp) m.isAggressive = true;
 
           if (m.isAggressive) {
             m.vx = target.x > m.x ? m.speed * 1.25 : -m.speed * 1.25;
             if (m.flying) {
               m.vy = target.y > m.y ? m.speed * 0.8 : -m.speed * 0.8;
             } else if (m.isGrounded) {
-              // 🦘 怪物跳躍判斷：當玩家在上方且距離接近，或者前方有平台障礙時發動跳躍
               const playerAbove = target.y < m.y - 30;
               const horizClose = Math.abs(target.x - m.x) < 140;
               if ((playerAbove && horizClose) || Math.random() < 0.02) {
-                m.vy = -9.8; // 跳躍力量
+                m.vy = -9.8;
               }
             }
 
@@ -432,7 +443,7 @@
             if (m.flying) {
               m.vy = Math.sin(Date.now() / 300) * 0.5;
             } else if (m.isGrounded && Math.random() < 0.015) {
-              m.vy = -8.5; // 巡邏隨機小跳
+              m.vy = -8.5;
             }
           }
         }
