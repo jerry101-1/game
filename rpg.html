@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>雙人 2D 射擊 RPG 冒險</title>
+  <title>雙人 2D 追蹤彈幕 RPG</title>
   <style>
     * {
       box-sizing: border-box;
@@ -85,11 +85,11 @@
 </head>
 <body>
 
-  <h1>⚔️ 雙人RPG</h1>
+  <h1>⚔️ 雙人追蹤彈幕 RPG</h1>
   
   <div class="status-panel">
     <div class="player-card p1-card">
-      <div class="player-title p1-title">👤 1P (藍)</div>
+      <div class="player-title p1-title">👤 1P (藍 - 追蹤導彈)</div>
       <div>❤️ HP: <span id="p1-hp">100</span></div>
       <div>⚔️ ATK: <span id="p1-atk">15</span></div>
       <div>💰 Gold: <span id="p1-gold">0</span></div>
@@ -98,7 +98,7 @@
     <div style="align-self: center; font-size: 1.2rem; font-weight: bold;">🏰 層數: <span id="floor">1</span></div>
 
     <div class="player-card p2-card">
-      <div class="player-title p2-title">👤 2P (綠)</div>
+      <div class="player-title p2-title">👤 2P (綠 - 追蹤導彈)</div>
       <div>❤️ HP: <span id="p2-hp">100</span></div>
       <div>⚔️ ATK: <span id="p2-atk">15</span></div>
       <div>💰 Gold: <span id="p2-gold">0</span></div>
@@ -108,13 +108,13 @@
   <div class="game-container">
     <canvas id="gameCanvas" width="560" height="480"></canvas>
     <div class="log-box" id="logBox">
-      <div class="log-msg system">雙人冒險開始！消滅所有動態怪物以進入下一層...</div>
+      <div class="log-msg system">雙人追蹤導彈模式啟用！清空怪物進入下一層...</div>
     </div>
   </div>
 
   <div class="controls-guide">
-    <div><strong>1P 操作：</strong> WASD 移動 | <strong>空白鍵</strong> 發射子彈</div>
-    <div><strong>2P 操作：</strong> 方向鍵 ↑↓←→ 移動 | <strong>Enter</strong> 發射子彈</div>
+    <div><strong>1P 操作：</strong> WASD 移動 | <strong>空白鍵</strong> 發射追蹤飛彈</div>
+    <div><strong>2P 操作：</strong> 方向鍵 ↑↓←→ 移動 | <strong>Enter</strong> 發射追蹤飛彈</div>
   </div>
 
   <script>
@@ -124,9 +124,8 @@
     let currentFloor = 1;
     const keys = {};
 
-    // 玩家屬性
-    let p1 = { x: 80, y: 240, r: 12, hp: 100, maxHp: 100, atk: 15, gold: 0, dirX: 1, dirY: 0, lastShot: 0 };
-    let p2 = { x: 80, y: 280, r: 12, hp: 100, maxHp: 100, atk: 15, gold: 0, dirX: 1, dirY: 0, lastShot: 0 };
+    let p1 = { x: 80, y: 220, r: 12, hp: 100, maxHp: 100, atk: 15, gold: 0, dirX: 1, dirY: 0, lastShot: 0 };
+    let p2 = { x: 80, y: 260, r: 12, hp: 100, maxHp: 100, atk: 15, gold: 0, dirX: 1, dirY: 0, lastShot: 0 };
 
     let bullets = [];
     let monsters = [];
@@ -149,28 +148,25 @@
       monsters = [];
       isPortalUnlocked = false;
 
-      // 生成邊角傳送門
       portal = { x: canvas.width - 60, y: canvas.height / 2, r: 18 };
 
-      // 動態怪物生成
       const count = 3 + currentFloor * 2;
       for (let i = 0; i < count; i++) {
         monsters.push({
-          x: 200 + Math.random() * (canvas.width - 280),
+          x: 220 + Math.random() * (canvas.width - 300),
           y: 50 + Math.random() * (canvas.height - 100),
           r: 14,
-          speed: 1 + Math.random() * 0.8 + currentFloor * 0.1,
-          hp: 30 + currentFloor * 15,
-          maxHp: 30 + currentFloor * 15,
+          speed: 1 + Math.random() * 0.5 + currentFloor * 0.08,
+          hp: 35 + currentFloor * 15,
+          maxHp: 35 + currentFloor * 15,
           atk: 8 + currentFloor * 2,
           gold: 15 + currentFloor * 5
         });
       }
 
-      addLog(`🏰 進入第 ${currentFloor} 層！擊殺所有移動的怪物！`);
+      addLog(`🏰 進入第 ${currentFloor} 層！`);
     }
 
-    // 鍵盤監聽
     window.addEventListener('keydown', e => { keys[e.code] = true; });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -178,7 +174,7 @@
       const speed = 3.5;
       const now = Date.now();
 
-      // 1P 控制 (WASD + Space)
+      // 1P 控制 (WASD)
       if (p1.hp > 0) {
         let dx = 0, dy = 0;
         if (keys['KeyW']) dy -= 1;
@@ -192,13 +188,22 @@
           p1.y = Math.max(20, Math.min(canvas.height - 20, p1.y + dy * speed));
         }
 
-        if (keys['Space'] && now - p1.lastShot > 250) {
-          bullets.push({ x: p1.x, y: p1.y, vx: p1.dirX * 8, vy: p1.dirY * 8, atk: p1.atk, owner: '1P' });
+        if (keys['Space'] && now - p1.lastShot > 200) {
+          // 初始化飛彈角度與速度
+          let angle = Math.atan2(p1.dirY, p1.dirX);
+          bullets.push({ 
+            x: p1.x, y: p1.y, 
+            speed: 6, 
+            angle: angle, 
+            atk: p1.atk, 
+            owner: '1P',
+            turnSpeed: 0.05 // 追蹤轉彎靈敏度
+          });
           p1.lastShot = now;
         }
       }
 
-      // 2P 控制 (ArrowKeys + Enter)
+      // 2P 控制 (ArrowKeys)
       if (p2.hp > 0) {
         let dx = 0, dy = 0;
         if (keys['ArrowUp']) dy -= 1;
@@ -212,8 +217,16 @@
           p2.y = Math.max(20, Math.min(canvas.height - 20, p2.y + dy * speed));
         }
 
-        if (keys['Enter'] && now - p2.lastShot > 250) {
-          bullets.push({ x: p2.x, y: p2.y, vx: p2.dirX * 8, vy: p2.dirY * 8, atk: p2.atk, owner: '2P' });
+        if (keys['Enter'] && now - p2.lastShot > 200) {
+          let angle = Math.atan2(p2.dirY, p2.dirX);
+          bullets.push({ 
+            x: p2.x, y: p2.y, 
+            speed: 6, 
+            angle: angle, 
+            atk: p2.atk, 
+            owner: '2P',
+            turnSpeed: 0.12 
+          });
           p2.lastShot = now;
         }
       }
@@ -222,42 +235,67 @@
     function update() {
       handleInput();
 
-      // 移動子彈
+      // 更新追蹤子彈
       bullets.forEach((b, index) => {
-        b.x += b.vx;
-        b.y += b.vy;
+        // 1. 尋找最近的怪物
+        let closestMonster = null;
+        let minDistance = Infinity;
 
-        // 邊界消除
+        monsters.forEach(m => {
+          let d = Math.hypot(m.x - b.x, m.y - b.y);
+          if (d < minDistance) {
+            minDistance = d;
+            closestMonster = m;
+          }
+        });
+
+        // 2. 轉向最近的怪物
+        if (closestMonster) {
+          let targetAngle = Math.atan2(closestMonster.y - b.y, closestMonster.x - b.x);
+          let diff = targetAngle - b.angle;
+
+          // 正規化角度差異 (-PI 到 PI)
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+
+          // 平滑轉向目標
+          b.angle += Math.sign(diff) * Math.min(Math.abs(diff), b.turnSpeed);
+        }
+
+        // 3. 根據當前角度推進位置
+        b.x += Math.cos(b.angle) * b.speed;
+        b.y += Math.sin(b.angle) * b.speed;
+
+        // 出界消除
         if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
           bullets.splice(index, 1);
           return;
         }
 
-        // 子彈擊中怪物判定
+        // 碰撞怪物
         monsters.forEach((m, mIndex) => {
           let dist = Math.hypot(b.x - m.x, b.y - m.y);
-          if (dist < m.r + 4) {
+          if (dist < m.r + 5) {
             m.hp -= b.atk;
             bullets.splice(index, 1);
 
             if (m.hp <= 0) {
               if (b.owner === '1P') p1.gold += m.gold;
               if (b.owner === '2P') p2.gold += m.gold;
-              addLog(`💥 ${b.owner} 擊殺怪物，獲得 ${m.gold}G`, b.owner.toLowerCase());
+              addLog(`🎯 ${b.owner} 飛彈擊滅怪物，獲得 ${m.gold}G`, b.owner.toLowerCase());
               monsters.splice(mIndex, 1);
 
               if (monsters.length === 0) {
                 isPortalUnlocked = true;
-                addLog('🔓 所有怪物已被清空！傳送門已解鎖！');
+                addLog('🔓 所有怪物已清空！傳送門解鎖！');
               }
             }
           }
         });
       });
 
-      // 怪物 AI 與碰撞
+      // 怪物 AI 追擊
       monsters.forEach(m => {
-        // 找到活著且最近的玩家
         let targets = [];
         if (p1.hp > 0) targets.push(p1);
         if (p2.hp > 0) targets.push(p2);
@@ -266,24 +304,21 @@
           targets.sort((a, b) => Math.hypot(a.x - m.x, a.y - m.y) - Math.hypot(b.x - m.x, b.y - m.y));
           let target = targets[0];
 
-          // 追逐玩家
           let angle = Math.atan2(target.y - m.y, target.x - m.x);
           m.x += Math.cos(angle) * m.speed;
           m.y += Math.sin(angle) * m.speed;
 
-          // 撞擊傷害
           if (Math.hypot(target.x - m.x, target.y - m.y) < target.r + m.r) {
-            target.hp = Math.max(0, target.hp - 0.5); // 連續觸碰傷害
+            target.hp = Math.max(0, target.hp - 0.5);
           }
         }
       });
 
-      // 傳送門進入判定
+      // 進入傳送門
       if (isPortalUnlocked) {
         [p1, p2].forEach(p => {
           if (p.hp > 0 && Math.hypot(p.x - portal.x, p.y - portal.y) < p.r + portal.r) {
             currentFloor++;
-            // 進入下一層補血獎勵
             p1.hp = Math.min(p1.maxHp, p1.hp + 30);
             p2.hp = Math.min(p2.maxHp, p2.hp + 30);
             initFloor();
@@ -291,9 +326,8 @@
         });
       }
 
-      // 遊戲結束判定
       if (p1.hp <= 0 && p2.hp <= 0) {
-        alert(`💀 兩位勇者皆已陣亡！最終停留在第 ${currentFloor} 層。`);
+        alert(`💀 冒險失敗！停留在第 ${currentFloor} 層。`);
         location.reload();
       }
 
@@ -303,40 +337,47 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 1. 畫地圖牆壁邊框
+      // 外框牆
       ctx.strokeStyle = '#30363d';
       ctx.lineWidth = 10;
       ctx.strokeRect(0, 0, canvas.width, canvas.height);
 
-      // 2. 畫傳送門
+      // 傳送門
       ctx.fillStyle = isPortalUnlocked ? '#4ade80' : '#374151';
       ctx.beginPath();
       ctx.arc(portal.x, portal.y, portal.r, 0, Math.PI * 2);
       ctx.fill();
 
-      // 3. 畫怪物 (紅色)
+      // 怪物
       monsters.forEach(m => {
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
         ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
         ctx.fill();
 
-        // 血條
         ctx.fillStyle = 'red';
         ctx.fillRect(m.x - 15, m.y - 22, 30, 4);
         ctx.fillStyle = '#22c55e';
         ctx.fillRect(m.x - 15, m.y - 22, (m.hp / m.maxHp) * 30, 4);
       });
 
-      // 4. 畫子彈
+      // 追蹤子彈 (帶有方向線)
       bullets.forEach(b => {
         ctx.fillStyle = b.owner === '1P' ? '#38bdf8' : '#4ade80';
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
         ctx.fill();
+
+        // 飛彈方向尾跡
+        ctx.strokeStyle = b.owner === '1P' ? 'rgba(56, 189, 248, 0.4)' : 'rgba(74, 222, 128, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x - Math.cos(b.angle) * 12, b.y - Math.sin(b.angle) * 12);
+        ctx.stroke();
       });
 
-      // 5. 畫玩家 1P
+      // 1P
       if (p1.hp > 0) {
         ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
@@ -344,7 +385,7 @@
         ctx.fill();
       }
 
-      // 6. 畫玩家 2P
+      // 2P
       if (p2.hp > 0) {
         ctx.fillStyle = '#4ade80';
         ctx.beginPath();
