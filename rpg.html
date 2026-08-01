@@ -3,49 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>精緻像素橫捲軸大亂鬥 - 人物造型升級版</title>
+  <title>精緻像素橫捲軸大亂鬥 - 古典金字塔版</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: #05050b; color: #fff;
+      background-color: #0b0705; color: #fff;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       min-height: 100vh; overflow: hidden;
     }
     .game-wrapper {
-      position: relative; border: 3px solid #3b2d54; border-radius: 12px;
-      box-shadow: 0 0 50px rgba(112, 0, 255, 0.25), 0 20px 40px rgba(0,0,0,0.9);
+      position: relative; border: 4px solid #5a3a1e; border-radius: 8px;
+      box-shadow: 0 0 50px rgba(180, 100, 30, 0.3), 0 20px 40px rgba(0,0,0,0.9);
       overflow: hidden;
     }
-    canvas { background-color: #0d0914; image-rendering: pixelated; display: block; }
+    canvas { background-color: #3d281d; image-rendering: pixelated; display: block; }
     
     .overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(10, 8, 20, 0.92); backdrop-filter: blur(6px);
+      background: rgba(20, 12, 8, 0.92); backdrop-filter: blur(6px);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       z-index: 10;
     }
     .overlay h1 {
-      font-size: 2.5rem; color: #38bdf8; text-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
-      margin-bottom: 25px; font-weight: 800;
+      font-size: 2.8rem; color: #f59e0b; text-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
+      margin-bottom: 25px; font-weight: 800; letter-spacing: 2px;
     }
     .btn-group { display: flex; gap: 20px; }
     .mode-btn {
       padding: 14px 28px; font-size: 1.1rem; font-weight: bold;
-      border: 2px solid #38bdf8; background: rgba(56, 189, 248, 0.1);
-      color: #38bdf8; border-radius: 8px; cursor: pointer; transition: 0.2s;
+      border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24; border-radius: 8px; cursor: pointer; transition: 0.2s;
     }
     .mode-btn:hover {
-      background: #38bdf8; color: #0f172a; transform: translateY(-3px);
-      box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+      background: #f59e0b; color: #1c100b; transform: translateY(-3px);
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
     }
-    .mode-btn.p2-btn { border-color: #4ade80; color: #4ade80; background: rgba(74, 222, 128, 0.1); }
-    .mode-btn.p2-btn:hover { background: #4ade80; color: #0f172a; box-shadow: 0 0 20px rgba(74, 222, 128, 0.6); }
+    .mode-btn.p2-btn { border-color: #10b981; color: #34d399; background: rgba(16, 185, 129, 0.15); }
+    .mode-btn.p2-btn:hover { background: #10b981; color: #064e3b; box-shadow: 0 0 20px rgba(16, 185, 129, 0.6); }
 
     .controls-hint {
-      margin-top: 12px; display: flex; gap: 30px; background: rgba(15, 12, 25, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px);
-      padding: 10px 24px; border-radius: 8px; font-size: 0.85rem; color: #a5b4fc;
+      margin-top: 12px; display: flex; gap: 30px; background: rgba(25, 16, 11, 0.85);
+      border: 1px solid rgba(245, 158, 11, 0.2); backdrop-filter: blur(8px);
+      padding: 10px 24px; border-radius: 8px; font-size: 0.85rem; color: #fde68a;
     }
     .controls-hint strong { color: #f43f5e; }
   </style>
@@ -65,7 +65,7 @@
 
     <div class="overlay" id="gameOverOverlay" style="display: none;">
       <h1 style="color: #ef4444;">GAME OVER</h1>
-      <p style="font-size: 1.2rem; margin-bottom: 20px;">最終擊殺總數: <span id="finalKills">0</span></p>
+      <p style="font-size: 1.2rem; margin-bottom: 20px; color: #fde68a;">最終擊殺總數: <span id="finalKills">0</span></p>
       <div class="btn-group">
         <button class="mode-btn" onclick="showStartMenu()">🔄 返回選擇模式</button>
       </div>
@@ -99,35 +99,46 @@
     };
 
     const MONSTER_TYPES = [
-      { type: 'slime', name: '史萊姆', w: 24, h: 20, hp: 35, speed: 1.0, color: '#10b981', flying: false },
-      { type: 'eye',   name: '浮游魔眼', w: 22, h: 22, hp: 28, speed: 1.4, color: '#f43f5e', flying: true },
-      { type: 'skel',  name: '骷髏戰士', w: 22, h: 28, hp: 55, speed: 1.2, color: '#e2e8f0', flying: false }
+      { type: 'slime',  name: '史萊姆', w: 24, h: 20, hp: 35, speed: 1.0, color: '#10b981' },
+      { type: 'spider', name: '洞穴蜘蛛', w: 26, h: 18, hp: 30, speed: 1.5, color: '#a855f7' },
+      { type: 'skel',   name: '骷髏戰士', w: 22, h: 28, hp: 55, speed: 1.2, color: '#e2e8f0' }
     ];
 
+    // 🏰 根據原圖精準還原的平台地圖結構
     const platforms = [
-      { x: 0, y: 470, w: 860, h: 50 },
-      { x: 0, y: 370, w: 240, h: 18 },
-      { x: 620, y: 370, w: 240, h: 18 },
-      { x: 280, y: 395, w: 300, h: 22 },
-      { x: 120, y: 270, w: 240, h: 18 },
-      { x: 500, y: 270, w: 240, h: 18 },
-      { x: 350, y: 190, w: 160, h: 18 },
-      { x: 0, y: 160, w: 200, h: 18 },
-      { x: 660, y: 160, w: 200, h: 18 }
+      // 底部地面
+      { x: 0, y: 490, w: 860, h: 30 },
+      // 中央底座（放置初始玩家）
+      { x: 320, y: 410, w: 220, h: 80 },
+      // 側邊與中層平台
+      { x: 0, y: 330, w: 260, h: 20 },
+      { x: 600, y: 330, w: 260, h: 20 },
+      { x: 120, y: 240, w: 220, h: 20 },
+      { x: 520, y: 240, w: 220, h: 20 },
+      { x: 360, y: 160, w: 140, h: 20 },
+      { x: 0, y: 170, w: 140, h: 20 },
+      { x: 720, y: 170, w: 140, h: 20 },
+      { x: 140, y: 80, w: 240, h: 20 },
+      { x: 480, y: 80, w: 240, h: 20 },
+      // 兩側縱向牆壁裝飾塊
+      { x: 0, y: 0, w: 40, h: 490 },
+      { x: 820, y: 0, w: 40, h: 490 },
+      // 寶箱小平台
+      { x: 140, y: 430, w: 100, h: 16 },
+      { x: 620, y: 430, w: 100, h: 16 }
     ];
 
     const chests = [
-      { x: 80, y: 440, w: 30, h: 24, opened: false },
-      { x: 750, y: 440, w: 30, h: 24, opened: false },
-      { x: 415, y: 365, w: 30, h: 24, opened: false }
+      { x: 175, y: 406, w: 30, h: 24, opened: false },
+      { x: 655, y: 406, w: 30, h: 24, opened: false }
     ];
 
     function createPlayer(x, mainColor, accentColor, skinColor, isP1) {
       return {
-        x: x, y: 350, w: 24, h: 36, vx: 0, vy: 0,
+        x: x, y: 360, w: 24, h: 36, vx: 0, vy: 0,
         mainColor: mainColor, accentColor: accentColor, skinColor: skinColor,
         isP1: isP1, facing: 1, isGrounded: false,
-        hp: 100, maxHp: 100, gold: 0,
+        hp: 100, maxHp: 100, gold: 2835,
         inventory: ['pistol', 'ak47'],
         currentWpnIdx: 0,
         ammoPool: { pistol: 120, rifle: 90, shotgun: 35, explosive: 12, special: 15 },
@@ -240,13 +251,13 @@
 
     function spawnMonster() {
       if (!isGameStarted || isGameOver || monsters.length > 10 || boss) return;
-      const pts = [{x: 30, y: 50}, {x: 810, y: 50}, {x: 430, y: 20}];
+      const pts = [{x: 180, y: 50}, {x: 580, y: 50}, {x: 400, y: 120}];
       const pt = pts[Math.floor(Math.random() * pts.length)];
       const t = MONSTER_TYPES[Math.floor(Math.random() * MONSTER_TYPES.length)];
 
       monsters.push({
         x: pt.x, y: pt.y, w: t.w, h: t.h, vx: 0, vy: 0,
-        type: t.type, color: t.color, flying: t.flying,
+        type: t.type, color: t.color,
         hp: t.hp + Math.floor(totalKills * 2.5), maxHp: t.hp + Math.floor(totalKills * 2.5),
         speed: t.speed, isAggressive: false, roamTimer: 0, roamDir: 1
       });
@@ -256,9 +267,9 @@
     function checkBossSpawn() {
       if (!boss && totalKills >= nextBossThreshold) {
         boss = {
-          x: 390, y: 80, w: 70, h: 70, vx: 2, vy: 0,
+          x: 390, y: 80, w: 65, h: 65, vx: 2, vy: 0,
           hp: 700 + totalKills * 25, maxHp: 700 + totalKills * 25,
-          color: '#f43f5e', lastShot: 0
+          color: '#f43f5e', lastShot: 0, isGrounded: false
         };
         nextBossThreshold += 25;
       }
@@ -282,7 +293,7 @@
     }
 
     function updateEntity(ent, gravity = 0.48) {
-      if (!ent.flying) ent.vy += gravity;
+      ent.vy += gravity;
       ent.x += ent.vx;
       ent.y += ent.vy;
 
@@ -290,7 +301,6 @@
       else if (ent.x + ent.w < 0) { ent.x = canvas.width - 2; }
 
       if (ent.y < 0) { ent.y = 0; ent.vy = 0; }
-      if (ent.y > canvas.height) { ent.y = 350; ent.vy = 0; }
 
       ent.isGrounded = false;
       platforms.forEach(p => {
@@ -407,9 +417,7 @@
 
           if (m.isAggressive) {
             m.vx = target.x > m.x ? m.speed * 1.25 : -m.speed * 1.25;
-            if (m.flying) {
-              m.vy = target.y > m.y ? m.speed * 0.8 : -m.speed * 0.8;
-            } else if (m.isGrounded) {
+            if (m.isGrounded) {
               const playerAbove = target.y < m.y - 30;
               const horizClose = Math.abs(target.x - m.x) < 140;
               if ((playerAbove && horizClose) || Math.random() < 0.02) {
@@ -427,23 +435,35 @@
               m.roamDir = Math.random() < 0.35 ? 1 : Math.random() < 0.7 ? -1 : 0;
             }
             m.vx = m.roamDir * m.speed * 0.5;
-            if (m.flying) {
-              m.vy = Math.sin(Date.now() / 300) * 0.5;
-            } else if (m.isGrounded && Math.random() < 0.015) {
+            if (m.isGrounded && Math.random() < 0.015) {
               m.vy = -8.5;
             }
           }
         }
       });
 
-      // BOSS
+      // 🦹 BOSS AI (🔥 恢復跳躍機制 🔥)
       if (boss) {
-        updateEntity(boss, 0.2);
+        updateEntity(boss, 0.45);
+
+        let targets = [p1, p2].filter(p => p && p.hp > 0);
+        if (targets.length > 0) {
+          let target = targets[0];
+          boss.vx = target.x > boss.x ? 1.8 : -1.8;
+
+          // ⭐ BOSS 跳躍條件：當玩家在上方，或者靠近時隨機大跳追擊
+          if (boss.isGrounded) {
+            const playerAbove = target.y < boss.y - 20;
+            const isNear = Math.abs(target.x - boss.x) < 160;
+            if ((playerAbove && isNear) || Math.random() < 0.012) {
+              boss.vy = -10.5; // 大跳躍力
+            }
+          }
+        }
 
         const now = Date.now();
-        if (now - boss.lastShot > 1300) {
+        if (now - boss.lastShot > 1200) {
           boss.lastShot = now;
-          let targets = [p1, p2].filter(p => p && p.hp > 0);
           if (targets.length > 0) {
             let t = targets[Math.floor(Math.random() * targets.length)];
             let angle = Math.atan2((t.y + t.h/2) - (boss.y + boss.h/2), (t.x + t.w/2) - (boss.x + boss.w/2));
@@ -540,63 +560,55 @@
       document.getElementById('gameOverOverlay').style.display = 'flex';
     }
 
-    // ⭐ 人物繪製 logic ⭐
+    // ⭐ 人物繪製邏輯 ⭐
     function drawHumanoidPlayer(p) {
       if (!p || p.hp <= 0) return;
 
       ctx.save();
-      
       const centerX = p.x + p.w / 2;
       const legSwing = Math.sin(p.animTimer) * (p.vx !== 0 ? 6 : 0);
 
-      // 1. 腳部 (Legs)
-      ctx.fillStyle = '#1e293b'; // 褲子顏色
+      // 1. 腳部
+      ctx.fillStyle = '#1e293b';
       if (!p.isGrounded) {
-        // 跳躍姿態
         ctx.fillRect(centerX - 7, p.y + 24, 5, 8);
         ctx.fillRect(centerX + 2, p.y + 22, 5, 8);
       } else {
-        // 跑步/站立擺動
         ctx.fillRect(centerX - 6 + legSwing, p.y + 24, 5, 12);
         ctx.fillRect(centerX + 1 - legSwing, p.y + 24, 5, 12);
       }
 
-      // 鞋子
       ctx.fillStyle = '#0f172a';
       if (p.isGrounded) {
         ctx.fillRect(centerX - 7 + legSwing, p.y + 33, 6, 3);
         ctx.fillRect(centerX + 1 - legSwing, p.y + 33, 6, 3);
       }
 
-      // 2. 身體/衣服 (Torso/Jacket)
+      // 2. 身體/衣服
       ctx.fillStyle = p.mainColor;
       ctx.fillRect(centerX - 8, p.y + 12, 16, 13);
-
-      // 皮帶
       ctx.fillStyle = '#475569';
       ctx.fillRect(centerX - 8, p.y + 23, 16, 2);
 
-      // 3. 頭部與臉 (Head & Face)
-      ctx.fillStyle = p.skinColor; // 膚色
+      // 3. 頭部與面具/帽子 (根據 1P/2P 特化)
+      ctx.fillStyle = p.skinColor;
       ctx.beginPath();
       ctx.arc(centerX, p.y + 7, 7, 0, Math.PI * 2);
       ctx.fill();
 
-      // 頭巾 / 頭飾 (Hair / Headband)
+      // 配飾 / 頭帶 / 帽子
       ctx.fillStyle = p.accentColor;
-      ctx.fillRect(centerX - 7, p.y + 1, 14, 5); // 發帶
+      ctx.fillRect(centerX - 7, p.y + 1, 14, 5);
 
-      // 護目鏡 / 眼睛 (Goggles / Eyes)
       ctx.fillStyle = '#0284c7';
       let eyeOffsetX = p.facing === 1 ? 1 : -5;
       ctx.fillRect(centerX + eyeOffsetX, p.y + 5, 5, 3);
 
-      // 4. 手部與武器 (Arm & Gun)
+      // 4. 手部與武器
       ctx.fillStyle = p.skinColor;
       let armX = p.facing === 1 ? centerX + 2 : centerX - 10;
-      ctx.fillRect(armX, p.y + 14, 8, 4); // 伸手持槍
+      ctx.fillRect(armX, p.y + 14, 8, 4);
 
-      // 簡化版手持槍械
       ctx.fillStyle = '#334155';
       let gunX = p.facing === 1 ? centerX + 8 : centerX - 14;
       ctx.fillRect(gunX, p.y + 13, 8, 5);
@@ -607,51 +619,151 @@
       ctx.restore();
     }
 
+    // ─── 🏰 繪製古典金字塔地圖與風格 ───
+    function drawMapBackground() {
+      // 1. 背景磚牆質感 (深棕色格紋)
+      ctx.fillStyle = '#4a3225';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = '#382318';
+      ctx.lineWidth = 2;
+      const gridSize = 40;
+      for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += gridSize) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      // 中央古老符號印記細節 (圖片中央刻印)
+      ctx.fillStyle = '#331f14';
+      ctx.fillRect(canvas.width / 2 - 20, 0, 40, canvas.height);
+
+      // 2. 繪製復刻版金黃色古典磚塊平台
+      platforms.forEach(p => {
+        // 主磚體
+        ctx.fillStyle = '#a37c3f';
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+
+        // 頂部高光黃邊
+        ctx.fillStyle = '#dcae5b';
+        ctx.fillRect(p.x, p.y, p.w, 4);
+
+        // 下緣陰影
+        ctx.fillStyle = '#6e5127';
+        ctx.fillRect(p.x, p.y + p.h - 4, p.w, 4);
+
+        // 磚塊內部雙邊框鑲邊細節
+        if (p.w > 40) {
+          ctx.strokeStyle = '#7c5d2b';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(p.x + 4, p.y + 4, p.w - 8, p.h - 8);
+        }
+      });
+    }
+
+    // ─── 🏛️ 復刻原圖 UI (血條與金幣) ───
+    function drawRetroUI() {
+      // 1P 血條 (左上)
+      drawRetroHPBar(15, 10, p1 ? p1.hp : 0, true);
+      // 2P 血條 (右上)
+      if (gameMode === 2 && p2) {
+        drawRetroHPBar(canvas.width - 115, 10, p2.hp, false);
+      }
+
+      // 金幣與數量 (左上)
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath(); ctx.arc(22, 85, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#d97706';
+      ctx.beginPath(); ctx.arc(22, 85, 6, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18px Courier New';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${p1 ? p1.gold : 0}`, 38, 91);
+
+      // 暫停按鈕裝飾 (中央頂部)
+      ctx.fillStyle = '#dcae5b';
+      ctx.fillRect(canvas.width / 2 - 12, 10, 8, 20);
+      ctx.fillRect(canvas.width / 2 + 4, 10, 8, 20);
+    }
+
+    function drawRetroHPBar(x, y, hp, isLeft) {
+      // 黑色底框
+      ctx.fillStyle = '#000';
+      ctx.fillRect(x, y, 100, 22);
+
+      // 分格血條 (綠/紅)
+      const maxBlocks = 8;
+      const currentBlocks = Math.ceil((hp / 100) * maxBlocks);
+      for (let i = 0; i < maxBlocks; i++) {
+        if (i < currentBlocks) {
+          ctx.fillStyle = i >= maxBlocks - 2 ? '#f97316' : '#22c55e';
+        } else {
+          ctx.fillStyle = '#450a0a';
+        }
+        ctx.fillRect(x + 3 + i * 12, y + 3, 10, 16);
+      }
+
+      // 彈藥數示與圖示
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px Courier New';
+      ctx.textAlign = isLeft ? 'left' : 'right';
+      ctx.fillText(`40 🔋`, isLeft ? x : x + 100, y + 38);
+    }
+
     // ─── 畫面渲染 ───
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      bgGradient.addColorStop(0, '#0f0c1b'); bgGradient.addColorStop(1, '#05030a');
-      ctx.fillStyle = bgGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // 1. 繪製復刻地圖背景
+      drawMapBackground();
 
-      platforms.forEach(p => {
-        const platGrad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
-        platGrad.addColorStop(0, '#332a42'); platGrad.addColorStop(1, '#1b1426');
-        ctx.fillStyle = platGrad; ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#8b5cf6'; ctx.fillRect(p.x, p.y, p.w, 3);
-      });
-
+      // 2. 寶箱 (復刻黃金寶箱)
       chests.forEach(c => {
-        ctx.fillStyle = c.opened ? '#475569' : '#f59e0b';
+        ctx.fillStyle = c.opened ? '#6e5127' : '#f59e0b';
         ctx.fillRect(c.x, c.y, c.w, c.h);
-        ctx.fillStyle = c.opened ? '#334155' : '#fbbf24';
-        ctx.fillRect(c.x + 3, c.y + 3, c.w - 6, 6);
+        ctx.fillStyle = c.opened ? '#4a3225' : '#fef08a';
+        ctx.fillRect(c.x + 4, c.y + 4, c.w - 8, 6);
+        ctx.fillStyle = '#7c5d2b';
+        ctx.fillRect(c.x + c.w/2 - 3, c.y + 10, 6, 8);
       });
 
+      // 3. 掉落物
       drops.forEach(d => {
         ctx.fillStyle = d.type === 'gold' ? '#fbbf24' : d.type === 'hp' ? '#f43f5e' : '#a855f7';
         ctx.beginPath(); ctx.arc(d.x + d.w/2, d.y + d.h/2, d.w/2, 0, Math.PI*2); ctx.fill();
       });
 
-      // ⭐ 繪製人形玩家 ⭐
+      // 4. 角色
       drawHumanoidPlayer(p1);
       if (gameMode === 2) drawHumanoidPlayer(p2);
 
+      // 5. 怪物
       monsters.forEach(m => {
         if (m.type === 'slime') {
           const sGrad = ctx.createRadialGradient(m.x + m.w/2, m.y + m.h/2, 2, m.x + m.w/2, m.y + m.h/2, m.w/2);
           sGrad.addColorStop(0, '#34d399'); sGrad.addColorStop(1, '#059669');
           ctx.fillStyle = sGrad; ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#a7f3d0'; ctx.fillRect(m.x + 6, m.y + 4, 4, 4);
-        } else if (m.type === 'eye') {
-          ctx.fillStyle = '#f43f5e'; ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, 6, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, 3, 0, Math.PI * 2); ctx.fill();
+        } else if (m.type === 'spider') {
+          // 🕷️ 紫色蛛蛛（與圖片一致）
+          ctx.fillStyle = '#a855f7';
+          ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
+          // 蜘蛛腳
+          ctx.strokeStyle = '#e9d5ff'; ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(m.x, m.y + 4); ctx.lineTo(m.x - 5, m.y + 14);
+          ctx.moveTo(m.x + 6, m.y + 2); ctx.lineTo(m.x + 2, m.y + 16);
+          ctx.moveTo(m.x + m.w - 6, m.y + 2); ctx.lineTo(m.x + m.w - 2, m.y + 16);
+          ctx.moveTo(m.x + m.w, m.y + 4); ctx.lineTo(m.x + m.w + 5, m.y + 14);
+          ctx.stroke();
+          // 背部尖刺/眼睛
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(m.x + 6, m.y + 4, 4, 4); ctx.fillRect(m.x + 16, m.y + 4, 4, 4);
         } else {
           ctx.fillStyle = '#e2e8f0'; ctx.fillRect(m.x, m.y, m.w, m.h);
           ctx.fillStyle = '#09090b'; ctx.fillRect(m.x + 3, m.y + 5, 5, 5); ctx.fillRect(m.x + 14, m.y + 5, 5, 5);
-          ctx.fillStyle = '#ef4444'; ctx.fillRect(m.x + 5, m.y + 7, 2, 2); ctx.fillRect(m.x + 16, m.y + 7, 2, 2);
         }
 
         if (m.isAggressive) {
@@ -660,18 +772,21 @@
         }
       });
 
+      // 6. BOSS
       if (boss) {
         const bGrad = ctx.createLinearGradient(boss.x, boss.y, boss.x + boss.w, boss.y + boss.h);
-        bGrad.addColorStop(0, '#f43f5e'); bGrad.addColorStop(1, '#881337');
+        bGrad.addColorStop(0, '#ef4444'); bGrad.addColorStop(1, '#991b1b');
         ctx.fillStyle = bGrad; ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
-        ctx.fillStyle = '#fbbf24'; ctx.fillRect(boss.x + 12, boss.y + 16, 14, 14); ctx.fillRect(boss.x + 44, boss.y + 16, 14, 14);
+        ctx.fillStyle = '#fbbf24'; ctx.fillRect(boss.x + 10, boss.y + 14, 14, 14); ctx.fillRect(boss.x + 40, boss.y + 14, 14, 14);
 
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'; ctx.fillRect(230, 12, 400, 20);
-        ctx.fillStyle = '#ef4444'; ctx.fillRect(235, 15, (boss.hp / boss.maxHp) * 390, 14);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Segoe UI'; ctx.textAlign = 'center';
-        ctx.fillText('⚠️ 地牢霸主 ⚠️', canvas.width / 2, 27);
+        // BOSS 血條
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'; ctx.fillRect(230, 42, 400, 16);
+        ctx.fillStyle = '#ef4444'; ctx.fillRect(233, 44, (boss.hp / boss.maxHp) * 394, 12);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Segoe UI'; ctx.textAlign = 'center';
+        ctx.fillText('⚠️ BOSS 霸主 ⚠️', canvas.width / 2, 54);
       }
 
+      // 7. 子彈與特效
       bullets.forEach(b => {
         ctx.shadowColor = b.color; ctx.shadowBlur = 8;
         ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h);
@@ -696,42 +811,13 @@
         ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1.0;
       });
 
-      if (p1) drawPlayerHUD(p1, 15, 15);
-      if (gameMode === 2 && p2) drawPlayerHUD(p2, canvas.width - 225, 15);
+      // 8. 復刻原圖 UI 繪製
+      drawRetroUI();
 
       if (isGameStarted) {
-        ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 24px Courier New'; ctx.textAlign = 'center';
-        ctx.fillText(`KILLS ${totalKills}`, canvas.width / 2, 505);
+        ctx.fillStyle = '#ffffff'; ctx.font = '800 28px Courier New'; ctx.textAlign = 'center';
+        ctx.fillText(`KILLS ${totalKills}`, canvas.width / 2, 470);
       }
-    }
-
-    function drawPlayerHUD(p, x, y) {
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.fillRect(x, y, 210, 75);
-      ctx.strokeRect(x, y, 210, 75);
-
-      ctx.fillStyle = '#10b981';
-      ctx.fillRect(x + 10, y + 10, Math.max(0, (p.hp / p.maxHp) * 190), 10);
-
-      const currKey = p.inventory[p.currentWpnIdx];
-      const currWpn = WEAPONS[currKey];
-      const currAmmo = currWpn.ammoType === 'inf' ? '∞' : p.ammoPool[currWpn.ammoType];
-
-      let nextStr = '無';
-      if (p.inventory.length > 1) {
-        const nextKey = p.inventory[(p.currentWpnIdx + 1) % p.inventory.length];
-        const nextWpn = WEAPONS[nextKey];
-        const nextAmmo = nextWpn.ammoType === 'inf' ? '∞' : p.ammoPool[nextWpn.ammoType];
-        nextStr = `${nextWpn.name}: ${nextAmmo}`;
-      }
-
-      ctx.font = 'bold 12px Segoe UI'; ctx.fillStyle = p.accentColor; ctx.textAlign = 'left';
-      ctx.fillText(`${p.isP1 ? '1P 勇者' : '2P 槍手'} | 💰${p.gold}`, x + 10, y + 33);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillText(`▶ 當前: ${currWpn.name} [${currAmmo}]`, x + 10, y + 50);
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText(`  備用: ${nextStr}`, x + 10, y + 66);
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
