@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>精緻像素橫捲軸大亂鬥 - 座標保護版</title>
+  <title>精緻像素橫捲軸大亂鬥 - 人物造型升級版</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -122,15 +122,16 @@
       { x: 415, y: 365, w: 30, h: 24, opened: false }
     ];
 
-    function createPlayer(x, mainColor, accentColor, isP1) {
+    function createPlayer(x, mainColor, accentColor, skinColor, isP1) {
       return {
-        x: x, y: 350, w: 22, h: 30, vx: 0, vy: 0,
-        mainColor: mainColor, accentColor: accentColor, isP1: isP1, facing: 1, isGrounded: false,
+        x: x, y: 350, w: 24, h: 36, vx: 0, vy: 0,
+        mainColor: mainColor, accentColor: accentColor, skinColor: skinColor,
+        isP1: isP1, facing: 1, isGrounded: false,
         hp: 100, maxHp: 100, gold: 0,
         inventory: ['pistol', 'ak47'],
         currentWpnIdx: 0,
         ammoPool: { pistol: 120, rifle: 90, shotgun: 35, explosive: 12, special: 15 },
-        lastShot: 0
+        lastShot: 0, animTimer: 0
       };
     }
 
@@ -146,8 +147,8 @@
       bullets = []; bossBullets = []; monsters = []; drops = []; mines = []; explosions = []; particles = []; boss = null;
       chests.forEach(c => c.opened = false);
 
-      p1 = createPlayer(380, '#2563eb', '#60a5fa', true);
-      p2 = gameMode === 2 ? createPlayer(460, '#16a34a', '#4ade80', false) : null;
+      p1 = createPlayer(380, '#2563eb', '#60a5fa', '#fbcfe8', true);
+      p2 = gameMode === 2 ? createPlayer(460, '#16a34a', '#4ade80', '#fed7aa', false) : null;
 
       document.getElementById('startOverlay').style.display = 'none';
       document.getElementById('gameOverOverlay').style.display = 'none';
@@ -184,8 +185,8 @@
       }
 
       player.lastShot = now;
-      const spawnX = player.x + (player.facing === 1 ? player.w + 4 : -10);
-      const spawnY = player.y + 12;
+      const spawnX = player.x + (player.facing === 1 ? player.w + 6 : -10);
+      const spawnY = player.y + 16;
 
       spawnParticles(spawnX, spawnY, '#fbbf24', 5, 2);
 
@@ -280,30 +281,16 @@
       }
     }
 
-    // ⭐ 座標保護與實體更新 ⭐
     function updateEntity(ent, gravity = 0.48) {
       if (!ent.flying) ent.vy += gravity;
       ent.x += ent.vx;
       ent.y += ent.vy;
 
-      // 🌀 左右邊界傳送
-      if (ent.x > canvas.width) {
-        ent.x = -ent.w + 2;
-      } else if (ent.x + ent.w < 0) {
-        ent.x = canvas.width - 2;
-      }
+      if (ent.x > canvas.width) { ent.x = -ent.w + 2; } 
+      else if (ent.x + ent.w < 0) { ent.x = canvas.width - 2; }
 
-      // 🛑 上下天花板保護 (防止跳太高消失)
-      if (ent.y < 0) {
-        ent.y = 0;
-        ent.vy = 0;
-      }
-      
-      // 🛑 掉出底部保護
-      if (ent.y > canvas.height) {
-        ent.y = 350;
-        ent.vy = 0;
-      }
+      if (ent.y < 0) { ent.y = 0; ent.vy = 0; }
+      if (ent.y > canvas.height) { ent.y = 350; ent.vy = 0; }
 
       ent.isGrounded = false;
       platforms.forEach(p => {
@@ -323,8 +310,8 @@
       // 1P 操作
       if (p1 && p1.hp > 0) {
         p1.vx = 0;
-        if (keys['KeyA']) { p1.vx = -3.4; p1.facing = -1; }
-        if (keys['KeyD']) { p1.vx = 3.4; p1.facing = 1; }
+        if (keys['KeyA']) { p1.vx = -3.4; p1.facing = -1; p1.animTimer += 0.2; }
+        if (keys['KeyD']) { p1.vx = 3.4; p1.facing = 1; p1.animTimer += 0.2; }
         if (keys['KeyW'] && p1.isGrounded) p1.vy = -10.2;
         if (keys['KeyC']) fireWeapon(p1);
         if (keys['KeyV']) {
@@ -340,8 +327,8 @@
       // 2P 操作
       if (gameMode === 2 && p2 && p2.hp > 0) {
         p2.vx = 0;
-        if (keys['ArrowLeft']) { p2.vx = -3.4; p2.facing = -1; }
-        if (keys['ArrowRight']) { p2.vx = 3.4; p2.facing = 1; }
+        if (keys['ArrowLeft']) { p2.vx = -3.4; p2.facing = -1; p2.animTimer += 0.2; }
+        if (keys['ArrowRight']) { p2.vx = 3.4; p2.facing = 1; p2.animTimer += 0.2; }
         if (keys['ArrowUp'] && p2.isGrounded) p2.vy = -10.2;
         if (keys['KeyK']) fireWeapon(p2);
         if (keys['KeyL']) {
@@ -553,6 +540,73 @@
       document.getElementById('gameOverOverlay').style.display = 'flex';
     }
 
+    // ⭐ 人物繪製 logic ⭐
+    function drawHumanoidPlayer(p) {
+      if (!p || p.hp <= 0) return;
+
+      ctx.save();
+      
+      const centerX = p.x + p.w / 2;
+      const legSwing = Math.sin(p.animTimer) * (p.vx !== 0 ? 6 : 0);
+
+      // 1. 腳部 (Legs)
+      ctx.fillStyle = '#1e293b'; // 褲子顏色
+      if (!p.isGrounded) {
+        // 跳躍姿態
+        ctx.fillRect(centerX - 7, p.y + 24, 5, 8);
+        ctx.fillRect(centerX + 2, p.y + 22, 5, 8);
+      } else {
+        // 跑步/站立擺動
+        ctx.fillRect(centerX - 6 + legSwing, p.y + 24, 5, 12);
+        ctx.fillRect(centerX + 1 - legSwing, p.y + 24, 5, 12);
+      }
+
+      // 鞋子
+      ctx.fillStyle = '#0f172a';
+      if (p.isGrounded) {
+        ctx.fillRect(centerX - 7 + legSwing, p.y + 33, 6, 3);
+        ctx.fillRect(centerX + 1 - legSwing, p.y + 33, 6, 3);
+      }
+
+      // 2. 身體/衣服 (Torso/Jacket)
+      ctx.fillStyle = p.mainColor;
+      ctx.fillRect(centerX - 8, p.y + 12, 16, 13);
+
+      // 皮帶
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(centerX - 8, p.y + 23, 16, 2);
+
+      // 3. 頭部與臉 (Head & Face)
+      ctx.fillStyle = p.skinColor; // 膚色
+      ctx.beginPath();
+      ctx.arc(centerX, p.y + 7, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 頭巾 / 頭飾 (Hair / Headband)
+      ctx.fillStyle = p.accentColor;
+      ctx.fillRect(centerX - 7, p.y + 1, 14, 5); // 發帶
+
+      // 護目鏡 / 眼睛 (Goggles / Eyes)
+      ctx.fillStyle = '#0284c7';
+      let eyeOffsetX = p.facing === 1 ? 1 : -5;
+      ctx.fillRect(centerX + eyeOffsetX, p.y + 5, 5, 3);
+
+      // 4. 手部與武器 (Arm & Gun)
+      ctx.fillStyle = p.skinColor;
+      let armX = p.facing === 1 ? centerX + 2 : centerX - 10;
+      ctx.fillRect(armX, p.y + 14, 8, 4); // 伸手持槍
+
+      // 簡化版手持槍械
+      ctx.fillStyle = '#334155';
+      let gunX = p.facing === 1 ? centerX + 8 : centerX - 14;
+      ctx.fillRect(gunX, p.y + 13, 8, 5);
+      ctx.fillStyle = '#000';
+      let barrelX = p.facing === 1 ? centerX + 14 : centerX - 16;
+      ctx.fillRect(barrelX, p.y + 14, 3, 2);
+
+      ctx.restore();
+    }
+
     // ─── 畫面渲染 ───
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -580,16 +634,9 @@
         ctx.beginPath(); ctx.arc(d.x + d.w/2, d.y + d.h/2, d.w/2, 0, Math.PI*2); ctx.fill();
       });
 
-      [p1, p2].forEach(p => {
-        if (!p || p.hp <= 0) return;
-        const pGrad = ctx.createLinearGradient(p.x, p.y, p.x + p.w, p.y + p.h);
-        pGrad.addColorStop(0, p.accentColor); pGrad.addColorStop(1, p.mainColor);
-        ctx.fillStyle = pGrad; ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#0f172a'; ctx.fillRect(p.x + 2, p.y + 4, p.w - 4, 8);
-        ctx.fillStyle = '#67e8f9';
-        let eyeX = p.facing === 1 ? p.x + 13 : p.x + 3;
-        ctx.fillRect(eyeX, p.y + 6, 6, 4);
-      });
+      // ⭐ 繪製人形玩家 ⭐
+      drawHumanoidPlayer(p1);
+      if (gameMode === 2) drawHumanoidPlayer(p2);
 
       monsters.forEach(m => {
         if (m.type === 'slime') {
