@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>雙人 2D 追蹤彈幕 RPG</title>
+  <title>雙人 2D 追蹤彈幕 RPG - 修正版</title>
   <style>
     * {
       box-sizing: border-box;
@@ -49,6 +49,7 @@
       gap: 15px;
       flex-wrap: wrap;
       justify-content: center;
+      position: relative;
     }
     canvas {
       border: 3px solid #30363d;
@@ -71,6 +72,7 @@
     .log-msg.p1 { color: #38bdf8; }
     .log-msg.p2 { color: #4ade80; }
     .log-msg.system { color: #f2cc60; }
+    .log-msg.danger { color: #ef4444; }
 
     .controls-guide {
       margin-top: 15px;
@@ -80,6 +82,44 @@
       padding: 12px 25px;
       border-radius: 8px;
       font-size: 0.9rem;
+    }
+
+    /* 遊戲結束覆蓋視窗 */
+    .game-over-overlay {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 560px;
+      height: 480px;
+      background: rgba(13, 17, 23, 0.85);
+      border-radius: 8px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+    .game-over-title {
+      font-size: 2.5rem;
+      color: #ef4444;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    }
+    .restart-btn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 1.1rem;
+      background-color: #238636;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .restart-btn:hover {
+      background-color: #2ea043;
     }
   </style>
 </head>
@@ -107,14 +147,21 @@
 
   <div class="game-container">
     <canvas id="gameCanvas" width="560" height="480"></canvas>
+    
+    <div class="game-over-overlay" id="gameOverOverlay">
+      <div class="game-over-title">GAME OVER</div>
+      <div style="font-size: 1.1rem;">全員陣亡！最終停留在第 <span id="final-floor">1</span> 層</div>
+      <button class="restart-btn" onclick="resetGame()">重新開始 (按 R 鍵)</button>
+    </div>
+
     <div class="log-box" id="logBox">
-      <div class="log-msg system">雙人追蹤導彈模式啟用！清空怪物進入下一層...</div>
+      <div class="log-msg system">雙人冒險開始！清空怪物進入下一層...</div>
     </div>
   </div>
 
   <div class="controls-guide">
-    <div><strong>1P 操作：</strong> WASD 移動 | <strong>空白鍵</strong> 發射追蹤飛彈</div>
-    <div><strong>2P 操作：</strong> 方向鍵 ↑↓←→ 移動 | <strong>Enter</strong> 發射追蹤飛彈</div>
+    <div><strong>1P 操作：</strong> WASD 移動 | <strong>空白鍵</strong> 發射子彈</div>
+    <div><strong>2P 操作：</strong> 方向鍵 ↑↓←→ 移動 | <strong>Enter</strong> 發射子彈</div>
   </div>
 
   <script>
@@ -122,15 +169,10 @@
     const ctx = canvas.getContext('2d');
 
     let currentFloor = 1;
+    let isGameOver = false;
     const keys = {};
 
-    let p1 = { x: 80, y: 220, r: 12, hp: 100, maxHp: 100, atk: 15, gold: 0, dirX: 1, dirY: 0, lastShot: 0 };
-    let p2 = { x: 80, y: 260, r: 12, hp: 100, maxHp: 100, atk: 15, gold: 0, dirX: 1, dirY: 0, lastShot: 0 };
-
-    let bullets = [];
-    let monsters = [];
-    let portal = null;
-    let isPortalUnlocked = false;
+    let p1, p2, bullets, monsters, portal, isPortalUnlocked;
 
     function addLog(msg, type = "system") {
       const logBox = document.getElementById('logBox');
@@ -139,6 +181,20 @@
       div.textContent = msg;
       logBox.appendChild(div);
       logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function resetGame() {
+      currentFloor = 1;
+      isGameOver = false;
+      document.getElementById('gameOverOverlay').style.display = 'none';
+
+      p1 = { x: 80, y: 220, r: 12, hp: 100, maxHp: 100, atk: 15, gold: 0, dirX: 1, dirY: 0, lastShot: 0 };
+      p2 = { x: 80, y: 260, r: 12, hp: 100, maxHp: 100, atk: 15, gold: 0, dirX: 1, dirY: 0, lastShot: 0 };
+
+      document.getElementById('logBox').innerHTML = '';
+      addLog(`🎮 遊戲重置！雙人勇者出發！`);
+
+      initFloor();
     }
 
     function initFloor() {
@@ -167,14 +223,21 @@
       addLog(`🏰 進入第 ${currentFloor} 層！`);
     }
 
-    window.addEventListener('keydown', e => { keys[e.code] = true; });
+    window.addEventListener('keydown', e => { 
+      keys[e.code] = true; 
+      // 按 R 鍵直接重開
+      if ((e.code === 'KeyR' || e.key === 'r' || e.key === 'R') && isGameOver) {
+        resetGame();
+      }
+    });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
 
     function handleInput() {
+      if (isGameOver) return;
       const speed = 3.5;
       const now = Date.now();
 
-      // 1P 控制 (WASD)
+      // 1P 控制
       if (p1.hp > 0) {
         let dx = 0, dy = 0;
         if (keys['KeyW']) dy -= 1;
@@ -189,7 +252,6 @@
         }
 
         if (keys['Space'] && now - p1.lastShot > 200) {
-          // 初始化飛彈角度與速度
           let angle = Math.atan2(p1.dirY, p1.dirX);
           bullets.push({ 
             x: p1.x, y: p1.y, 
@@ -197,13 +259,13 @@
             angle: angle, 
             atk: p1.atk, 
             owner: '1P',
-            turnSpeed: 0.05 // 追蹤轉彎靈敏度
+            turnSpeed: 0.12 
           });
           p1.lastShot = now;
         }
       }
 
-      // 2P 控制 (ArrowKeys)
+      // 2P 控制
       if (p2.hp > 0) {
         let dx = 0, dy = 0;
         if (keys['ArrowUp']) dy -= 1;
@@ -233,11 +295,11 @@
     }
 
     function update() {
+      if (isGameOver) return;
       handleInput();
 
-      // 更新追蹤子彈
+      // 子彈邏輯
       bullets.forEach((b, index) => {
-        // 1. 尋找最近的怪物
         let closestMonster = null;
         let minDistance = Infinity;
 
@@ -249,30 +311,22 @@
           }
         });
 
-        // 2. 轉向最近的怪物
         if (closestMonster) {
           let targetAngle = Math.atan2(closestMonster.y - b.y, closestMonster.x - b.x);
           let diff = targetAngle - b.angle;
-
-          // 正規化角度差異 (-PI 到 PI)
           while (diff < -Math.PI) diff += Math.PI * 2;
           while (diff > Math.PI) diff -= Math.PI * 2;
-
-          // 平滑轉向目標
           b.angle += Math.sign(diff) * Math.min(Math.abs(diff), b.turnSpeed);
         }
 
-        // 3. 根據當前角度推進位置
         b.x += Math.cos(b.angle) * b.speed;
         b.y += Math.sin(b.angle) * b.speed;
 
-        // 出界消除
         if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
           bullets.splice(index, 1);
           return;
         }
 
-        // 碰撞怪物
         monsters.forEach((m, mIndex) => {
           let dist = Math.hypot(b.x - m.x, b.y - m.y);
           if (dist < m.r + 5) {
@@ -282,19 +336,19 @@
             if (m.hp <= 0) {
               if (b.owner === '1P') p1.gold += m.gold;
               if (b.owner === '2P') p2.gold += m.gold;
-              addLog(`🎯 ${b.owner} 飛彈擊滅怪物，獲得 ${m.gold}G`, b.owner.toLowerCase());
+              addLog(`🎯 ${b.owner} 擊滅怪物，獲得 ${m.gold}G`, b.owner.toLowerCase());
               monsters.splice(mIndex, 1);
 
               if (monsters.length === 0) {
                 isPortalUnlocked = true;
-                addLog('🔓 所有怪物已清空！傳送門解鎖！');
+                addLog('🔓 傳送門已解鎖！');
               }
             }
           }
         });
       });
 
-      // 怪物 AI 追擊
+      // 怪物 AI
       monsters.forEach(m => {
         let targets = [];
         if (p1.hp > 0) targets.push(p1);
@@ -314,7 +368,7 @@
         }
       });
 
-      // 進入傳送門
+      // 傳送門
       if (isPortalUnlocked) {
         [p1, p2].forEach(p => {
           if (p.hp > 0 && Math.hypot(p.x - portal.x, p.y - portal.y) < p.r + portal.r) {
@@ -326,9 +380,12 @@
         });
       }
 
+      // 兩人死亡判定
       if (p1.hp <= 0 && p2.hp <= 0) {
-        alert(`💀 冒險失敗！停留在第 ${currentFloor} 層。`);
-        location.reload();
+        isGameOver = true;
+        document.getElementById('final-floor').textContent = currentFloor;
+        document.getElementById('gameOverOverlay').style.display = 'flex';
+        addLog(`💀 雙人全員陣亡！`, "danger");
       }
 
       updateUI();
@@ -337,7 +394,6 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 外框牆
       ctx.strokeStyle = '#30363d';
       ctx.lineWidth = 10;
       ctx.strokeRect(0, 0, canvas.width, canvas.height);
@@ -361,14 +417,13 @@
         ctx.fillRect(m.x - 15, m.y - 22, (m.hp / m.maxHp) * 30, 4);
       });
 
-      // 追蹤子彈 (帶有方向線)
+      // 子彈
       bullets.forEach(b => {
         ctx.fillStyle = b.owner === '1P' ? '#38bdf8' : '#4ade80';
         ctx.beginPath();
         ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
         ctx.fill();
 
-        // 飛彈方向尾跡
         ctx.strokeStyle = b.owner === '1P' ? 'rgba(56, 189, 248, 0.4)' : 'rgba(74, 222, 128, 0.4)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -377,16 +432,16 @@
         ctx.stroke();
       });
 
-      // 1P
-      if (p1.hp > 0) {
+      // 玩家 1P
+      if (p1 && p1.hp > 0) {
         ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
         ctx.arc(p1.x, p1.y, p1.r, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // 2P
-      if (p2.hp > 0) {
+      // 玩家 2P
+      if (p2 && p2.hp > 0) {
         ctx.fillStyle = '#4ade80';
         ctx.beginPath();
         ctx.arc(p2.x, p2.y, p2.r, 0, Math.PI * 2);
@@ -411,7 +466,7 @@
       requestAnimationFrame(gameLoop);
     }
 
-    initFloor();
+    resetGame();
     gameLoop();
   </script>
 </body>
