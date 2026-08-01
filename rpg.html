@@ -3,492 +3,496 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D 像素武器散射與 BOSS 戰</title>
+  <title>2.5D 像素地牢大亂鬥</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: #0b0712; color: #fff;
-      font-family: 'Courier New', Courier, monospace;
+      background-color: #05050d;
+      color: #c9d1d9;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       min-height: 100vh; overflow: hidden;
     }
-    .game-wrapper {
-      position: relative; border: 4px solid #3d2314; border-radius: 8px;
-      box-shadow: 0 0 35px rgba(0,0,0,0.9);
+    h1 {
+      margin-bottom: 8px; color: #38bdf8;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.6); font-size: 1.6rem;
     }
-    canvas { background-color: #1a1017; image-rendering: pixelated; display: block; }
-    .controls-hint {
-      margin-top: 10px; display: flex; gap: 30px; background: rgba(0,0,0,0.7);
-      padding: 8px 20px; border-radius: 6px; font-size: 0.85rem;
+    .status-panel { display: flex; gap: 20px; margin-bottom: 10px; z-index: 10; }
+    .player-card {
+      background: rgba(15, 23, 42, 0.85); border: 2px solid #334155;
+      padding: 8px 16px; border-radius: 8px; min-width: 180px; backdrop-filter: blur(8px);
     }
+    .p1-card { border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+    .p2-card { border-color: #4ade80; box-shadow: 0 0 10px rgba(74, 222, 128, 0.2); }
+    .p1-title { color: #38bdf8; font-weight: bold; }
+    .p2-title { color: #4ade80; font-weight: bold; }
+
+    .game-container {
+      position: relative; width: 860px; height: 520px;
+      border: 3px solid #334155; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.9);
+    }
+    #webgl-container { width: 100%; height: 100%; }
+
+    .log-box {
+      position: absolute; right: 12px; top: 12px; width: 220px; height: 180px;
+      background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(51, 65, 85, 0.8);
+      border-radius: 6px; padding: 8px; font-size: 0.78rem; overflow-y: auto; pointer-events: none;
+    }
+    .log-msg { margin-bottom: 4px; }
+    .log-msg.p1 { color: #38bdf8; }
+    .log-msg.p2 { color: #4ade80; }
+    .log-msg.system { color: #f2cc60; }
+    .log-msg.danger { color: #ef4444; }
+
+    .game-over-overlay {
+      display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(5, 5, 13, 0.9); flex-direction: column; align-items: center; justify-content: center; z-index: 20;
+    }
+    .game-over-title {
+      font-size: 3.2rem; color: #ef4444; font-weight: bold; text-shadow: 0 0 20px rgba(239, 68, 68, 0.8); margin-bottom: 10px;
+    }
+    .restart-btn {
+      margin-top: 15px; padding: 10px 24px; font-size: 1rem; background: #22c55e;
+      color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;
+    }
+    .restart-btn:hover { background: #16a34a; transform: scale(1.05); }
   </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-  <div class="game-wrapper">
-    <canvas id="gameCanvas" width="860" height="520"></canvas>
+  <h1>⚔️ 2.5D 像素風地牢大亂鬥</h1>
+  
+  <div class="status-panel">
+    <div class="player-card p1-card">
+      <div class="p1-title">👤 1P 像素戰士</div>
+      <div>❤️ HP: <span id="p1-hp">100</span></div>
+      <div>⚔️ ATK: <span id="p1-atk">15</span></div>
+      <div>💰 Gold: <span id="p1-gold">0</span></div>
+    </div>
+    
+    <div style="align-self: center; font-size: 1.1rem; font-weight: bold;">🏰 層數: <span id="floor">1</span></div>
+
+    <div class="player-card p2-card">
+      <div class="p2-title">👤 2P 像素遊俠</div>
+      <div>❤️ HP: <span id="p2-hp">100</span></div>
+      <div>⚔️ ATK: <span id="p2-atk">15</span></div>
+      <div>💰 Gold: <span id="p2-gold">0</span></div>
+    </div>
   </div>
 
-  <div class="controls-hint">
-    <div><strong>1P (藍)：</strong> WASD 移動/跳 | <strong>C</strong> 開槍 | <strong>V</strong> 換槍/開箱</div>
-    <div><strong>2P (綠)：</strong> ↑↓←→ 移動/跳 | <strong>K</strong> 開槍 | <strong>L</strong> 換槍/開箱</div>
+  <div class="game-container">
+    <div id="webgl-container"></div>
+    <div class="log-box" id="logBox"><div class="log-msg system">進入暗黑地牢！擊滅怪物開啟傳送門...</div></div>
+
+    <div class="game-over-overlay" id="gameOverOverlay">
+      <div class="game-over-title">GAME OVER</div>
+      <div style="font-size: 1.1rem;">全員陣亡！停留於第 <span id="final-floor">1</span> 層</div>
+      <button class="restart-btn" onclick="resetGame()">重新開始 (按 R 鍵)</button>
+    </div>
   </div>
 
   <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('webgl-container');
+    const width = 860, height = 520;
 
-    let totalKills = 0, isGameOver = false;
-    let nextBossThreshold = 15;
+    // 1. 初始化 3D 場景 & 霧氣
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x070714);
+    scene.fog = new THREE.FogExp2(0x070714, 0.035); // 深層霧氣
+
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    camera.position.set(0, 26, 22);
+    camera.lookAt(0, -2, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(width, height);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // 2. 光源 (氛圍對比)
+    const ambientLight = new THREE.AmbientLight(0x334155, 1.2);
+    scene.add(ambientLight);
+
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    mainLight.position.set(12, 25, 15);
+    mainLight.castShadow = true;
+    scene.add(mainLight);
+
+    // 3. 地板與網格線
+    const floorGeo = new THREE.PlaneGeometry(36, 22);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.6 });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.receiveShadow = true;
+    scene.add(floorMesh);
+
+    const gridHelper = new THREE.GridHelper(36, 18, 0x38bdf8, 0x1e293b);
+    gridHelper.position.y = 0.01;
+    scene.add(gridHelper);
+
+    // 遊戲資料
+    let currentFloor = 1;
+    let isGameOver = false;
     const keys = {};
 
-    // ─── 1. 武器參數 (包含 spread: 散射角度弧度) ───
-    const WEAPONS = {
-      pistol:     { name: '手槍', fireRate: 250, ammoType: 'inf', dmg: 18, speed: 10, spread: 0.02, color: '#f1c40f' },
-      ak47:       { name: 'AK-47', fireRate: 140, ammoType: 'rifle', dmg: 26, speed: 12, spread: 0.08, color: '#e67e22' },
-      mgun:       { name: '重機槍', fireRate: 70,  ammoType: 'rifle', dmg: 20, speed: 13, spread: 0.22, color: '#f39c12' },
-      smg:        { name: 'SMG', fireRate: 80,  ammoType: 'pistol', dmg: 14, speed: 11, spread: 0.16, color: '#3498db' },
-      shotgun:    { name: '霰彈槍', fireRate: 500, ammoType: 'shotgun', dmg: 16, speed: 10, spread: 0.28, color: '#e74c3c' },
-      crossbow:   { name: '十字弓', fireRate: 450, ammoType: 'special', dmg: 65, speed: 16, spread: 0.0, color: '#16a085' },
-      rpg:        { name: 'RPG', fireRate: 900, ammoType: 'explosive', dmg: 130, speed: 7, spread: 0.0, color: '#c0392b', splashRadius: 65 },
-      grenade:    { name: '榴彈發射器', fireRate: 700, ammoType: 'explosive', dmg: 85, speed: 8, spread: 0.05, color: '#d35400', gravity: 0.25, splashRadius: 45 },
-      mine:       { name: '地雷發射器', fireRate: 800, ammoType: 'special', dmg: 160, speed: 5, spread: 0.0, color: '#9b59b6', splashRadius: 55 }
-    };
+    let p1, p2, bullets = [], monsters = [], particles = [], portalMesh = null, isPortalUnlocked = false;
 
-    const platforms = [
-      { x: 0, y: 470, w: 860, h: 50 },
-      { x: 0, y: 370, w: 240, h: 16 },
-      { x: 620, y: 370, w: 240, h: 16 },
-      { x: 280, y: 395, w: 300, h: 20 },
-      { x: 120, y: 270, w: 240, h: 16 },
-      { x: 500, y: 270, w: 240, h: 16 },
-      { x: 350, y: 190, w: 160, h: 16 },
-      { x: 0, y: 160, w: 200, h: 16 },
-      { x: 660, y: 160, w: 200, h: 16 }
-    ];
-
-    const chests = [
-      { x: 80, y: 440, w: 28, h: 22, opened: false },
-      { x: 750, y: 440, w: 28, h: 22, opened: false },
-      { x: 416, y: 365, w: 28, h: 22, opened: false }
-    ];
-
-    function createPlayer(x, color, isP1) {
-      return {
-        x: x, y: 350, w: 20, h: 28, vx: 0, vy: 0,
-        color: color, isP1: isP1, facing: 1, isGrounded: false,
-        hp: 100, maxHp: 100, gold: 0,
-        inventory: ['pistol', 'ak47'],
-        currentWpnIdx: 0,
-        ammoPool: { pistol: 100, rifle: 80, shotgun: 30, explosive: 10, special: 12 },
-        lastShot: 0
-      };
+    function addLog(msg, type = "system") {
+      const logBox = document.getElementById('logBox');
+      const div = document.createElement('div');
+      div.className = `log-msg ${type}`;
+      div.textContent = msg;
+      logBox.appendChild(div);
+      logBox.scrollTop = logBox.scrollHeight;
     }
 
-    let p1 = createPlayer(380, '#3498db', true);
-    let p2 = createPlayer(460, '#2ecc71', false);
+    // ⭐ 新增：3D 像素外觀生成函數 ⭐
+    function createPlayerMesh(colorHex, shapeType) {
+      const group = new THREE.Group();
+      
+      // 核心身體
+      const bodyGeo = shapeType === 'sphere' ? new THREE.SphereGeometry(0.7, 8, 8) : new THREE.BoxGeometry(1.2, 1.2, 1.2);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.3, metalness: 0.4 });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.castShadow = true;
+      group.add(body);
 
-    let bullets = [], bossBullets = [], monsters = [], drops = [], mines = [], explosions = [];
-    let boss = null;
+      // 眼睛 (發光像素)
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const eye1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), eyeMat);
+      eye1.position.set(-0.35, 0.2, 0.6); group.add(eye1);
+      const eye2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), eyeMat);
+      eye2.position.set(0.35, 0.2, 0.6); group.add(eye2);
 
-    window.addEventListener('keydown', e => { keys[e.code] = true; });
+      // 裝飾 (1P的光環, 2P的帽兜感)
+      if (shapeType === 'sphere') {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.08, 6, 20), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        ring.rotation.x = Math.PI/2; ring.position.y = 1.0; group.add(ring);
+      } else {
+        const hood = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 0.8), bodyMat);
+        hood.position.set(0, 0.7, 0.2); group.add(hood);
+      }
+
+      return group;
+    }
+
+    function createMonsterMesh(typeIndex) {
+      const group = new THREE.Group();
+      const typeConfig = [
+        { color: 0xef4444, shape: 'sphere' }, // 魔眼
+        { color: 0xa855f7, shape: 'box' },    // 粘液怪
+        { color: 0x1f1f2e, shape: 'sphere' }  // 骷髏
+      ][typeIndex % 3];
+
+      const bodyGeo = typeConfig.shape === 'sphere' ? new THREE.SphereGeometry(0.65, 8, 8) : new THREE.BoxGeometry(1.0, 1.0, 1.0);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: typeConfig.color, roughness: 0.5 });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.castShadow = true;
+      group.add(body);
+
+      // 紅眼
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const eye = new THREE.Mesh(new THREE.BoxGeometry(typeConfig.shape === 'sphere' ? 0.4: 0.3, 0.3, 0.3), eyeMat);
+      eye.position.set(typeConfig.shape === 'sphere' ? 0 : -0.2, 0.1, 0.6); group.add(eye);
+      if (typeConfig.shape === 'box') {
+        const eye2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), eyeMat);
+        eye2.position.set(0.2, 0.1, 0.6); group.add(eye2);
+      }
+
+      return group;
+    }
+
+    function createPlayers() {
+      // 1P 藍色戰士
+      const m1 = createPlayerMesh(0x0077c2, 'sphere');
+      scene.add(m1);
+      p1 = { mesh: m1, hp: 100, maxHp: 100, atk: 15, gold: 0, dir: new THREE.Vector3(1, 0, 0), lastShot: 0 };
+
+      // 2P 綠色遊俠
+      const m2 = createPlayerMesh(0x1a9a4e, 'box');
+      scene.add(m2);
+      p2 = { mesh: m2, hp: 100, maxHp: 100, atk: 15, gold: 0, dir: new THREE.Vector3(1, 0, 0), lastShot: 0 };
+    }
+
+    function initFloor() {
+      p1.mesh.position.set(-12, 0.8, -2);
+      p2.mesh.position.set(-12, 0.7, 2);
+      p1.mesh.visible = true;
+      p2.mesh.visible = true;
+
+      // 清理
+      bullets.forEach(b => scene.remove(b.mesh));
+      monsters.forEach(m => scene.remove(m.mesh));
+      if (portalMesh) scene.remove(portalMesh);
+
+      bullets = [];
+      monsters = [];
+      isPortalUnlocked = false;
+
+      // 傳送門 (魔法傳送陣)
+      const portalGeo = new THREE.TorusGeometry(1.2, 0.18, 16, 32);
+      const portalMat = new THREE.MeshBasicMaterial({ color: 0x334155 });
+      portalMesh = new THREE.Mesh(portalGeo, portalMat);
+      portalMesh.rotation.x = Math.PI / 2;
+      portalMesh.position.set(14, 0.1, 0);
+      scene.add(portalMesh);
+
+      // 怪物多樣化生成
+      const count = 3 + currentFloor * 2;
+      for (let i = 0; i < count; i++) {
+        const mMesh = createMonsterMesh(i); // ⭐ 不同種類 ⭐
+        
+        let posX = -2 + Math.random() * 14;
+        let posZ = -9 + Math.random() * 18;
+        mMesh.position.set(posX, i % 3 === 1 ? 0.5: 0.8, posZ);
+        scene.add(mMesh);
+
+        monsters.push({
+          mesh: mMesh,
+          speed: 0.05 + currentFloor * 0.008,
+          hp: 35 + currentFloor * 15,
+          maxHp: 35 + currentFloor * 15,
+          atk: 8 + currentFloor * 2,
+          gold: 15 + currentFloor * 5,
+          isAggressive: false, // ⭐ 新增：遇敵 AI ⭐
+          wanderCounter: 0,
+          wanderAngle: 0
+        });
+      }
+
+      addLog(`🏰 進入第 ${currentFloor} 層地牢！擊滅怪物解鎖傳送門...`);
+    }
+
+    function resetGame() {
+      currentFloor = 1; isGameOver = false;
+      document.getElementById('gameOverOverlay').style.display = 'none';
+      p1.hp = 100; p1.gold = 0; p2.hp = 100; p2.gold = 0;
+      document.getElementById('logBox').innerHTML = '';
+      addLog(`🎮 像素冒險重新開始！`);
+      initFloor();
+    }
+
+    // 鍵盤監聽
+    window.addEventListener('keydown', e => { 
+      keys[e.code] = true; 
+      if ((e.code === 'KeyR' || e.key === 'r') && isGameOver) resetGame();
+    });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
 
-    // ─── 帶有散射角度的開槍運算 ───
-    function fireWeapon(player) {
-      const now = Date.now();
-      const wpnKey = player.inventory[player.currentWpnIdx];
-      const wpn = WEAPONS[wpnKey];
+    function handleInput() {
+      if (isGameOver) return;
+      const speed = 0.18, now = Date.now();
 
-      if (now - player.lastShot < wpn.fireRate) return;
+      // 1P 控制 (WASD + Space)
+      if (p1.hp > 0) {
+        let move = new THREE.Vector3();
+        if (keys['KeyW']) move.z -= 1;
+        if (keys['KeyS']) move.z += 1;
+        if (keys['KeyA']) move.x -= 1;
+        if (keys['KeyD']) move.x += 1;
 
-      if (wpn.ammoType !== 'inf') {
-        if (player.ammoPool[wpn.ammoType] <= 0) return;
-        player.ammoPool[wpn.ammoType]--;
+        if (move.length() > 0) {
+          move.normalize(); p1.dir.copy(move);
+          p1.mesh.position.addScaledVector(move, speed);
+          // 限制邊界
+          p1.mesh.position.x = Math.max(-16, Math.min(16, p1.mesh.position.x));
+          p1.mesh.position.z = Math.max(-10, Math.min(10, p1.mesh.position.z));
+        }
+
+        if (keys['Space'] && now - p1.lastShot > 250) {
+          spawnBullet(p1, 0x38bdf8);
+          p1.lastShot = now;
+        }
       }
 
-      player.lastShot = now;
-      const spawnX = player.x + (player.facing === 1 ? player.w : -8);
-      const spawnY = player.y + 10;
+      // 2P 控制 (Arrows + Enter)
+      if (p2.hp > 0) {
+        let move = new THREE.Vector3();
+        if (keys['ArrowUp']) move.z -= 1;
+        if (keys['ArrowDown']) move.z += 1;
+        if (keys['ArrowLeft']) move.x -= 1;
+        if (keys['ArrowRight']) move.x += 1;
 
-      if (wpnKey === 'shotgun') {
-        // 霰彈槍：多發散射彈幕
-        for (let i = -2; i <= 2; i++) {
-          let spreadAngle = (i * 0.08) + (Math.random() - 0.5) * 0.05;
-          let baseVx = player.facing * wpn.speed;
-          bullets.push({
-            x: spawnX, y: spawnY, w: 5, h: 4,
-            vx: baseVx * Math.cos(spreadAngle),
-            vy: baseVx * Math.sin(spreadAngle),
-            type: wpnKey, dmg: wpn.dmg, color: wpn.color, owner: player
-          });
+        if (move.length() > 0) {
+          move.normalize(); p2.dir.copy(move);
+          p2.mesh.position.addScaledVector(move, speed);
+          p2.mesh.position.x = Math.max(-16, Math.min(16, p2.mesh.position.x));
+          p2.mesh.position.z = Math.max(-10, Math.min(10, p2.mesh.position.z));
         }
-      } else if (wpnKey === 'mine') {
-        mines.push({
-          x: spawnX, y: spawnY, w: 14, h: 8,
-          vx: player.facing * wpn.speed, vy: -2,
-          dmg: wpn.dmg, radius: wpn.splashRadius, isPlanted: false
-        });
-      } else {
-        // 一般槍枝（包含 AK-47, SMG, 重機槍的隨機散射計算）
-        let offsetAngle = (Math.random() - 0.5) * wpn.spread;
-        let baseVx = player.facing * wpn.speed;
 
-        bullets.push({
-          x: spawnX, y: spawnY,
-          w: wpnKey === 'crossbow' ? 12 : 8, h: wpnKey === 'crossbow' ? 3 : 5,
-          vx: baseVx * Math.cos(offsetAngle),
-          vy: baseVx * Math.sin(offsetAngle) + (wpnKey === 'grenade' ? -3.5 : 0),
-          type: wpnKey, dmg: wpn.dmg, color: wpn.color,
-          gravity: wpn.gravity || 0, radius: wpn.splashRadius || 0, owner: player
-        });
+        if (keys['Enter'] && now - p2.lastShot > 250) {
+          spawnBullet(p2, 0x4ade80);
+          p2.lastShot = now;
+        }
       }
     }
 
-    function interactChest(player) {
-      chests.forEach(c => {
-        if (!c.opened && Math.abs((player.x + player.w/2) - (c.x + c.w/2)) < 35 && Math.abs(player.y - c.y) < 30) {
-          c.opened = true;
-          const weaponList = ['mgun', 'smg', 'crossbow', 'ak47', 'shotgun', 'rpg', 'grenade', 'mine'];
-          const picked = weaponList[Math.floor(Math.random() * weaponList.length)];
-          
-          if (!player.inventory.includes(picked)) player.inventory.push(picked);
-          
-          player.ammoPool.rifle += 60;
-          player.ammoPool.shotgun += 20;
-          player.ammoPool.special += 10;
-          player.ammoPool.explosive += 6;
-        }
-      });
+    function spawnBullet(player, colorHex) {
+      // 子彈造型大升級
+      const bGeo = new THREE.CylinderGeometry(0.2, 0.2, 1.2, 6);
+      const bMat = new THREE.MeshBasicMaterial({ color: colorHex });
+      const bMesh = new THREE.Mesh(bGeo, bMat);
+      
+      bMesh.position.copy(player.mesh.position);
+      bMesh.position.y = 0.8;
+      
+      // 子彈發光與旋轉
+      bMesh.rotation.copy(player.mesh.rotation);
+      const axis = new THREE.Vector3(0, 0, 1);
+      bMesh.quaternion.setFromUnitVectors(axis, player.dir.clone());
+      bMesh.rotateX(Math.PI/2);
+      
+      scene.add(bMesh);
+
+      // 新增發光點
+      const light = new THREE.PointLight(colorHex, 1.5, 6);
+      bMesh.add(light);
+
+      bullets.push({ mesh: bMesh, dir: player.dir.clone(), speed: 0.38, atk: player.atk, owner: player === p1 ? '1P' : '2P' });
     }
 
-    function spawnMonster() {
-      if (monsters.length > 12 || isGameOver || boss) return;
-      const pts = [{x: 20, y: 50}, {x: 820, y: 50}, {x: 430, y: 20}];
-      const pt = pts[Math.floor(Math.random() * pts.length)];
-
-      monsters.push({
-        x: pt.x, y: pt.y, w: 22, h: 22, vx: 0, vy: 0,
-        hp: 35 + Math.floor(totalKills * 2),
-        speed: 1.1 + Math.random() * 0.8,
-        color: '#8e44ad'
-      });
-    }
-    setInterval(spawnMonster, 1800);
-
-    function checkBossSpawn() {
-      if (!boss && totalKills >= nextBossThreshold) {
-        boss = {
-          x: 400, y: 100, w: 60, h: 60, vx: 2, vy: 0,
-          hp: 600 + totalKills * 20, maxHp: 600 + totalKills * 20,
-          color: '#c0392b', lastShot: 0
-        };
-        nextBossThreshold += 25;
+    function createExplosionEffect(pos, colorHex) {
+      for (let i = 0; i < 15; i++) {
+        const pGeo = new THREE.BoxGeometry(0.18, 0.18, 0.18);
+        const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
+        const p = new THREE.Mesh(pGeo, pMat);
+        p.position.copy(pos);
+        scene.add(p);
+        particles.push({ mesh: p, vel: new THREE.Vector3((Math.random()-0.5)*0.25, 0.2 + Math.random()*0.15, (Math.random()-0.5)*0.25), life: 25 });
       }
-    }
-
-    function createExplosion(x, y, radius, damage) {
-      explosions.push({ x: x, y: y, radius: radius, alpha: 1.0 });
-
-      monsters.forEach((m, idx) => {
-        if (Math.hypot((m.x + m.w/2) - x, (m.y + m.h/2) - y) < radius) {
-          m.hp -= damage;
-          if (m.hp <= 0) { totalKills++; monsters.splice(idx, 1); }
-        }
-      });
-
-      if (boss && Math.hypot((boss.x + boss.w/2) - x, (boss.y + boss.h/2) - y) < radius + 20) {
-        boss.hp -= damage;
-      }
-    }
-
-    function updateEntity(ent, gravity = 0.48) {
-      ent.vy += gravity;
-      ent.x += ent.vx;
-      ent.y += ent.vy;
-
-      ent.isGrounded = false;
-      platforms.forEach(p => {
-        if (ent.x + ent.w > p.x && ent.x < p.x + p.w &&
-            ent.y + ent.h >= p.y && ent.y + ent.h <= p.y + p.h + ent.vy) {
-          ent.y = p.y - ent.h;
-          ent.vy = 0;
-          ent.isGrounded = true;
-        }
-      });
-      ent.x = Math.max(0, Math.min(canvas.width - ent.w, ent.x));
     }
 
     function update() {
       if (isGameOver) return;
-      checkBossSpawn();
+      handleInput();
 
-      if (p1.hp > 0) {
-        p1.vx = 0;
-        if (keys['KeyA']) { p1.vx = -3.2; p1.facing = -1; }
-        if (keys['KeyD']) { p1.vx = 3.2; p1.facing = 1; }
-        if (keys['KeyW'] && p1.isGrounded) p1.vy = -9.8;
-        if (keys['KeyC']) fireWeapon(p1);
-        if (keys['KeyV']) {
-          interactChest(p1);
-          if (!keys['v_lock']) {
-            p1.currentWpnIdx = (p1.currentWpnIdx + 1) % p1.inventory.length;
-            keys['v_lock'] = true;
-          }
-        } else { keys['v_lock'] = false; }
-        updateEntity(p1);
-      }
-
-      if (p2.hp > 0) {
-        p2.vx = 0;
-        if (keys['ArrowLeft']) { p2.vx = -3.2; p2.facing = -1; }
-        if (keys['ArrowRight']) { p2.vx = 3.2; p2.facing = 1; }
-        if (keys['ArrowUp'] && p2.isGrounded) p2.vy = -9.8;
-        if (keys['KeyK']) fireWeapon(p2);
-        if (keys['KeyL']) {
-          interactChest(p2);
-          if (!keys['l_lock']) {
-            p2.currentWpnIdx = (p2.currentWpnIdx + 1) % p2.inventory.length;
-            keys['l_lock'] = true;
-          }
-        } else { keys['l_lock'] = false; }
-        updateEntity(p2);
-      }
-
-      for (let i = bullets.length - 1; i >= 0; i--) {
-        let b = bullets[i];
-        if (b.gravity) b.vy += b.gravity;
-        b.x += b.vx; b.y += b.vy;
-
-        let hitPlatform = false;
-        platforms.forEach(p => {
-          if (b.x > p.x && b.x < p.x + p.w && b.y > p.y && b.y < p.y + p.h) hitPlatform = true;
-        });
-
-        if (hitPlatform || b.x < 0 || b.x > canvas.width || b.y > canvas.height) {
-          if (b.radius) createExplosion(b.x, b.y, b.radius, b.dmg);
-          bullets.splice(i, 1); continue;
+      // 更新子彈與碰撞
+      bullets.forEach((b, index) => {
+        b.mesh.position.addScaledVector(b.dir, b.speed);
+        if (Math.abs(b.mesh.position.x) > 18 || Math.abs(b.mesh.position.z) > 12) {
+          scene.remove(b.mesh); bullets.splice(index, 1); return;
         }
 
-        if (boss && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h) {
-          if (b.radius) createExplosion(b.x, b.y, b.radius, b.dmg);
-          else boss.hp -= b.dmg;
-          bullets.splice(i, 1); continue;
-        }
+        monsters.forEach((m, mIndex) => {
+          if (b.mesh.position.distanceTo(m.mesh.position) < 1.2) {
+            m.hp -= b.atk;
+            createExplosionEffect(b.mesh.position, 0xef4444); // 打擊碎屑
+            b.isGrounded = true; // 標記已擊中，稍後移除
+            m.isAggressive = true; // ⭐ 新增：被擊中觸發主動追逐 ⭐
 
-        for (let j = monsters.length - 1; j >= 0; j--) {
-          let m = monsters[j];
-          if (b.x > m.x && b.x < m.x + m.w && b.y > m.y && b.y < m.y + m.h) {
-            if (b.radius) {
-              createExplosion(b.x, b.y, b.radius, b.dmg);
-            } else {
-              m.hp -= b.dmg;
-              if (m.hp <= 0) {
-                totalKills++;
-                b.owner.gold += 15;
-                if (Math.random() < 0.5) drops.push({ x: m.x, y: m.y, w: 12, h: 12, type: 'gold' });
-                monsters.splice(j, 1);
+            if (m.hp <= 0) {
+              if (b.owner === '1P') p1.gold += m.gold;
+              if (b.owner === '2P') p2.gold += m.gold;
+              addLog(`🎯 ${b.owner} 擊滅怪物 +${m.gold}G`, b.owner.toLowerCase());
+              
+              createExplosionEffect(m.mesh.position, m.mesh.children[0].material.color.getHex()); // 死亡特效
+              scene.remove(m.mesh); monsters.splice(mIndex, 1);
+
+              if (monsters.length === 0) {
+                isPortalUnlocked = true;
+                portalMesh.material.color.setHex(0x4ade80);
+                addLog('🔓 傳送門已開啟！進入前往下一層...');
               }
             }
-            bullets.splice(i, 1); break;
-          }
-        }
-      }
-
-      if (boss) {
-        updateEntity(boss, 0.2);
-        if (boss.x <= 10 || boss.x >= canvas.width - boss.w - 10) boss.vx *= -1;
-
-        const now = Date.now();
-        if (now - boss.lastShot > 1400) {
-          boss.lastShot = now;
-          let targets = [p1, p2].filter(p => p.hp > 0);
-          if (targets.length > 0) {
-            let t = targets[Math.floor(Math.random() * targets.length)];
-            let angle = Math.atan2((t.y + t.h/2) - (boss.y + boss.h/2), (t.x + t.w/2) - (boss.x + boss.w/2));
-            bossBullets.push({
-              x: boss.x + boss.w/2, y: boss.y + boss.h/2,
-              vx: Math.cos(angle) * 5, vy: Math.sin(angle) * 5
-            });
-          }
-        }
-
-        if (boss.hp <= 0) {
-          totalKills += 5;
-          for (let k = 0; k < 6; k++) {
-            drops.push({ x: boss.x + k*8, y: boss.y, w: 12, h: 12, type: 'hp' });
-            drops.push({ x: boss.x + k*10, y: boss.y, w: 12, h: 12, type: 'ammo_all' });
-          }
-          boss = null;
-        }
-      }
-
-      for (let i = bossBullets.length - 1; i >= 0; i--) {
-        let bb = bossBullets[i];
-        bb.x += bb.vx; bb.y += bb.vy;
-
-        [p1, p2].forEach(p => {
-          if (p.hp > 0 && Math.hypot((p.x + p.w/2) - bb.x, (p.y + p.h/2) - bb.y) < 16) {
-            p.hp = Math.max(0, p.hp - 18);
-            bossBullets.splice(i, 1);
           }
         });
-
-        if (bb.x < 0 || bb.x > canvas.width || bb.y < 0 || bb.y > canvas.height) {
-          bossBullets.splice(i, 1);
-        }
-      }
-
-      mines.forEach((m, idx) => {
-        if (!m.isPlanted) {
-          updateEntity(m);
-          if (m.isGrounded) m.isPlanted = true;
-        }
-        monsters.concat(boss ? [boss] : []).forEach(target => {
-          if (Math.hypot((target.x + target.w/2) - m.x, (target.y + target.h/2) - m.y) < 25) {
-            createExplosion(m.x, m.y, m.radius, m.dmg);
-            mines.splice(idx, 1);
-          }
-        });
+        if (b.isGrounded) { scene.remove(b.mesh); bullets.splice(index, 1); }
       });
 
-      explosions.forEach((ex, idx) => {
-        ex.alpha -= 0.05;
-        if (ex.alpha <= 0) explosions.splice(idx, 1);
-      });
-
+      // ⭐ 升級：怪物 AI ⭐
       monsters.forEach(m => {
-        updateEntity(m);
-        let targets = [p1, p2].filter(p => p.hp > 0);
+        let targets = [];
+        if (p1.hp > 0) targets.push(p1);
+        if (p2.hp > 0) targets.push(p2);
+
         if (targets.length > 0) {
-          targets.sort((a,b) => Math.abs(a.x - m.x) - Math.abs(b.x - m.x));
+          targets.sort((a,b) => m.mesh.position.distanceTo(a.mesh.position) - m.mesh.position.distanceTo(b.mesh.position));
           let target = targets[0];
-          m.vx = target.x > m.x ? m.speed : -m.speed;
-          if (Math.abs(m.x - target.x) < 18 && Math.abs(m.y - target.y) < 18) {
-            target.hp = Math.max(0, target.hp - 0.4);
+
+          let dist = m.mesh.position.distanceTo(target.mesh.position);
+          
+          if (dist < 8) m.isAggressive = true; // ⭐ 新增：遇敵被動觸發 ⭐
+
+          if (m.isAggressive) {
+            // ⭐ 主動追逐 ⭐
+            let dir = new THREE.Vector3().subVectors(target.mesh.position, m.mesh.position).normalize();
+            m.mesh.position.addScaledVector(dir, m.speed);
+            
+            // 攻擊
+            if (dist < 1.3) {
+              target.hp = Math.max(0, target.hp - 0.4);
+              if (target.hp <= 0) target.mesh.visible = false;
+            }
+          } else {
+            // ⭐ 被動亂跑 (隨機晃動) ⭐
+            m.wanderCounter++;
+            if (m.wanderCounter > 60) {
+              m.wanderCounter = 0;
+              m.wanderAngle = Math.random() * Math.PI * 2;
+              m.wanderSpeed = 0.03 + Math.random() * 0.02;
+            }
+            m.mesh.position.x += Math.cos(m.wanderAngle) * (m.wanderSpeed || 0.03);
+            m.mesh.position.z += Math.sin(m.wanderAngle) * (m.wanderSpeed || 0.03);
           }
         }
       });
 
-      drops.forEach((d, index) => {
-        d.y += 1;
-        platforms.forEach(p => {
-          if (d.x > p.x && d.x < p.x + p.w && d.y + d.h >= p.y && d.y <= p.y + p.h) d.y = p.y - d.h;
-        });
-
+      // 傳送門過關
+      if (isPortalUnlocked) {
         [p1, p2].forEach(p => {
-          if (p.hp > 0 && Math.abs(p.x - d.x) < 20 && Math.abs(p.y - d.y) < 20) {
-            if (d.type === 'gold') p.gold += 20;
-            if (d.type === 'hp') p.hp = Math.min(p.maxHp, p.hp + 30);
-            if (d.type === 'ammo_all') {
-              p.ammoPool.rifle += 40; p.ammoPool.shotgun += 15;
-              p.ammoPool.special += 8; p.ammoPool.explosive += 5;
-            }
-            drops.splice(index, 1);
+          if (p.hp > 0 && p.mesh.position.distanceTo(portalMesh.position) < 1.5) {
+            currentFloor++;
+            p1.hp = Math.min(p1.maxHp, p1.hp + 30);
+            p2.hp = Math.min(p2.maxHp, p2.hp + 30);
+            initFloor();
           }
         });
-      });
-
-      if (p1.hp <= 0 && p2.hp <= 0) isGameOver = true;
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = '#2c1a11';
-      platforms.forEach(p => {
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#5c3826'; ctx.fillRect(p.x, p.y, p.w, 4);
-        ctx.fillStyle = '#2c1a11';
-      });
-
-      chests.forEach(c => {
-        ctx.fillStyle = c.opened ? '#7f8c8d' : '#f39c12';
-        ctx.fillRect(c.x, c.y, c.w, c.h);
-      });
-
-      drops.forEach(d => {
-        ctx.fillStyle = d.type === 'gold' ? '#f1c40f' : d.type === 'hp' ? '#e74c3c' : '#a855f7';
-        ctx.fillRect(d.x, d.y, d.w, d.h);
-      });
-
-      [p1, p2].forEach(p => {
-        if (p.hp <= 0) return;
-        ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#fff';
-        let eyeX = p.facing === 1 ? p.x + 12 : p.x + 2;
-        ctx.fillRect(eyeX, p.y + 4, 5, 5);
-      });
-
-      monsters.forEach(m => {
-        ctx.fillStyle = m.color; ctx.fillRect(m.x, m.y, m.w, m.h);
-      });
-
-      if (boss) {
-        ctx.fillStyle = boss.color; ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
-        ctx.fillStyle = '#f1c40f';
-        ctx.fillRect(boss.x + 10, boss.y + 12, 12, 12);
-        ctx.fillRect(boss.x + 38, boss.y + 12, 12, 12);
-
-        ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(230, 12, 400, 20);
-        ctx.fillStyle = '#e74c3c'; ctx.fillRect(235, 15, (boss.hp / boss.maxHp) * 390, 14);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Courier New'; ctx.textAlign = 'center';
-        ctx.fillText('⚠️ BOSS 地牢霸主 ⚠️', canvas.width / 2, 26);
       }
 
-      bullets.forEach(b => { ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h); });
-      bossBullets.forEach(bb => { ctx.fillStyle = '#ef4444'; ctx.fillRect(bb.x - 5, bb.y - 5, 10, 10); });
-      mines.forEach(m => { ctx.fillStyle = '#9b59b6'; ctx.fillRect(m.x, m.y, m.w, m.h); });
-
-      explosions.forEach(ex => {
-        ctx.beginPath(); ctx.arc(ex.x, ex.y, ex.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(231, 76, 60, ${ex.alpha})`; ctx.fill();
+      // 特效碎屑淡出
+      particles.forEach((p, idx) => {
+        p.mesh.position.add(p.vel);
+        p.vel.y -= 0.01; // 重力
+        p.life--;
+        if (p.life <= 0) { scene.remove(p.mesh); particles.splice(idx, 1); }
       });
 
-      drawPlayerHUD(p1, 15, 15);
-      drawPlayerHUD(p2, canvas.width - 225, 15);
-
-      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 26px Courier New'; ctx.textAlign = 'center';
-      ctx.fillText(`KILLS ${totalKills}`, canvas.width / 2, 505);
-
-      if (isGameOver) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.88)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#e74c3c'; ctx.font = 'bold 42px Courier New';
-        ctx.fillText('GAME OVER', canvas.width / 2, 230);
-        ctx.fillStyle = '#fff'; ctx.font = '20px Courier New';
-        ctx.fillText(`最終擊殺數量: ${totalKills}`, canvas.width / 2, 280);
-      }
-    }
-
-    function drawPlayerHUD(p, x, y) {
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-      ctx.fillRect(x, y, 210, 75);
-
-      ctx.fillStyle = '#22c55e';
-      ctx.fillRect(x + 10, y + 10, Math.max(0, (p.hp / p.maxHp) * 190), 10);
-
-      const currKey = p.inventory[p.currentWpnIdx];
-      const currWpn = WEAPONS[currKey];
-      const currAmmo = currWpn.ammoType === 'inf' ? '∞' : p.ammoPool[currWpn.ammoType];
-
-      let nextStr = '無';
-      if (p.inventory.length > 1) {
-        const nextKey = p.inventory[(p.currentWpnIdx + 1) % p.inventory.length];
-        const nextWpn = WEAPONS[nextKey];
-        const nextAmmo = nextWpn.ammoType === 'inf' ? '∞' : p.ammoPool[nextWpn.ammoType];
-        nextStr = `${nextWpn.name}: ${nextAmmo}`;
+      // 兩人死亡
+      if (p1.hp <= 0 && p2.hp <= 0) {
+        isGameOver = true;
+        document.getElementById('final-floor').textContent = currentFloor;
+        document.getElementById('gameOverOverlay').style.display = 'flex';
+        addLog(`💀 雙人皆已陣亡！停留於第 ${currentFloor} 層...`, "danger");
       }
 
-      ctx.font = 'bold 12px Courier New'; ctx.fillStyle = '#38bdf8'; ctx.textAlign = 'left';
-      ctx.fillText(`${p.isP1 ? '1P 勇者' : '2P 槍手'} | 💰${p.gold}`, x + 10, y + 33);
-      ctx.fillStyle = '#f1c40f';
-      ctx.fillText(`▶ 當前: ${currWpn.name} [${currAmmo}]`, x + 10, y + 50);
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText(`  備用: ${nextStr}`, x + 10, y + 66);
+      updateUI();
     }
 
-    function loop() { update(); draw(); requestAnimationFrame(loop); }
-    loop();
+    function updateUI() {
+      document.getElementById('floor').textContent = currentFloor;
+      document.getElementById('p1-hp').textContent = Math.ceil(p1.hp);
+      document.getElementById('p1-atk').textContent = p1.atk;
+      document.getElementById('p1-gold').textContent = p1.gold;
+
+      document.getElementById('p2-hp').textContent = Math.ceil(p2.hp);
+      document.getElementById('p2-atk').textContent = p2.atk;
+      document.getElementById('p2-gold').textContent = p2.gold;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      update();
+      if (portalMesh) portalMesh.rotation.z += 0.03;
+      renderer.render(scene, camera);
+    }
+
+    createPlayers();
+    resetGame();
+    animate();
   </script>
 </body>
 </html>
