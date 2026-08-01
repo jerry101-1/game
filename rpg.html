@@ -104,33 +104,43 @@
       { type: 'skel',   name: '骷髏戰士', w: 22, h: 28, hp: 55, speed: 1.2, color: '#e2e8f0' }
     ];
 
-    // 🏰 根據原圖精準還原的平台地圖結構
+    // 🏰 非單純長方形的組合式平台結構（階梯、凹凸與造型底座）
     const platforms = [
-      // 底部地面
-      { x: 0, y: 490, w: 860, h: 30 },
-      // 中央底座（放置初始玩家）
-      { x: 320, y: 410, w: 220, h: 80 },
-      // 側邊與中層平台
-      { x: 0, y: 330, w: 260, h: 20 },
-      { x: 600, y: 330, w: 260, h: 20 },
-      { x: 120, y: 240, w: 220, h: 20 },
-      { x: 520, y: 240, w: 220, h: 20 },
-      { x: 360, y: 160, w: 140, h: 20 },
-      { x: 0, y: 170, w: 140, h: 20 },
-      { x: 720, y: 170, w: 140, h: 20 },
-      { x: 140, y: 80, w: 240, h: 20 },
-      { x: 480, y: 80, w: 240, h: 20 },
-      // 兩側縱向牆壁裝飾塊
-      { x: 0, y: 0, w: 40, h: 490 },
-      { x: 820, y: 0, w: 40, h: 490 },
-      // 寶箱小平台
-      { x: 140, y: 430, w: 100, h: 16 },
-      { x: 620, y: 430, w: 100, h: 16 }
+      // 底部中央主要底座（階梯造型凸起）
+      { x: 300, y: 440, w: 260, h: 50, type: 'main_podium' },
+      { x: 360, y: 410, w: 140, h: 30, type: 'main_podium_top' },
+      
+      // 底部左右側懸空階梯（不連到底部邊緣）
+      { x: 50,  y: 470, w: 180, h: 20 },
+      { x: 630, y: 470, w: 180, h: 20 },
+
+      // 中下層凸形 platform
+      { x: 0,   y: 340, w: 200, h: 20 },
+      { x: 20,  y: 320, w: 80,  h: 20 }, // 增添階梯感
+      { x: 660, y: 340, w: 200, h: 20 },
+      { x: 760, y: 320, w: 80,  h: 20 },
+
+      // 中層空中平台（多層次）
+      { x: 260, y: 260, w: 120, h: 18 },
+      { x: 480, y: 260, w: 120, h: 18 },
+      { x: 370, y: 200, w: 120, h: 18 }, // 中央高臺
+
+      // 上層兩側懸崖平台
+      { x: 80,  y: 160, w: 180, h: 20 },
+      { x: 600, y: 160, w: 180, h: 20 },
+      
+      // 頂層狹窄戰術 platform
+      { x: 220, y: 90,  w: 130, h: 18 },
+      { x: 510, y: 90,  w: 130, h: 18 },
+
+      // 寶箱專用小平台
+      { x: 140, y: 410, w: 80, h: 16 },
+      { x: 640, y: 410, w: 80, h: 16 }
     ];
 
     const chests = [
-      { x: 175, y: 406, w: 30, h: 24, opened: false },
-      { x: 655, y: 406, w: 30, h: 24, opened: false }
+      { x: 165, y: 386, w: 30, h: 24, opened: false },
+      { x: 665, y: 386, w: 30, h: 24, opened: false }
     ];
 
     function createPlayer(x, mainColor, accentColor, skinColor, isP1) {
@@ -292,20 +302,29 @@
       }
     }
 
+    // ⭐ 核心修正：完美左右穿梭（Y 座標與速度完全不變，不觸發頂部轉移）
     function updateEntity(ent, gravity = 0.48) {
       ent.vy += gravity;
       ent.x += ent.vx;
       ent.y += ent.vy;
 
-      if (ent.x > canvas.width) { ent.x = -ent.w + 2; } 
-      else if (ent.x + ent.w < 0) { ent.x = canvas.width - 2; }
+      // 左右穿越，精確保留原 Y 軸位置與 vy 速度
+      if (ent.x > canvas.width) { 
+        ent.x = -ent.w + 1; 
+      } else if (ent.x + ent.w < 0) { 
+        ent.x = canvas.width - 1; 
+      }
 
-      if (ent.y < 0) { ent.y = 0; ent.vy = 0; }
+      // 掉落到最底部死亡/重置防護，防止摔出畫框
+      if (ent.y > canvas.height + 40) {
+        ent.y = 50;
+        ent.vy = 0;
+      }
 
       ent.isGrounded = false;
       platforms.forEach(p => {
         if (ent.x + ent.w > p.x && ent.x < p.x + p.w &&
-            ent.y + ent.h >= p.y && ent.y + ent.h <= p.y + p.h + ent.vy) {
+            ent.y + ent.h >= p.y && ent.y + ent.h <= p.y + p.h + ent.vy + 2) {
           ent.y = p.y - ent.h;
           ent.vy = 0;
           ent.isGrounded = true;
@@ -442,7 +461,7 @@
         }
       });
 
-      // 🦹 BOSS AI (🔥 恢復跳躍機制 🔥)
+      // BOSS AI
       if (boss) {
         updateEntity(boss, 0.45);
 
@@ -451,12 +470,11 @@
           let target = targets[0];
           boss.vx = target.x > boss.x ? 1.8 : -1.8;
 
-          // ⭐ BOSS 跳躍條件：當玩家在上方，或者靠近時隨機大跳追擊
           if (boss.isGrounded) {
             const playerAbove = target.y < boss.y - 20;
             const isNear = Math.abs(target.x - boss.x) < 160;
             if ((playerAbove && isNear) || Math.random() < 0.012) {
-              boss.vy = -10.5; // 大跳躍力
+              boss.vy = -10.5;
             }
           }
         }
@@ -560,7 +578,7 @@
       document.getElementById('gameOverOverlay').style.display = 'flex';
     }
 
-    // ⭐ 人物繪製邏輯 ⭐
+    // 人物繪製邏輯
     function drawHumanoidPlayer(p) {
       if (!p || p.hp <= 0) return;
 
@@ -590,13 +608,12 @@
       ctx.fillStyle = '#475569';
       ctx.fillRect(centerX - 8, p.y + 23, 16, 2);
 
-      // 3. 頭部與面具/帽子 (根據 1P/2P 特化)
+      // 3. 頭部與面具/帽子
       ctx.fillStyle = p.skinColor;
       ctx.beginPath();
       ctx.arc(centerX, p.y + 7, 7, 0, Math.PI * 2);
       ctx.fill();
 
-      // 配飾 / 頭帶 / 帽子
       ctx.fillStyle = p.accentColor;
       ctx.fillRect(centerX - 7, p.y + 1, 14, 5);
 
@@ -619,9 +636,9 @@
       ctx.restore();
     }
 
-    // ─── 🏰 繪製古典金字塔地圖與風格 ───
+    // ─── 🏰 繪製多樣化、非長方形的地板與平台造型 ───
     function drawMapBackground() {
-      // 1. 背景磚牆質感 (深棕色格紋)
+      // 1. 背景磚牆質感
       ctx.fillStyle = '#4a3225';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -635,43 +652,49 @@
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
       }
 
-      // 中央古老符號印記細節 (圖片中央刻印)
       ctx.fillStyle = '#331f14';
       ctx.fillRect(canvas.width / 2 - 20, 0, 40, canvas.height);
 
-      // 2. 繪製復刻版金黃色古典磚塊平台
+      // 2. 繪製精緻非幾何單調的古典磚塊平台
       platforms.forEach(p => {
-        // 主磚體
+        // 主體色
         ctx.fillStyle = '#a37c3f';
         ctx.fillRect(p.x, p.y, p.w, p.h);
 
-        // 頂部高光黃邊
+        // 頂部金黃高光
         ctx.fillStyle = '#dcae5b';
         ctx.fillRect(p.x, p.y, p.w, 4);
 
-        // 下緣陰影
+        // 底部深色陰影
         ctx.fillStyle = '#6e5127';
         ctx.fillRect(p.x, p.y + p.h - 4, p.w, 4);
 
-        // 磚塊內部雙邊框鑲邊細節
-        if (p.w > 40) {
+        // 凸顯不規則質感：兩側繪製下垂飾紋/磚塊鑲邊
+        ctx.fillStyle = '#523a1c';
+        ctx.fillRect(p.x - 2, p.y + 4, 4, p.h - 4);
+        ctx.fillRect(p.x + p.w - 2, p.y + 4, 4, p.h - 4);
+
+        // 內部石磚分格與紋理
+        if (p.w >= 60) {
           ctx.strokeStyle = '#7c5d2b';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(p.x + 4, p.y + 4, p.w - 8, p.h - 8);
+          ctx.lineWidth = 1.5;
+          for (let bx = p.x + 20; bx < p.x + p.w - 10; bx += 25) {
+            ctx.beginPath();
+            ctx.moveTo(bx, p.y + 4);
+            ctx.lineTo(bx, p.y + p.h - 4);
+            ctx.stroke();
+          }
         }
       });
     }
 
-    // ─── 🏛️ 復刻原圖 UI (血條與金幣) ───
+    // ─── 🏛️ UI (血條與金幣) ───
     function drawRetroUI() {
-      // 1P 血條 (左上)
       drawRetroHPBar(15, 10, p1 ? p1.hp : 0, true);
-      // 2P 血條 (右上)
       if (gameMode === 2 && p2) {
         drawRetroHPBar(canvas.width - 115, 10, p2.hp, false);
       }
 
-      // 金幣與數量 (左上)
       ctx.fillStyle = '#fbbf24';
       ctx.beginPath(); ctx.arc(22, 85, 9, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#d97706';
@@ -682,18 +705,15 @@
       ctx.textAlign = 'left';
       ctx.fillText(`${p1 ? p1.gold : 0}`, 38, 91);
 
-      // 暫停按鈕裝飾 (中央頂部)
       ctx.fillStyle = '#dcae5b';
       ctx.fillRect(canvas.width / 2 - 12, 10, 8, 20);
       ctx.fillRect(canvas.width / 2 + 4, 10, 8, 20);
     }
 
     function drawRetroHPBar(x, y, hp, isLeft) {
-      // 黑色底框
       ctx.fillStyle = '#000';
       ctx.fillRect(x, y, 100, 22);
 
-      // 分格血條 (綠/紅)
       const maxBlocks = 8;
       const currentBlocks = Math.ceil((hp / 100) * maxBlocks);
       for (let i = 0; i < maxBlocks; i++) {
@@ -705,7 +725,6 @@
         ctx.fillRect(x + 3 + i * 12, y + 3, 10, 16);
       }
 
-      // 彈藥數示與圖示
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 14px Courier New';
       ctx.textAlign = isLeft ? 'left' : 'right';
@@ -716,10 +735,9 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 1. 繪製復刻地圖背景
       drawMapBackground();
 
-      // 2. 寶箱 (復刻黃金寶箱)
+      // 寶箱
       chests.forEach(c => {
         ctx.fillStyle = c.opened ? '#6e5127' : '#f59e0b';
         ctx.fillRect(c.x, c.y, c.w, c.h);
@@ -729,17 +747,17 @@
         ctx.fillRect(c.x + c.w/2 - 3, c.y + 10, 6, 8);
       });
 
-      // 3. 掉落物
+      // 掉落物
       drops.forEach(d => {
         ctx.fillStyle = d.type === 'gold' ? '#fbbf24' : d.type === 'hp' ? '#f43f5e' : '#a855f7';
         ctx.beginPath(); ctx.arc(d.x + d.w/2, d.y + d.h/2, d.w/2, 0, Math.PI*2); ctx.fill();
       });
 
-      // 4. 角色
+      // 角色
       drawHumanoidPlayer(p1);
       if (gameMode === 2) drawHumanoidPlayer(p2);
 
-      // 5. 怪物
+      // 怪物
       monsters.forEach(m => {
         if (m.type === 'slime') {
           const sGrad = ctx.createRadialGradient(m.x + m.w/2, m.y + m.h/2, 2, m.x + m.w/2, m.y + m.h/2, m.w/2);
@@ -747,10 +765,8 @@
           ctx.fillStyle = sGrad; ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#a7f3d0'; ctx.fillRect(m.x + 6, m.y + 4, 4, 4);
         } else if (m.type === 'spider') {
-          // 🕷️ 紫色蛛蛛（與圖片一致）
           ctx.fillStyle = '#a855f7';
           ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
-          // 蜘蛛腳
           ctx.strokeStyle = '#e9d5ff'; ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.moveTo(m.x, m.y + 4); ctx.lineTo(m.x - 5, m.y + 14);
@@ -758,7 +774,6 @@
           ctx.moveTo(m.x + m.w - 6, m.y + 2); ctx.lineTo(m.x + m.w - 2, m.y + 16);
           ctx.moveTo(m.x + m.w, m.y + 4); ctx.lineTo(m.x + m.w + 5, m.y + 14);
           ctx.stroke();
-          // 背部尖刺/眼睛
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(m.x + 6, m.y + 4, 4, 4); ctx.fillRect(m.x + 16, m.y + 4, 4, 4);
         } else {
@@ -772,21 +787,20 @@
         }
       });
 
-      // 6. BOSS
+      // BOSS
       if (boss) {
         const bGrad = ctx.createLinearGradient(boss.x, boss.y, boss.x + boss.w, boss.y + boss.h);
         bGrad.addColorStop(0, '#ef4444'); bGrad.addColorStop(1, '#991b1b');
         ctx.fillStyle = bGrad; ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
         ctx.fillStyle = '#fbbf24'; ctx.fillRect(boss.x + 10, boss.y + 14, 14, 14); ctx.fillRect(boss.x + 40, boss.y + 14, 14, 14);
 
-        // BOSS 血條
         ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'; ctx.fillRect(230, 42, 400, 16);
         ctx.fillStyle = '#ef4444'; ctx.fillRect(233, 44, (boss.hp / boss.maxHp) * 394, 12);
         ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Segoe UI'; ctx.textAlign = 'center';
         ctx.fillText('⚠️ BOSS 霸主 ⚠️', canvas.width / 2, 54);
       }
 
-      // 7. 子彈與特效
+      // 子彈與特效
       bullets.forEach(b => {
         ctx.shadowColor = b.color; ctx.shadowBlur = 8;
         ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h);
@@ -811,12 +825,11 @@
         ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1.0;
       });
 
-      // 8. 復刻原圖 UI 繪製
       drawRetroUI();
 
       if (isGameStarted) {
         ctx.fillStyle = '#ffffff'; ctx.font = '800 28px Courier New'; ctx.textAlign = 'center';
-        ctx.fillText(`KILLS ${totalKills}`, canvas.width / 2, 470);
+        ctx.fillText(`KILLS ${totalKills}`, canvas.width / 2, 490);
       }
     }
 
