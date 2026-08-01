@@ -3,146 +3,84 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D 雙人追蹤彈幕 RPG</title>
+  <title>3D 雙人炫彩彈幕 RPG</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: #05050a;
+      background-color: #05050d;
       color: #c9d1d9;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      overflow: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; overflow: hidden;
     }
     h1 {
-      margin-bottom: 8px;
-      color: #58a6ff;
-      text-shadow: 0 0 10px rgba(88, 166, 255, 0.4);
-      font-size: 1.5rem;
+      margin-bottom: 8px; color: #38bdf8;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.6); font-size: 1.6rem;
     }
-    .status-panel {
-      display: flex;
-      gap: 20px;
-      margin-bottom: 10px;
-      z-index: 10;
-    }
+    .status-panel { display: flex; gap: 20px; margin-bottom: 10px; z-index: 10; }
     .player-card {
-      background: rgba(22, 27, 34, 0.85);
-      border: 2px solid #30363d;
-      padding: 8px 16px;
-      border-radius: 8px;
-      min-width: 180px;
-      backdrop-filter: blur(5px);
+      background: rgba(15, 23, 42, 0.85); border: 2px solid #334155;
+      padding: 8px 16px; border-radius: 8px; min-width: 180px; backdrop-filter: blur(8px);
     }
-    .p1-card { border-color: #38bdf8; }
-    .p2-card { border-color: #4ade80; }
-    .player-title { font-weight: bold; margin-bottom: 4px; }
-    .p1-title { color: #38bdf8; }
-    .p2-title { color: #4ade80; }
+    .p1-card { border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+    .p2-card { border-color: #4ade80; box-shadow: 0 0 10px rgba(74, 222, 128, 0.2); }
+    .p1-title { color: #38bdf8; font-weight: bold; }
+    .p2-title { color: #4ade80; font-weight: bold; }
 
     .game-container {
-      position: relative;
-      width: 800px;
-      height: 500px;
-      border: 3px solid #30363d;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+      position: relative; width: 860px; height: 520px;
+      border: 2px solid #334155; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.9);
     }
-
-    #webgl-container {
-      width: 100%;
-      height: 100%;
-    }
+    #webgl-container { width: 100%; height: 100%; }
 
     .log-box {
-      position: absolute;
-      right: 10px;
-      top: 10px;
-      width: 200px;
-      height: 200px;
-      background: rgba(1, 4, 9, 0.7);
-      border: 1px solid rgba(48, 54, 61, 0.8);
-      border-radius: 6px;
-      padding: 8px;
-      font-size: 0.75rem;
-      overflow-y: auto;
-      pointer-events: none;
-      line-height: 1.4;
+      position: absolute; right: 12px; top: 12px; width: 220px; height: 180px;
+      background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(51, 65, 85, 0.8);
+      border-radius: 6px; padding: 8px; font-size: 0.78rem; overflow-y: auto; pointer-events: none;
     }
     .log-msg { margin-bottom: 4px; }
     .log-msg.p1 { color: #38bdf8; }
     .log-msg.p2 { color: #4ade80; }
-    .log-msg.system { color: #f2cc60; }
-    .log-msg.danger { color: #ef4444; }
+    .log-msg.system { color: #f1c40f; }
+    .log-msg.danger { color: #f87171; }
 
     .controls-guide {
-      margin-top: 10px;
-      display: flex;
-      gap: 20px;
-      background: rgba(22, 27, 34, 0.9);
-      padding: 8px 20px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      z-index: 10;
+      margin-top: 10px; display: flex; gap: 20px;
+      background: rgba(15, 23, 42, 0.9); padding: 8px 20px; border-radius: 8px; font-size: 0.85rem;
     }
 
     .game-over-overlay {
-      display: none;
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(5, 5, 10, 0.85);
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 20;
+      display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(5, 5, 13, 0.9); flex-direction: column; align-items: center; justify-content: center; z-index: 20;
     }
     .game-over-title {
-      font-size: 3rem;
-      color: #ef4444;
-      font-weight: bold;
-      text-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
-      margin-bottom: 10px;
+      font-size: 3.2rem; color: #ef4444; font-weight: bold; text-shadow: 0 0 20px rgba(239, 68, 68, 0.8); margin-bottom: 10px;
     }
     .restart-btn {
-      margin-top: 15px;
-      padding: 10px 20px;
-      font-size: 1rem;
-      background: #238636;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
+      margin-top: 15px; padding: 10px 24px; font-size: 1rem; background: #22c55e;
+      color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;
     }
-    .restart-btn:hover { background: #2ea043; }
+    .restart-btn:hover { background: #16a34a; transform: scale(1.05); }
   </style>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-  <h1>⚔️ 3D 雙人追蹤彈幕 RPG</h1>
+  <h1>⚔️ 3D 雙人炫彩彈幕 RPG</h1>
   
   <div class="status-panel">
     <div class="player-card p1-card">
-      <div class="player-title p1-title">👤 1P (藍色球體)</div>
+      <div class="p1-title">👤 1P 聖光戰士</div>
       <div>❤️ HP: <span id="p1-hp">100</span></div>
       <div>💰 Gold: <span id="p1-gold">0</span></div>
     </div>
     
-    <div style="align-self: center; font-size: 1.1rem; font-weight: bold;">🏰 層數: <span id="floor">1</span></div>
+    <div style="align-self: center; font-size: 1.1rem; font-weight: bold; color: #f1c40f;">🏰 第 <span id="floor">1</span> 層</div>
 
     <div class="player-card p2-card">
-      <div class="player-title p2-title">👤 2P (綠色立方體)</div>
+      <div class="p2-title">👤 2P 翡翠術士</div>
       <div>❤️ HP: <span id="p2-hp">100</span></div>
       <div>💰 Gold: <span id="p2-gold">0</span></div>
     </div>
@@ -150,10 +88,7 @@
 
   <div class="game-container">
     <div id="webgl-container"></div>
-
-    <div class="log-box" id="logBox">
-      <div class="log-msg system">3D 戰鬥開始！消滅怪物以開啟傳送門...</div>
-    </div>
+    <div class="log-box" id="logBox"><div class="log-msg system">進入暗黑地牢！擊滅所有惡魔！</div></div>
 
     <div class="game-over-overlay" id="gameOverOverlay">
       <div class="game-over-title">GAME OVER</div>
@@ -163,60 +98,56 @@
   </div>
 
   <div class="controls-guide">
-    <div><strong>1P：</strong> WASD 移動 | <strong>空白鍵</strong> 發射 3D 追蹤彈</div>
-    <div><strong>2P：</strong> 方向鍵 ↑↓←→ 移動 | <strong>Enter</strong> 發射 3D 追蹤彈</div>
+    <div><strong>1P：</strong> WASD 移動 | <strong>Space</strong> 聖光導彈</div>
+    <div><strong>2P：</strong> 方向鍵 ↑↓←→ 移動 | <strong>Enter</strong> 翡翠導彈</div>
   </div>
 
   <script>
     const container = document.getElementById('webgl-container');
-    const width = 800;
-    const height = 500;
+    const width = 860, height = 520;
 
-    // 1. 初始化 3D 場景
+    // 1. 初始化 Three.js 場景 & 霧氣
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a12);
+    scene.background = new THREE.Color(0x070714);
+    scene.fog = new THREE.FogExp2(0x070714, 0.03); // 3D 深層暗黑霧氣
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 32, 28);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(0, 26, 22);
+    camera.lookAt(0, -2, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(width, height);
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    // 光源
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    // 光源設置 (強烈對比氛圍)
+    const ambientLight = new THREE.AmbientLight(0x334155, 1.2);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(10, 30, 20);
-    dirLight.castShadow = true;
-    scene.add(dirLight);
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    mainLight.position.set(12, 25, 15);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 1024;
+    mainLight.shadow.mapSize.height = 1024;
+    scene.add(mainLight);
 
-    // 建立 3D 地板
-    const floorGeo = new THREE.PlaneGeometry(36, 24);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x161b22, roughness: 0.8 });
+    // 地板 (金屬感暗色網格 + 發光外框)
+    const floorGeo = new THREE.PlaneGeometry(36, 22);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.6 });
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.receiveShadow = true;
     scene.add(floorMesh);
 
-    // 網格線裝飾
-    const gridHelper = new THREE.GridHelper(36, 18, 0x30363d, 0x21262d);
-    gridHelper.position.y = 0.01;
+    const gridHelper = new THREE.GridHelper(36, 18, 0x38bdf8, 0x1e293b);
+    gridHelper.position.y = 0.02;
     scene.add(gridHelper);
 
-    // 遊戲數據
-    let currentFloor = 1;
-    let isGameOver = false;
+    // 遊戲資料
+    let currentFloor = 1, isGameOver = false;
     const keys = {};
-
-    let p1, p2;
-    let bullets = [];
-    let monsters = [];
-    let portalMesh = null;
-    let isPortalUnlocked = false;
+    let p1, p2, bullets = [], monsters = [], particles = [], portalMesh = null, isPortalUnlocked = false;
 
     function addLog(msg, type = "system") {
       const logBox = document.getElementById('logBox');
@@ -227,94 +158,147 @@
       logBox.scrollTop = logBox.scrollHeight;
     }
 
-    // 建立玩家 3D 物件
+    // 3D 血條產生器 (Canvas 貼圖)
+    function createHealthBarSprite() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128; canvas.height = 16;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ef4444'; ctx.fillRect(0, 0, 128, 16);
+      ctx.fillStyle = '#22c55e'; ctx.fillRect(0, 0, 128, 16);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(2, 0.25, 1);
+      return { sprite, ctx, texture };
+    }
+
+    function updateHealthBar(barObj, currentHp, maxHp) {
+      if (!barObj) return;
+      const pct = Math.max(0, currentHp / maxHp);
+      barObj.ctx.fillStyle = '#ef4444';
+      barObj.ctx.fillRect(0, 0, 128, 16);
+      barObj.ctx.fillStyle = '#22c55e';
+      barObj.ctx.fillRect(0, 0, 128 * pct, 16);
+      barObj.texture.needsUpdate = true;
+    }
+
+    // 複合 3D 角色模型建立
+    function createP1Mesh() {
+      const group = new THREE.Group();
+      // 身體
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8, roughness: 0.2 }));
+      body.castShadow = true; group.add(body);
+      // 頭頂光環
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.08, 8, 24), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+      ring.rotation.x = Math.PI / 2; ring.position.y = 1.1; group.add(ring);
+      return group;
+    }
+
+    function createP2Mesh() {
+      const group = new THREE.Group();
+      // 身體
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0x16a34a, metalness: 0.5, roughness: 0.3 }));
+      body.castShadow = true; group.add(body);
+      // 懸浮法杖寶石
+      const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.4), new THREE.MeshBasicMaterial({ color: 0x4ade80 }));
+      gem.position.set(0.9, 0.8, 0); group.add(gem);
+      return group;
+    }
+
+    function createMonsterMesh() {
+      const group = new THREE.Group();
+      // 身體 (惡魔錐體)
+      const body = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.8, 8), new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 }));
+      body.rotation.x = Math.PI; body.position.y = 0.9; body.castShadow = true; group.add(body);
+      // 惡魔雙角 (發光)
+      const hornMat = new THREE.MeshBasicMaterial({ color: 0xfcb341 });
+      const h1 = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 4), hornMat);
+      h1.position.set(-0.4, 1.2, 0.3); h1.rotation.z = -0.4; group.add(h1);
+      const h2 = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 4), hornMat);
+      h2.position.set(0.4, 1.2, 0.3); h2.rotation.z = 0.4; group.add(h2);
+      return group;
+    }
+
     function createPlayers() {
-      // 1P: 藍色球體
-      const p1Geo = new THREE.SphereGeometry(0.8, 16, 16);
-      const p1Mat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.3 });
-      const p1Mesh = new THREE.Mesh(p1Geo, p1Mat);
-      p1Mesh.castShadow = true;
-      scene.add(p1Mesh);
+      const m1 = createP1Mesh(); scene.add(m1);
+      const bar1 = createHealthBarSprite(); m1.add(bar1.sprite); bar1.sprite.position.y = 1.6;
+      p1 = { mesh: m1, bar: bar1, hp: 100, maxHp: 100, atk: 15, gold: 0, dir: new THREE.Vector3(1,0,0), lastShot: 0 };
 
-      p1 = { 
-        mesh: p1Mesh, hp: 100, maxHp: 100, atk: 15, gold: 0, 
-        dir: new THREE.Vector3(1, 0, 0), lastShot: 0 
-      };
-
-      // 2P: 綠色方塊
-      const p2Geo = new THREE.BoxGeometry(1.4, 1.4, 1.4);
-      const p2Mat = new THREE.MeshStandardMaterial({ color: 0x4ade80, roughness: 0.3 });
-      const p2Mesh = new THREE.Mesh(p2Geo, p2Mat);
-      p2Mesh.castShadow = true;
-      scene.add(p2Mesh);
-
-      p2 = { 
-        mesh: p2Mesh, hp: 100, maxHp: 100, atk: 15, gold: 0, 
-        dir: new THREE.Vector3(1, 0, 0), lastShot: 0 
-      };
+      const m2 = createP2Mesh(); scene.add(m2);
+      const bar2 = createHealthBarSprite(); m2.add(bar2.sprite); bar2.sprite.position.y = 1.6;
+      p2 = { mesh: m2, bar: bar2, hp: 100, maxHp: 100, atk: 15, gold: 0, dir: new THREE.Vector3(1,0,0), lastShot: 0 };
     }
 
     function initFloor() {
-      p1.mesh.position.set(-12, 0.8, -2);
-      p2.mesh.position.set(-12, 0.7, 2);
-      p1.mesh.visible = true;
-      p2.mesh.visible = true;
+      p1.mesh.position.set(-12, 0.8, -2); p1.mesh.visible = true;
+      p2.mesh.position.set(-12, 0.8, 2); p2.mesh.visible = true;
 
-      // 清理舊物件
       bullets.forEach(b => scene.remove(b.mesh));
       monsters.forEach(m => scene.remove(m.mesh));
+      particles.forEach(p => scene.remove(p.mesh));
       if (portalMesh) scene.remove(portalMesh);
 
-      bullets = [];
-      monsters = [];
-      isPortalUnlocked = false;
+      bullets = []; monsters = []; particles = []; isPortalUnlocked = false;
 
-      // 建立 3D 傳送門 (光環)
-      const portalGeo = new THREE.TorusGeometry(1.2, 0.2, 16, 32);
-      const portalMat = new THREE.MeshBasicMaterial({ color: 0x374151 });
+      // 傳送門 (魔法傳送陣)
+      const portalGeo = new THREE.TorusGeometry(1.4, 0.18, 16, 32);
+      const portalMat = new THREE.MeshBasicMaterial({ color: 0x334155 });
       portalMesh = new THREE.Mesh(portalGeo, portalMat);
-      portalMesh.rotation.x = Math.PI / 2;
-      portalMesh.position.set(14, 0.1, 0);
+      portalMesh.rotation.x = Math.PI / 2; portalMesh.position.set(14, 0.1, 0);
       scene.add(portalMesh);
 
-      // 生成 3D 怪物 (紅色圓錐)
+      // 怪物生成
       const count = 2 + currentFloor * 2;
       for (let i = 0; i < count; i++) {
-        const mGeo = new THREE.ConeGeometry(0.8, 1.8, 12);
-        const mMat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
-        const mMesh = new THREE.Mesh(mGeo, mMat);
-        mMesh.castShadow = true;
-
+        const mMesh = createMonsterMesh();
         let posX = -2 + Math.random() * 14;
-        let posZ = -9 + Math.random() * 18;
-        mMesh.position.set(posX, 0.9, posZ);
+        let posZ = -8 + Math.random() * 16;
+        mMesh.position.set(posX, 0, posZ);
         scene.add(mMesh);
 
+        const bar = createHealthBarSprite();
+        mMesh.add(bar.sprite); bar.sprite.position.y = 2.2;
+
         monsters.push({
-          mesh: mMesh,
-          speed: 0.05 + currentFloor * 0.008,
-          hp: 35 + currentFloor * 15,
-          maxHp: 35 + currentFloor * 15,
-          atk: 8 + currentFloor * 2,
-          gold: 15 + currentFloor * 5
+          mesh: mMesh, bar: bar,
+          speed: 0.045 + currentFloor * 0.008,
+          hp: 35 + currentFloor * 15, maxHp: 35 + currentFloor * 15,
+          atk: 8 + currentFloor * 2, gold: 15 + currentFloor * 5
         });
       }
 
-      addLog(`🏰 進入第 ${currentFloor} 層地牢！`);
+      addLog(`🏰 進入第 ${currentFloor} 層！`);
     }
 
     function resetGame() {
-      currentFloor = 1;
-      isGameOver = false;
+      currentFloor = 1; isGameOver = false;
       document.getElementById('gameOverOverlay').style.display = 'none';
-
-      p1.hp = 100; p1.gold = 0;
-      p2.hp = 100; p2.gold = 0;
-
+      p1.hp = 100; p1.gold = 0; p2.hp = 100; p2.gold = 0;
       document.getElementById('logBox').innerHTML = '';
-      addLog(`🎮 3D 冒險重新開始！`);
-
+      addLog(`🎮 3D 冒險開始！`);
       initFloor();
+    }
+
+    // 粒子爆裂效果 (擊中/死亡)
+    function createExplosion(pos, colorHex) {
+      for (let i = 0; i < 12; i++) {
+        const pGeo = new THREE.SphereGeometry(0.15, 4, 4);
+        const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
+        const pMesh = new THREE.Mesh(pGeo, pMat);
+        pMesh.position.copy(pos);
+        scene.add(pMesh);
+
+        particles.push({
+          mesh: pMesh,
+          vel: new THREE.Vector3(
+            (Math.random() - 0.5) * 0.3,
+            Math.random() * 0.25,
+            (Math.random() - 0.5) * 0.3
+          ),
+          life: 20
+        });
+      }
     }
 
     window.addEventListener('keydown', e => { 
@@ -325,67 +309,61 @@
 
     function handleInput() {
       if (isGameOver) return;
-      const speed = 0.18;
-      const now = Date.now();
+      const speed = 0.18, now = Date.now();
 
       // 1P 控制
       if (p1.hp > 0) {
         let move = new THREE.Vector3();
-        if (keys['KeyW']) move.z -= 1;
-        if (keys['KeyS']) move.z += 1;
-        if (keys['KeyA']) move.x -= 1;
-        if (keys['KeyD']) move.x += 1;
+        if (keys['KeyW']) move.z -= 1; if (keys['KeyS']) move.z += 1;
+        if (keys['KeyA']) move.x -= 1; if (keys['KeyD']) move.x += 1;
 
         if (move.length() > 0) {
-          move.normalize();
-          p1.dir.copy(move);
+          move.normalize(); p1.dir.copy(move);
           p1.mesh.position.addScaledVector(move, speed);
           p1.mesh.position.x = Math.max(-16, Math.min(16, p1.mesh.position.x));
-          p1.mesh.position.z = Math.max(-10, Math.min(10, p1.mesh.position.z));
+          p1.mesh.position.z = Math.max(-9, Math.min(9, p1.mesh.position.z));
         }
 
-        if (keys['Space'] && now - p1.lastShot > 220) {
-          spawnBullet(p1, 0x38bdf8);
-          p1.lastShot = now;
+        if (keys['Space'] && now - p1.lastShot > 200) {
+          spawnBullet(p1, 0x38bdf8); p1.lastShot = now;
         }
       }
 
       // 2P 控制
       if (p2.hp > 0) {
         let move = new THREE.Vector3();
-        if (keys['ArrowUp']) move.z -= 1;
-        if (keys['ArrowDown']) move.z += 1;
-        if (keys['ArrowLeft']) move.x -= 1;
-        if (keys['ArrowRight']) move.x += 1;
+        if (keys['ArrowUp']) move.z -= 1; if (keys['ArrowDown']) move.z += 1;
+        if (keys['ArrowLeft']) move.x -= 1; if (keys['ArrowRight']) move.x += 1;
 
         if (move.length() > 0) {
-          move.normalize();
-          p2.dir.copy(move);
+          move.normalize(); p2.dir.copy(move);
           p2.mesh.position.addScaledVector(move, speed);
           p2.mesh.position.x = Math.max(-16, Math.min(16, p2.mesh.position.x));
-          p2.mesh.position.z = Math.max(-10, Math.min(10, p2.mesh.position.z));
+          p2.mesh.position.z = Math.max(-9, Math.min(9, p2.mesh.position.z));
         }
 
-        if (keys['Enter'] && now - p2.lastShot > 220) {
-          spawnBullet(p2, 0x4ade80);
-          p2.lastShot = now;
+        if (keys['Enter'] && now - p2.lastShot > 200) {
+          spawnBullet(p2, 0x4ade80); p2.lastShot = now;
         }
       }
     }
 
     function spawnBullet(player, color) {
-      const bGeo = new THREE.SphereGeometry(0.35, 8, 8);
-      const bMat = new THREE.MeshBasicMaterial({ color: color });
-      const bMesh = new THREE.Mesh(bGeo, bMat);
-      bMesh.position.copy(player.mesh.position);
-      scene.add(bMesh);
+      const group = new THREE.Group();
+      const core = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({ color: color }));
+      group.add(core);
+
+      // 點光源附著子彈，產生即時光影
+      const light = new THREE.PointLight(color, 2, 5);
+      group.add(light);
+
+      group.position.copy(player.mesh.position);
+      group.position.y = 0.8;
+      scene.add(group);
 
       bullets.push({
-        mesh: bMesh,
-        dir: player.dir.clone(),
-        speed: 0.35,
-        atk: player.atk,
-        owner: player === p1 ? '1P' : '2P'
+        mesh: group, dir: player.dir.clone(), speed: 0.38,
+        atk: player.atk, owner: player === p1 ? '1P' : '2P', color: color
       });
     }
 
@@ -393,100 +371,94 @@
       if (isGameOver) return;
       handleInput();
 
-      // 3D 追蹤子彈邏輯
-      bullets.forEach((b, index) => {
-        // 尋找最近怪物
-        let closestMonster = null;
-        let minDist = Infinity;
+      // 更新粒子
+      particles.forEach((p, i) => {
+        p.mesh.position.add(p.vel);
+        p.life--;
+        if (p.life <= 0) {
+          scene.remove(p.mesh);
+          particles.splice(i, 1);
+        }
+      });
 
+      // 子彈邏輯
+      bullets.forEach((b, index) => {
+        let closestMonster = null, minDist = Infinity;
         monsters.forEach(m => {
           let d = b.mesh.position.distanceTo(m.mesh.position);
-          if (d < minDist) {
-            minDist = d;
-            closestMonster = m;
-          }
+          if (d < minDist) { minDist = d; closestMonster = m; }
         });
 
-        // 轉向怪物
         if (closestMonster) {
-          let targetDir = new THREE.Vector3()
-            .subVectors(closestMonster.mesh.position, b.mesh.position)
-            .normalize();
-          b.dir.lerp(targetDir, 0.15); // 平滑轉向
+          let targetDir = new THREE.Vector3().subVectors(closestMonster.mesh.position, b.mesh.position).normalize();
+          b.dir.lerp(targetDir, 0.16);
         }
 
         b.mesh.position.addScaledVector(b.dir, b.speed);
 
-        // 出界消除
-        if (Math.abs(b.mesh.position.x) > 18 || Math.abs(b.mesh.position.z) > 12) {
-          scene.remove(b.mesh);
-          bullets.splice(index, 1);
-          return;
+        if (Math.abs(b.mesh.position.x) > 18 || Math.abs(b.mesh.position.z) > 11) {
+          scene.remove(b.mesh); bullets.splice(index, 1); return;
         }
 
-        // 擊中判定
         monsters.forEach((m, mIndex) => {
           if (b.mesh.position.distanceTo(m.mesh.position) < 1.2) {
             m.hp -= b.atk;
-            scene.remove(b.mesh);
-            bullets.splice(index, 1);
+            createExplosion(b.mesh.position, b.color);
+            updateHealthBar(m.bar, m.hp, m.maxHp);
+
+            scene.remove(b.mesh); bullets.splice(index, 1);
 
             if (m.hp <= 0) {
               if (b.owner === '1P') p1.gold += m.gold;
               if (b.owner === '2P') p2.gold += m.gold;
-              addLog(`🎯 ${b.owner} 擊滅怪物，獲得 ${m.gold}G`, b.owner.toLowerCase());
+              addLog(`🎯 ${b.owner} 擊滅怪物 +${m.gold}G`, b.owner.toLowerCase());
 
-              scene.remove(m.mesh);
-              monsters.splice(mIndex, 1);
+              createExplosion(m.mesh.position, 0xef4444);
+              scene.remove(m.mesh); monsters.splice(mIndex, 1);
 
               if (monsters.length === 0) {
                 isPortalUnlocked = true;
                 portalMesh.material.color.setHex(0x4ade80);
-                addLog('🔓 3D 傳送門已開啟！');
+                addLog('🔓 魔法傳送陣解鎖！');
               }
             }
           }
         });
       });
 
-      // 3D 怪物 AI 追蹤
+      // 怪物 AI
       monsters.forEach(m => {
         let targets = [];
         if (p1.hp > 0) targets.push(p1);
         if (p2.hp > 0) targets.push(p2);
 
         if (targets.length > 0) {
-          targets.sort((a, b) => 
-            m.mesh.position.distanceTo(a.mesh.position) - m.mesh.position.distanceTo(b.mesh.position)
-          );
+          targets.sort((a,b) => m.mesh.position.distanceTo(a.mesh.position) - m.mesh.position.distanceTo(b.mesh.position));
           let target = targets[0];
 
-          let dir = new THREE.Vector3()
-            .subVectors(target.mesh.position, m.mesh.position)
-            .normalize();
+          let dir = new THREE.Vector3().subVectors(target.mesh.position, m.mesh.position).normalize();
           m.mesh.position.addScaledVector(dir, m.speed);
 
-          // 傷害判定
           if (m.mesh.position.distanceTo(target.mesh.position) < 1.3) {
             target.hp = Math.max(0, target.hp - 0.4);
+            updateHealthBar(target.bar, target.hp, target.maxHp);
             if (target.hp <= 0) target.mesh.visible = false;
           }
         }
       });
 
-      // 傳送門過關
+      // 傳送門
       if (isPortalUnlocked) {
         [p1, p2].forEach(p => {
           if (p.hp > 0 && p.mesh.position.distanceTo(portalMesh.position) < 1.5) {
             currentFloor++;
-            p1.hp = Math.min(p1.maxHp, p1.hp + 30);
-            p2.hp = Math.min(p2.maxHp, p2.hp + 30);
+            p1.hp = Math.min(p1.maxHp, p1.hp + 30); updateHealthBar(p1.bar, p1.hp, p1.maxHp);
+            p2.hp = Math.min(p2.maxHp, p2.hp + 30); updateHealthBar(p2.bar, p2.hp, p2.maxHp);
             initFloor();
           }
         });
       }
 
-      // 雙人死亡
       if (p1.hp <= 0 && p2.hp <= 0) {
         isGameOver = true;
         document.getElementById('final-floor').textContent = currentFloor;
@@ -501,7 +473,6 @@
       document.getElementById('floor').textContent = currentFloor;
       document.getElementById('p1-hp').textContent = Math.ceil(p1.hp);
       document.getElementById('p1-gold').textContent = p1.gold;
-
       document.getElementById('p2-hp').textContent = Math.ceil(p2.hp);
       document.getElementById('p2-gold').textContent = p2.gold;
     }
@@ -509,10 +480,7 @@
     function animate() {
       requestAnimationFrame(animate);
       update();
-
-      // 傳送門旋轉動畫
       if (portalMesh) portalMesh.rotation.z += 0.03;
-
       renderer.render(scene, camera);
     }
 
