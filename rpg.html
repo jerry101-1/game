@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>精緻像素風格橫向卷軸大亂鬥</title>
+  <title>精緻像素橫捲軸大亂鬥 - 怪物會跳躍版</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -18,6 +18,30 @@
       overflow: hidden;
     }
     canvas { background-color: #0d0914; image-rendering: pixelated; display: block; }
+    
+    .overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(10, 8, 20, 0.92); backdrop-filter: blur(6px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 10;
+    }
+    .overlay h1 {
+      font-size: 2.5rem; color: #38bdf8; text-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
+      margin-bottom: 25px; font-weight: 800;
+    }
+    .btn-group { display: flex; gap: 20px; }
+    .mode-btn {
+      padding: 14px 28px; font-size: 1.1rem; font-weight: bold;
+      border: 2px solid #38bdf8; background: rgba(56, 189, 248, 0.1);
+      color: #38bdf8; border-radius: 8px; cursor: pointer; transition: 0.2s;
+    }
+    .mode-btn:hover {
+      background: #38bdf8; color: #0f172a; transform: translateY(-3px);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+    }
+    .mode-btn.p2-btn { border-color: #4ade80; color: #4ade80; background: rgba(74, 222, 128, 0.1); }
+    .mode-btn.p2-btn:hover { background: #4ade80; color: #0f172a; box-shadow: 0 0 20px rgba(74, 222, 128, 0.6); }
+
     .controls-hint {
       margin-top: 12px; display: flex; gap: 30px; background: rgba(15, 12, 25, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px);
@@ -30,9 +54,25 @@
 
   <div class="game-wrapper">
     <canvas id="gameCanvas" width="860" height="520"></canvas>
+    
+    <div class="overlay" id="startOverlay">
+      <h1>⚔️ 像素大亂鬥 ⚔️</h1>
+      <div class="btn-group">
+        <button class="mode-btn" onclick="startGame(1)">👤 1P 單人模式</button>
+        <button class="mode-btn p2-btn" onclick="startGame(2)">👥 2P 雙人合作</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="gameOverOverlay" style="display: none;">
+      <h1 style="color: #ef4444;">GAME OVER</h1>
+      <p style="font-size: 1.2rem; margin-bottom: 20px;">最終擊殺總數: <span id="finalKills">0</span></p>
+      <div class="btn-group">
+        <button class="mode-btn" onclick="showStartMenu()">🔄 返回選擇模式</button>
+      </div>
+    </div>
   </div>
 
-  <div class="controls-hint">
+  <div class="controls-hint" id="controlsHint">
     <div><strong>1P (藍)：</strong> WASD 移動/跳 | <strong>C</strong> 開槍 | <strong>V</strong> 換槍/開箱</div>
     <div><strong>2P (綠)：</strong> ↑↓←→ 移動/跳 | <strong>K</strong> 開槍 | <strong>L</strong> 換槍/開箱</div>
   </div>
@@ -41,11 +81,11 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    let totalKills = 0, isGameOver = false;
+    let gameMode = 1;
+    let totalKills = 0, isGameOver = false, isGameStarted = false;
     let nextBossThreshold = 15;
     const keys = {};
 
-    // ─── 1. 武器參數 (包含散射角度 spread) ───
     const WEAPONS = {
       pistol:     { name: '手槍', fireRate: 250, ammoType: 'inf', dmg: 18, speed: 11, spread: 0.02, color: '#fbbf24' },
       ak47:       { name: 'AK-47', fireRate: 130, ammoType: 'rifle', dmg: 26, speed: 13, spread: 0.08, color: '#f97316' },
@@ -58,7 +98,6 @@
       mine:       { name: '地雷槍', fireRate: 800, ammoType: 'special', dmg: 160, speed: 6, spread: 0.0, color: '#a855f7', splashRadius: 60 }
     };
 
-    // ─── 2. 怪物類型定義 ───
     const MONSTER_TYPES = [
       { type: 'slime', name: '史萊姆', w: 24, h: 20, hp: 35, speed: 1.0, color: '#10b981', flying: false },
       { type: 'eye',   name: '浮游魔眼', w: 22, h: 22, hp: 28, speed: 1.4, color: '#f43f5e', flying: true },
@@ -95,33 +134,44 @@
       };
     }
 
-    let p1 = createPlayer(380, '#2563eb', '#60a5fa', true);
-    let p2 = createPlayer(460, '#16a34a', '#4ade80', false);
-
-    let bullets = [], bossBullets = [], monsters = [], drops = [], mines = [], explosions = [], particles = [];
+    let p1, p2, bullets = [], bossBullets = [], monsters = [], drops = [], mines = [], explosions = [], particles = [];
     let boss = null;
 
     window.addEventListener('keydown', e => { keys[e.code] = true; });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
 
-    // 粒子系統（槍火、命中碎屑）
+    function startGame(mode) {
+      gameMode = mode;
+      isGameStarted = true; isGameOver = false; totalKills = 0; nextBossThreshold = 15;
+      bullets = []; bossBullets = []; monsters = []; drops = []; mines = []; explosions = []; particles = []; boss = null;
+      chests.forEach(c => c.opened = false);
+
+      p1 = createPlayer(380, '#2563eb', '#60a5fa', true);
+      p2 = gameMode === 2 ? createPlayer(460, '#16a34a', '#4ade80', false) : null;
+
+      document.getElementById('startOverlay').style.display = 'none';
+      document.getElementById('gameOverOverlay').style.display = 'none';
+    }
+
+    function showStartMenu() {
+      isGameStarted = false;
+      document.getElementById('startOverlay').style.display = 'flex';
+      document.getElementById('gameOverOverlay').style.display = 'none';
+    }
+
     function spawnParticles(x, y, color, count = 6, speed = 3) {
       for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
         const spd = Math.random() * speed;
         particles.push({
-          x: x, y: y,
-          vx: Math.cos(angle) * spd,
-          vy: Math.sin(angle) * spd,
-          size: Math.random() * 3 + 1,
-          color: color, alpha: 1.0,
-          life: Math.random() * 15 + 10
+          x: x, y: y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
+          size: Math.random() * 3 + 1, color: color, alpha: 1.0
         });
       }
     }
 
-    // 開槍運算 (帶有彈道散射)
     function fireWeapon(player) {
+      if (!player || player.hp <= 0) return;
       const now = Date.now();
       const wpnKey = player.inventory[player.currentWpnIdx];
       const wpn = WEAPONS[wpnKey];
@@ -137,7 +187,6 @@
       const spawnX = player.x + (player.facing === 1 ? player.w + 4 : -10);
       const spawnY = player.y + 12;
 
-      // 槍火粒子
       spawnParticles(spawnX, spawnY, '#fbbf24', 5, 2);
 
       if (wpnKey === 'shotgun') {
@@ -146,9 +195,8 @@
           let baseVx = player.facing * wpn.speed;
           bullets.push({
             x: spawnX, y: spawnY, w: 6, h: 5,
-            vx: baseVx * Math.cos(spreadAngle),
-            vy: baseVx * Math.sin(spreadAngle),
-            type: wpnKey, dmg: wpn.dmg, color: wpn.color, owner: player
+            vx: baseVx * Math.cos(spreadAngle), vy: baseVx * Math.sin(spreadAngle),
+            type: wpnKey, dmg: wpn.dmg, color: wpn.color, owner: player, wrapCount: 0
           });
         }
       } else if (wpnKey === 'mine') {
@@ -167,12 +215,13 @@
           vx: baseVx * Math.cos(offsetAngle),
           vy: baseVx * Math.sin(offsetAngle) + (wpnKey === 'grenade' ? -3.8 : 0),
           type: wpnKey, dmg: wpn.dmg, color: wpn.color,
-          gravity: wpn.gravity || 0, radius: wpn.splashRadius || 0, owner: player
+          gravity: wpn.gravity || 0, radius: wpn.splashRadius || 0, owner: player, wrapCount: 0
         });
       }
     }
 
     function interactChest(player) {
+      if (!player || player.hp <= 0) return;
       chests.forEach(c => {
         if (!c.opened && Math.abs((player.x + player.w/2) - (c.x + c.w/2)) < 35 && Math.abs(player.y - c.y) < 30) {
           c.opened = true;
@@ -182,16 +231,14 @@
           
           if (!player.inventory.includes(picked)) player.inventory.push(picked);
           
-          player.ammoPool.rifle += 60;
-          player.ammoPool.shotgun += 20;
-          player.ammoPool.special += 10;
-          player.ammoPool.explosive += 6;
+          player.ammoPool.rifle += 60; player.ammoPool.shotgun += 20;
+          player.ammoPool.special += 10; player.ammoPool.explosive += 6;
         }
       });
     }
 
     function spawnMonster() {
-      if (monsters.length > 10 || isGameOver || boss) return;
+      if (!isGameStarted || isGameOver || monsters.length > 10 || boss) return;
       const pts = [{x: 30, y: 50}, {x: 810, y: 50}, {x: 430, y: 20}];
       const pt = pts[Math.floor(Math.random() * pts.length)];
       const t = MONSTER_TYPES[Math.floor(Math.random() * MONSTER_TYPES.length)];
@@ -200,9 +247,7 @@
         x: pt.x, y: pt.y, w: t.w, h: t.h, vx: 0, vy: 0,
         type: t.type, color: t.color, flying: t.flying,
         hp: t.hp + Math.floor(totalKills * 2.5), maxHp: t.hp + Math.floor(totalKills * 2.5),
-        speed: t.speed,
-        isAggressive: false,
-        roamTimer: 0, roamDir: 1
+        speed: t.speed, isAggressive: false, roamTimer: 0, roamDir: 1, jumpTimer: 0
       });
     }
     setInterval(spawnMonster, 1800);
@@ -240,6 +285,12 @@
       ent.x += ent.vx;
       ent.y += ent.vy;
 
+      if (ent.x > canvas.width) {
+        ent.x = -ent.w;
+      } else if (ent.x + ent.w < 0) {
+        ent.x = canvas.width;
+      }
+
       ent.isGrounded = false;
       platforms.forEach(p => {
         if (ent.x + ent.w > p.x && ent.x < p.x + p.w &&
@@ -249,15 +300,14 @@
           ent.isGrounded = true;
         }
       });
-      ent.x = Math.max(0, Math.min(canvas.width - ent.w, ent.x));
     }
 
     function update() {
-      if (isGameOver) return;
+      if (!isGameStarted || isGameOver) return;
       checkBossSpawn();
 
       // 1P 操作
-      if (p1.hp > 0) {
+      if (p1 && p1.hp > 0) {
         p1.vx = 0;
         if (keys['KeyA']) { p1.vx = -3.4; p1.facing = -1; }
         if (keys['KeyD']) { p1.vx = 3.4; p1.facing = 1; }
@@ -274,7 +324,7 @@
       }
 
       // 2P 操作
-      if (p2.hp > 0) {
+      if (gameMode === 2 && p2 && p2.hp > 0) {
         p2.vx = 0;
         if (keys['ArrowLeft']) { p2.vx = -3.4; p2.facing = -1; }
         if (keys['ArrowRight']) { p2.vx = 3.4; p2.facing = 1; }
@@ -296,12 +346,19 @@
         if (b.gravity) b.vy += b.gravity;
         b.x += b.vx; b.y += b.vy;
 
+        if (b.x > canvas.width) { b.x = 0; b.wrapCount++; }
+        else if (b.x < 0) { b.x = canvas.width; b.wrapCount++; }
+
+        if (b.wrapCount > 2 || b.y > canvas.height || b.y < -50) {
+          bullets.splice(i, 1); continue;
+        }
+
         let hitPlatform = false;
         platforms.forEach(p => {
           if (b.x > p.x && b.x < p.x + p.w && b.y > p.y && b.y < p.y + p.h) hitPlatform = true;
         });
 
-        if (hitPlatform || b.x < 0 || b.x > canvas.width || b.y > canvas.height) {
+        if (hitPlatform) {
           if (b.radius) createExplosion(b.x, b.y, b.radius, b.dmg);
           else spawnParticles(b.x, b.y, b.color, 4, 2);
           bullets.splice(i, 1); continue;
@@ -324,7 +381,7 @@
               m.hp -= b.dmg;
               if (m.hp <= 0) {
                 totalKills++;
-                b.owner.gold += 15;
+                if (b.owner) b.owner.gold += 15;
                 spawnParticles(m.x + m.w/2, m.y + m.h/2, m.color, 15, 4);
                 if (Math.random() < 0.5) drops.push({ x: m.x, y: m.y, w: 14, h: 14, type: 'gold' });
                 monsters.splice(j, 1);
@@ -335,23 +392,33 @@
         }
       }
 
-      // 🤖 怪物被動巡邏 AI 🤖
+      // 🤖 怪物 AI（新增地面怪物跳躍邏輯）🤖
       monsters.forEach(m => {
         updateEntity(m);
-        let targets = [p1, p2].filter(p => p.hp > 0);
+        let targets = [p1, p2].filter(p => p && p.hp > 0);
         
         if (targets.length > 0) {
           targets.sort((a,b) => Math.hypot((a.x - m.x), (a.y - m.y)) - Math.hypot((b.x - m.x), (b.y - m.y)));
           let target = targets[0];
           let dist = Math.hypot((target.x + target.w/2) - (m.x + m.w/2), (target.y + target.h/2) - (m.y + m.h/2));
 
-          if (dist < 150 || m.hp < m.maxHp) {
+          if (dist < 160 || m.hp < m.maxHp) {
             m.isAggressive = true;
           }
 
           if (m.isAggressive) {
             m.vx = target.x > m.x ? m.speed * 1.25 : -m.speed * 1.25;
-            if (m.flying) m.vy = target.y > m.y ? m.speed * 0.8 : -m.speed * 0.8;
+            if (m.flying) {
+              m.vy = target.y > m.y ? m.speed * 0.8 : -m.speed * 0.8;
+            } else if (m.isGrounded) {
+              // 🦘 怪物跳躍判斷：當玩家在上方且距離接近，或者前方有平台障礙時發動跳躍
+              const playerAbove = target.y < m.y - 30;
+              const horizClose = Math.abs(target.x - m.x) < 140;
+              if ((playerAbove && horizClose) || Math.random() < 0.02) {
+                m.vy = -9.8; // 跳躍力量
+              }
+            }
+
             if (Math.abs(m.x - target.x) < 18 && Math.abs(m.y - target.y) < 18) {
               target.hp = Math.max(0, target.hp - 0.45);
             }
@@ -362,20 +429,23 @@
               m.roamDir = Math.random() < 0.35 ? 1 : Math.random() < 0.7 ? -1 : 0;
             }
             m.vx = m.roamDir * m.speed * 0.5;
-            if (m.flying) m.vy = Math.sin(Date.now() / 300) * 0.5;
+            if (m.flying) {
+              m.vy = Math.sin(Date.now() / 300) * 0.5;
+            } else if (m.isGrounded && Math.random() < 0.015) {
+              m.vy = -8.5; // 巡邏隨機小跳
+            }
           }
         }
       });
 
-      // BOSS 邏輯
+      // BOSS
       if (boss) {
         updateEntity(boss, 0.2);
-        if (boss.x <= 10 || boss.x >= canvas.width - boss.w - 10) boss.vx *= -1;
 
         const now = Date.now();
         if (now - boss.lastShot > 1300) {
           boss.lastShot = now;
-          let targets = [p1, p2].filter(p => p.hp > 0);
+          let targets = [p1, p2].filter(p => p && p.hp > 0);
           if (targets.length > 0) {
             let t = targets[Math.floor(Math.random() * targets.length)];
             let angle = Math.atan2((t.y + t.h/2) - (boss.y + boss.h/2), (t.x + t.w/2) - (boss.x + boss.w/2));
@@ -402,20 +472,21 @@
         let bb = bossBullets[i];
         bb.x += bb.vx; bb.y += bb.vy;
 
+        if (bb.x > canvas.width) bb.x = 0;
+        else if (bb.x < 0) bb.x = canvas.width;
+
         [p1, p2].forEach(p => {
-          if (p.hp > 0 && Math.hypot((p.x + p.w/2) - bb.x, (p.y + p.h/2) - bb.y) < 18) {
+          if (p && p.hp > 0 && Math.hypot((p.x + p.w/2) - bb.x, (p.y + p.h/2) - bb.y) < 18) {
             p.hp = Math.max(0, p.hp - 18);
             spawnParticles(bb.x, bb.y, '#f43f5e', 6, 3);
             bossBullets.splice(i, 1);
           }
         });
 
-        if (bb.x < 0 || bb.x > canvas.width || bb.y < 0 || bb.y > canvas.height) {
-          bossBullets.splice(i, 1);
-        }
+        if (bb.y < 0 || bb.y > canvas.height) bossBullets.splice(i, 1);
       }
 
-      // 地雷更新
+      // 地雷
       mines.forEach((m, idx) => {
         if (!m.isPlanted) {
           updateEntity(m);
@@ -429,19 +500,18 @@
         });
       });
 
-      // 爆炸與粒子淡出
+      // 特效淡出
       explosions.forEach((ex, idx) => {
         ex.alpha -= 0.05;
         if (ex.alpha <= 0) explosions.splice(idx, 1);
       });
 
       particles.forEach((p, idx) => {
-        p.x += p.vx; p.y += p.vy;
-        p.alpha -= 0.04;
+        p.x += p.vx; p.y += p.vy; p.alpha -= 0.04;
         if (p.alpha <= 0) particles.splice(idx, 1);
       });
 
-      // 掉落物
+      // 拾取物
       drops.forEach((d, index) => {
         d.y += 0.8;
         platforms.forEach(p => {
@@ -449,7 +519,7 @@
         });
 
         [p1, p2].forEach(p => {
-          if (p.hp > 0 && Math.abs(p.x - d.x) < 22 && Math.abs(p.y - d.y) < 22) {
+          if (p && p.hp > 0 && Math.abs(p.x - d.x) < 22 && Math.abs(p.y - d.y) < 22) {
             if (d.type === 'gold') p.gold += 20;
             if (d.type === 'hp') p.hp = Math.min(p.maxHp, p.hp + 30);
             if (d.type === 'ammo_all') {
@@ -462,34 +532,31 @@
         });
       });
 
-      if (p1.hp <= 0 && p2.hp <= 0) isGameOver = true;
+      if (gameMode === 1 && p1.hp <= 0) triggerGameOver();
+      if (gameMode === 2 && p1.hp <= 0 && p2.hp <= 0) triggerGameOver();
     }
 
-    // ─── 4. 精緻繪圖渲染引擎 ───
+    function triggerGameOver() {
+      isGameOver = true;
+      document.getElementById('finalKills').textContent = totalKills;
+      document.getElementById('gameOverOverlay').style.display = 'flex';
+    }
+
+    // ─── 畫面渲染 ───
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 深邃背景質感
       const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      bgGradient.addColorStop(0, '#0f0c1b');
-      bgGradient.addColorStop(1, '#05030a');
-      ctx.fillStyle = bgGradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      bgGradient.addColorStop(0, '#0f0c1b'); bgGradient.addColorStop(1, '#05030a');
+      ctx.fillStyle = bgGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 地板平台 (金屬質感的磚紋與光條)
       platforms.forEach(p => {
         const platGrad = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
-        platGrad.addColorStop(0, '#332a42');
-        platGrad.addColorStop(1, '#1b1426');
-        ctx.fillStyle = platGrad;
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-
-        // 高光邊線
-        ctx.fillStyle = '#8b5cf6';
-        ctx.fillRect(p.x, p.y, p.w, 3);
+        platGrad.addColorStop(0, '#332a42'); platGrad.addColorStop(1, '#1b1426');
+        ctx.fillStyle = platGrad; ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.fillStyle = '#8b5cf6'; ctx.fillRect(p.x, p.y, p.w, 3);
       });
 
-      // 寶箱 (高光金屬感)
       chests.forEach(c => {
         ctx.fillStyle = c.opened ? '#475569' : '#f59e0b';
         ctx.fillRect(c.x, c.y, c.w, c.h);
@@ -497,85 +564,60 @@
         ctx.fillRect(c.x + 3, c.y + 3, c.w - 6, 6);
       });
 
-      // 掉落物
       drops.forEach(d => {
         ctx.fillStyle = d.type === 'gold' ? '#fbbf24' : d.type === 'hp' ? '#f43f5e' : '#a855f7';
         ctx.beginPath(); ctx.arc(d.x + d.w/2, d.y + d.h/2, d.w/2, 0, Math.PI*2); ctx.fill();
       });
 
-      // 玩家角色繪製 (金屬鎧甲漸層 + 發光眼線)
       [p1, p2].forEach(p => {
-        if (p.hp <= 0) return;
-        
-        // 角色身體
+        if (!p || p.hp <= 0) return;
         const pGrad = ctx.createLinearGradient(p.x, p.y, p.x + p.w, p.y + p.h);
-        pGrad.addColorStop(0, p.accentColor);
-        pGrad.addColorStop(1, p.mainColor);
-        ctx.fillStyle = pGrad;
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-
-        // 頭盔護甲條
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(p.x + 2, p.y + 4, p.w - 4, 8);
-
-        // 發光眼睛
+        pGrad.addColorStop(0, p.accentColor); pGrad.addColorStop(1, p.mainColor);
+        ctx.fillStyle = pGrad; ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.fillStyle = '#0f172a'; ctx.fillRect(p.x + 2, p.y + 4, p.w - 4, 8);
         ctx.fillStyle = '#67e8f9';
         let eyeX = p.facing === 1 ? p.x + 13 : p.x + 3;
         ctx.fillRect(eyeX, p.y + 6, 6, 4);
       });
 
-      // 🎨 精緻怪物繪製 🎨
       monsters.forEach(m => {
         if (m.type === 'slime') {
-          // 史萊姆：半透明氣泡感漸層
           const sGrad = ctx.createRadialGradient(m.x + m.w/2, m.y + m.h/2, 2, m.x + m.w/2, m.y + m.h/2, m.w/2);
           sGrad.addColorStop(0, '#34d399'); sGrad.addColorStop(1, '#059669');
-          ctx.fillStyle = sGrad;
-          ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
-          // 高光點
+          ctx.fillStyle = sGrad; ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#a7f3d0'; ctx.fillRect(m.x + 6, m.y + 4, 4, 4);
         } else if (m.type === 'eye') {
-          // 浮游魔眼
-          ctx.fillStyle = '#f43f5e';
-          ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#f43f5e'; ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, 6, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, 3, 0, Math.PI * 2); ctx.fill();
         } else {
-          // 骷髏戰士
           ctx.fillStyle = '#e2e8f0'; ctx.fillRect(m.x, m.y, m.w, m.h);
           ctx.fillStyle = '#09090b'; ctx.fillRect(m.x + 3, m.y + 5, 5, 5); ctx.fillRect(m.x + 14, m.y + 5, 5, 5);
           ctx.fillStyle = '#ef4444'; ctx.fillRect(m.x + 5, m.y + 7, 2, 2); ctx.fillRect(m.x + 16, m.y + 7, 2, 2);
         }
 
-        // 憤怒狀態發光標示
         if (m.isAggressive) {
           ctx.fillStyle = '#ef4444'; ctx.font = 'bold 14px Segoe UI'; ctx.textAlign = 'center';
           ctx.fillText('⚡', m.x + m.w/2, m.y - 4);
         }
       });
 
-      // BOSS 繪製
       if (boss) {
         const bGrad = ctx.createLinearGradient(boss.x, boss.y, boss.x + boss.w, boss.y + boss.h);
         bGrad.addColorStop(0, '#f43f5e'); bGrad.addColorStop(1, '#881337');
         ctx.fillStyle = bGrad; ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
+        ctx.fillStyle = '#fbbf24'; ctx.fillRect(boss.x + 12, boss.y + 16, 14, 14); ctx.fillRect(boss.x + 44, boss.y + 16, 14, 14);
 
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(boss.x + 12, boss.y + 16, 14, 14);
-        ctx.fillRect(boss.x + 44, boss.y + 16, 14, 14);
-
-        // BOSS 血條
         ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'; ctx.fillRect(230, 12, 400, 20);
         ctx.fillStyle = '#ef4444'; ctx.fillRect(235, 15, (boss.hp / boss.maxHp) * 390, 14);
         ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Segoe UI'; ctx.textAlign = 'center';
         ctx.fillText('⚠️ 地牢霸主 ⚠️', canvas.width / 2, 27);
       }
 
-      // 子彈 (發光尾跡)
       bullets.forEach(b => {
         ctx.shadowColor = b.color; ctx.shadowBlur = 8;
         ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h);
-        ctx.shadowBlur = 0; // 重置光暈
+        ctx.shadowBlur = 0;
       });
 
       bossBullets.forEach(bb => {
@@ -586,43 +628,31 @@
 
       mines.forEach(m => { ctx.fillStyle = '#a855f7'; ctx.fillRect(m.x, m.y, m.w, m.h); });
 
-      // 爆炸特效
       explosions.forEach(ex => {
         ctx.beginPath(); ctx.arc(ex.x, ex.y, ex.radius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(249, 115, 22, ${ex.alpha})`; ctx.fill();
       });
 
-      // 粒子渲染
       particles.forEach(p => {
         ctx.fillStyle = p.color; ctx.globalAlpha = p.alpha;
-        ctx.fillRect(p.x, p.y, p.size, p.size);
-        ctx.globalAlpha = 1.0;
+        ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1.0;
       });
 
-      // HUD 介面
-      drawPlayerHUD(p1, 15, 15);
-      drawPlayerHUD(p2, canvas.width - 225, 15);
+      if (p1) drawPlayerHUD(p1, 15, 15);
+      if (gameMode === 2 && p2) drawPlayerHUD(p2, canvas.width - 225, 15);
 
-      ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 24px Courier New'; ctx.textAlign = 'center';
-      ctx.fillText(`KILLS ${totalKills}`, canvas.width / 2, 505);
-
-      if (isGameOver) {
-        ctx.fillStyle = 'rgba(5, 5, 11, 0.9)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ef4444'; ctx.font = 'bold 42px Segoe UI';
-        ctx.fillText('GAME OVER', canvas.width / 2, 230);
-        ctx.fillStyle = '#cbd5e1'; ctx.font = '18px Segoe UI';
-        ctx.fillText(`最終擊殺數: ${totalKills}`, canvas.width / 2, 280);
+      if (isGameStarted) {
+        ctx.fillStyle = '#f8fafc'; ctx.font = 'bold 24px Courier New'; ctx.textAlign = 'center';
+        ctx.fillText(`KILLS ${totalKills}`, canvas.width / 2, 505);
       }
     }
 
     function drawPlayerHUD(p, x, y) {
-      // 玻璃質感背景卡片
       ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
       ctx.fillRect(x, y, 210, 75);
       ctx.strokeRect(x, y, 210, 75);
 
-      // 血條發光
       ctx.fillStyle = '#10b981';
       ctx.fillRect(x + 10, y + 10, Math.max(0, (p.hp / p.maxHp) * 190), 10);
 
