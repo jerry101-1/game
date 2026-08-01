@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>地牢RPG冒險</title>
+  <title>無限地牢 RPG - 商店與關卡優化版</title>
   <style>
     * {
       box-sizing: border-box;
@@ -61,7 +61,7 @@
     }
     .log-box {
       width: 100%;
-      height: 380px;
+      height: 270px;
       background-color: #010409;
       border: 1px solid #30363d;
       border-radius: 6px;
@@ -75,6 +75,37 @@
     .log-msg.heal { color: #56d364; }
     .log-msg.reward { color: #e3b341; }
     .log-msg.boss { color: #bc8cff; font-weight: bold; }
+
+    /* 常設商店樣式 */
+    .shop-box {
+      background-color: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .shop-title {
+      font-weight: bold;
+      color: #fb923c;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .shop-btn {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 6px;
+      background-color: #21262d;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      text-align: left;
+      transition: background 0.2s;
+    }
+    .shop-btn:hover {
+      background-color: #30363d;
+      border-color: #8b949e;
+    }
 
     .legend {
       margin-top: 10px;
@@ -98,7 +129,7 @@
 </head>
 <body>
 
-  <h1>⚔️ 無限地牢 RPG (進階版)</h1>
+  <h1>⚔️ 無限地牢 RPG (優化版)</h1>
   
   <div class="status-bar">
     <div>🏰 層數: <span id="floor">1</span></div>
@@ -113,6 +144,12 @@
     <canvas id="gameCanvas" width="440" height="440"></canvas>
     
     <div class="side-panel">
+      <div class="shop-box">
+        <div class="shop-title">🛒 隨身黑市商店</div>
+        <button class="shop-btn" onclick="buyHeal()">❤️ 購買生命藥水 (+40 HP) - <span id="heal-cost">20</span>G</button>
+        <button class="shop-btn" onclick="buyAtk()">⚔️ 鍛造武器 (+5 ATK) - <span id="atk-cost">40</span>G</button>
+      </div>
+
       <div class="log-box" id="logBox">
         <div class="log-msg">進入了第 1 層地牢...</div>
       </div>
@@ -124,8 +161,7 @@
     <div class="legend-item"><span class="dot" style="background:#f87171;"></span> 怪物</div>
     <div class="legend-item"><span class="dot" style="background:#a855f7;"></span> BOSS</div>
     <div class="legend-item"><span class="dot" style="background:#facc15;"></span> 寶箱</div>
-    <div class="legend-item"><span class="dot" style="background:#4ade80;"></span> 下一層傳送門</div>
-    <div class="legend-item"><span class="dot" style="background:#fb923c;"></span> 商人</div>
+    <div class="legend-item"><span class="dot" style="background:#4ade80;"></span> 傳送門 (全滅怪解鎖)</div>
   </div>
 
   <script>
@@ -148,7 +184,13 @@
       gold: 0
     };
 
-    // 預設地圖 (固定邊框牆與內部障礙，絕對無夾牆問題)
+    // 商店價格隨次數微幅上漲
+    let shopCosts = {
+      heal: 20,
+      atk: 40
+    };
+
+    // 地圖結構
     const mapTemplate = [
       [1,1,1,1,1,1,1,1,1,1,1],
       [1,0,0,0,0,1,0,0,0,0,1],
@@ -167,7 +209,7 @@
     let monsters = [];
     let chests = [];
     let exitPortal = null;
-    let merchant = null;
+    let isPortalUnlocked = false;
 
     function addLog(msg, type = "") {
       const logBox = document.getElementById('logBox');
@@ -178,7 +220,6 @@
       logBox.scrollTop = logBox.scrollHeight;
     }
 
-    // 取得所有安全的可用空位 (非牆壁，非玩家起始位置)
     function getEmptyPositions() {
       let empties = [];
       for (let r = 0; r < mapRows; r++) {
@@ -191,24 +232,22 @@
       return empties;
     }
 
-    // 生成當前層數的物體
     function initFloor() {
       map = JSON.parse(JSON.stringify(mapTemplate));
       player.x = 1;
       player.y = 1;
+      isPortalUnlocked = false;
 
       let empties = getEmptyPositions();
-      // 洗牌空位
       empties.sort(() => Math.random() - 0.5);
 
       monsters = [];
       chests = [];
-      merchant = null;
 
-      // 1. 設置下一層門 (最遠角落)
+      // 1. 設置傳送門位置 (尚未解鎖)
       exitPortal = empties.pop();
 
-      // 2. 生成 BOSS (每 5 層) 或 一般怪物
+      // 2. 生成怪物 / BOSS
       const isBossFloor = (currentFloor % 5 === 0);
       const monsterCount = isBossFloor ? 1 : Math.min(2 + Math.floor(currentFloor / 2), 6);
 
@@ -219,41 +258,36 @@
         if (isBossFloor) {
           monsters.push({
             x: pos.x, y: pos.y,
-            name: `第 ${currentFloor} 層守門 BOSS`,
-            hp: 100 + currentFloor * 40,
-            maxHp: 100 + currentFloor * 40,
-            atk: 12 + currentFloor * 5,
+            name: `第 ${currentFloor} 層 BOSS`,
+            hp: 120 + currentFloor * 40,
+            maxHp: 120 + currentFloor * 40,
+            atk: 14 + currentFloor * 5,
             exp: 100 + currentFloor * 20,
-            gold: 150 + currentFloor * 30,
+            gold: 200 + currentFloor * 50,
             isBoss: true
           });
-          addLog(`⚠️ 警告：區域內出現強大 BOSS！`, "boss");
+          addLog(`⚠️ 警告：出現區域 BOSS！清空所有怪物以開啟傳送門！`, "boss");
         } else {
           monsters.push({
             x: pos.x, y: pos.y,
-            name: `小怪 Lv.${currentFloor}`,
-            hp: 20 + currentFloor * 12,
-            maxHp: 20 + currentFloor * 12,
-            atk: 5 + currentFloor * 3,
+            name: `怪物 Lv.${currentFloor}`,
+            hp: 25 + currentFloor * 12,
+            maxHp: 25 + currentFloor * 12,
+            atk: 6 + currentFloor * 3,
             exp: 15 + currentFloor * 5,
-            gold: 10 + currentFloor * 5,
+            gold: 20 + currentFloor * 10,
             isBoss: false
           });
         }
       }
 
-      // 3. 生成寶箱
+      // 3. 寶箱
       if (empties.length > 0 && Math.random() > 0.3) {
         let pos = empties.pop();
-        chests.push({ x: pos.x, y: pos.y, gold: 30 + currentFloor * 15 });
+        chests.push({ x: pos.x, y: pos.y, gold: 40 + currentFloor * 20 });
       }
 
-      // 4. 生成商人 (奇數層)
-      if (currentFloor % 2 !== 0 && empties.length > 0) {
-        merchant = empties.pop();
-      }
-
-      addLog(`🏰 進入了第 ${currentFloor} 層地牢`);
+      addLog(`🏰 進入第 ${currentFloor} 層地牢（需擊殺所有怪物解鎖傳送門）`);
       updateUI();
       draw();
     }
@@ -261,13 +295,13 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 畫地圖與牆壁
+      // 地圖繪製
       for (let r = 0; r < mapRows; r++) {
         for (let c = 0; c < mapCols; c++) {
           if (map[r][c] === 1) {
-            ctx.fillStyle = '#1f2937'; // 牆
+            ctx.fillStyle = '#1f2937';
           } else {
-            ctx.fillStyle = '#111827'; // 路
+            ctx.fillStyle = '#111827';
           }
           ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
           ctx.strokeStyle = '#0f172a';
@@ -275,27 +309,30 @@
         }
       }
 
-      // 畫下一層傳送門 (綠色旋渦/方塊)
+      // 傳送門 (解鎖為亮綠色，未解鎖為深灰灰色)
       if (exitPortal) {
-        ctx.fillStyle = '#4ade80';
+        ctx.fillStyle = isPortalUnlocked ? '#4ade80' : '#374151';
         ctx.fillRect(exitPortal.x * tileSize + 8, exitPortal.y * tileSize + 8, 24, 24);
+        
+        // 未解鎖劃上叉叉標記
+        if (!isPortalUnlocked) {
+          ctx.strokeStyle = '#9ca3af';
+          ctx.beginPath();
+          ctx.moveTo(exitPortal.x * tileSize + 10, exitPortal.y * tileSize + 10);
+          ctx.lineTo(exitPortal.x * tileSize + 30, exitPortal.y * tileSize + 30);
+          ctx.moveTo(exitPortal.x * tileSize + 30, exitPortal.y * tileSize + 10);
+          ctx.lineTo(exitPortal.x * tileSize + 10, exitPortal.y * tileSize + 30);
+          ctx.stroke();
+        }
       }
 
-      // 畫商人
-      if (merchant) {
-        ctx.fillStyle = '#fb923c';
-        ctx.beginPath();
-        ctx.arc(merchant.x * tileSize + 20, merchant.y * tileSize + 20, 12, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // 畫寶箱
+      // 寶箱
       chests.forEach(c => {
         ctx.fillStyle = '#facc15';
         ctx.fillRect(c.x * tileSize + 10, c.y * tileSize + 10, 20, 20);
       });
 
-      // 畫怪物
+      // 怪物
       monsters.forEach(m => {
         ctx.fillStyle = m.isBoss ? '#a855f7' : '#f87171';
         let size = m.isBoss ? 28 : 22;
@@ -309,7 +346,7 @@
         ctx.fillRect(m.x * tileSize + 4, m.y * tileSize + 2, (m.hp / m.maxHp) * 32, 4);
       });
 
-      // 畫玩家
+      // 玩家
       ctx.fillStyle = '#38bdf8';
       ctx.beginPath();
       ctx.arc(player.x * tileSize + 20, player.y * tileSize + 20, 13, 0, Math.PI * 2);
@@ -323,6 +360,37 @@
       document.getElementById('atk').textContent = player.atk;
       document.getElementById('exp').textContent = `${player.exp}/${player.maxExp}`;
       document.getElementById('gold').textContent = player.gold;
+
+      document.getElementById('heal-cost').textContent = shopCosts.heal;
+      document.getElementById('atk-cost').textContent = shopCosts.atk;
+    }
+
+    // 商店購買功能
+    function buyHeal() {
+      if (player.gold >= shopCosts.heal) {
+        if (player.hp >= player.maxHp) {
+          addLog("❤️ 生命值已經是滿的了！");
+          return;
+        }
+        player.gold -= shopCosts.heal;
+        player.hp = Math.min(player.maxHp, player.hp + 40);
+        addLog(`🧪 購買生命藥水，恢復 40 HP！`, "heal");
+        updateUI();
+      } else {
+        addLog("💰 金幣不足，無法購買藥水！");
+      }
+    }
+
+    function buyAtk() {
+      if (player.gold >= shopCosts.atk) {
+        player.gold -= shopCosts.atk;
+        player.atk += 5;
+        addLog(`⚔️ 成功鍛造武器，攻擊力 +5！`, "reward");
+        shopCosts.atk += 10; // 武器升級費用每次微幅遞增
+        updateUI();
+      } else {
+        addLog("💰 金幣不足，無法強化武器！");
+      }
     }
 
     function checkLevelUp() {
@@ -330,10 +398,10 @@
         player.level++;
         player.exp -= player.maxExp;
         player.maxExp = Math.floor(player.maxExp * 1.4);
-        player.maxHp += 25;
+        player.maxHp += 20;
         player.hp = player.maxHp;
-        player.atk += 6;
-        addLog(`🎉 恭喜升級至 Lv.${player.level}！生命值與攻擊力提升！`, "reward");
+        player.atk += 4;
+        addLog(`🎉 恭喜升級至 Lv.${player.level}！生命值補滿！`, "reward");
       }
     }
 
@@ -343,35 +411,36 @@
       let newX = player.x + dx;
       let newY = player.y + dy;
 
-      // 撞牆判定
       if (map[newY][newX] === 1) return;
 
-      // 觸發怪物戰鬥
+      // 戰鬥觸發
       let mIndex = monsters.findIndex(m => m.x === newX && m.y === newY);
       if (mIndex !== -1) {
         let m = monsters[mIndex];
 
-        // 玩家攻擊
         m.hp -= player.atk;
-        addLog(`你攻擊 ${m.name} 造成 ${player.atk} 傷害`);
+        addLog(`你對 ${m.name} 造成 ${player.atk} 傷害`);
 
-        // 怪物反擊
         if (m.hp > 0) {
           player.hp -= m.atk;
           addLog(`${m.name} 反擊造成 ${m.atk} 傷害!`, "damage");
         } else {
-          // 擊敗怪物
-          addLog(`擊敗了 ${m.name}！獲得 ${m.exp} EXP、${m.gold} 金幣`, "reward");
+          addLog(`擊敗 ${m.name}！獲得 ${m.exp} EXP、${m.gold} 金幣`, "reward");
           player.exp += m.exp;
           player.gold += m.gold;
           monsters.splice(mIndex, 1);
           checkLevelUp();
+
+          // 判定是否所有怪清空 -> 解鎖傳送門
+          if (monsters.length === 0) {
+            isPortalUnlocked = true;
+            addLog(`🔓 所有怪物已清空！傳送門已解鎖！`, "heal");
+          }
         }
 
-        // 玩家死亡判斷
         if (player.hp <= 0) {
           player.hp = 0;
-          addLog(`💀 你被擊戰倒了... 停留在第 ${currentFloor} 層`, "damage");
+          addLog(`💀 你倒下了... 冒險停留在第 ${currentFloor} 層`, "damage");
           alert(`遊戲結束！你最高到達了第 ${currentFloor} 層！`);
           location.reload();
         }
@@ -381,38 +450,28 @@
         return;
       }
 
-      // 移動位置
+      // 移動
       player.x = newX;
       player.y = newY;
 
-      // 踩到寶箱
+      // 寶箱
       let cIndex = chests.findIndex(c => c.x === newX && c.y === newY);
       if (cIndex !== -1) {
         player.gold += chests[cIndex].gold;
-        addLog(`📦 打開寶箱獲得 ${chests[cIndex].gold} 金幣！`, "reward");
+        addLog(`📦 開啟寶箱獲得 ${chests[cIndex].gold} 金幣！`, "reward");
         chests.splice(cIndex, 1);
       }
 
-      // 踩到商人
-      if (merchant && merchant.x === newX && merchant.y === newY) {
-        let cost = 30 + currentFloor * 10;
-        if (player.gold >= cost) {
-          player.gold -= cost;
-          player.atk += 10;
-          player.hp = Math.min(player.maxHp, player.hp + 30);
-          addLog(`🧙 商人強化了你的武器 (ATK +10, 回復 30 HP)`, "heal");
-          merchant = null; // 購買完商人離開
-        } else {
-          addLog(`🧙 商人：「強化武器需要 ${cost} 金幣！」`);
-        }
-      }
-
-      // 進入下一層傳送門
+      // 進入傳送門
       if (exitPortal && exitPortal.x === newX && exitPortal.y === newY) {
-        currentFloor++;
-        addLog(`🚪 進入傳送門，前往第 ${currentFloor} 層...`, "reward");
-        initFloor();
-        return;
+        if (isPortalUnlocked) {
+          currentFloor++;
+          addLog(`🚪 進入傳送門，前往第 ${currentFloor} 層...`, "reward");
+          initFloor();
+          return;
+        } else {
+          addLog(`🔒 傳送門鎖定中！請先擊殺地圖上所有怪物。`, "damage");
+        }
       }
 
       updateUI();
@@ -429,7 +488,6 @@
       if (e.key === 'ArrowRight') movePlayer(1, 0);
     });
 
-    // 啟動遊戲
     initFloor();
   </script>
 </body>
