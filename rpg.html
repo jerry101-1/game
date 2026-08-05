@@ -1,840 +1,393 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>精緻像素橫捲軸大亂鬥 - 古典金字塔版</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: #0b0705; color: #fff;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      min-height: 100vh; overflow: hidden;
-    }
-    .game-wrapper {
-      position: relative; border: 4px solid #5a3a1e; border-radius: 8px;
-      box-shadow: 0 0 50px rgba(180, 100, 30, 0.3), 0 20px 40px rgba(0,0,0,0.9);
-      overflow: hidden;
-    }
-    canvas { background-color: #3d281d; image-rendering: pixelated; display: block; }
-    
-    .overlay {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(20, 12, 8, 0.92); backdrop-filter: blur(6px);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      z-index: 10;
-    }
-    .overlay h1 {
-      font-size: 2.8rem; color: #f59e0b; text-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
-      margin-bottom: 25px; font-weight: 800; letter-spacing: 2px;
-    }
-    .btn-group { display: flex; gap: 20px; }
-    .mode-btn {
-      padding: 14px 28px; font-size: 1.1rem; font-weight: bold;
-      border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.15);
-      color: #fbbf24; border-radius: 8px; cursor: pointer; transition: 0.2s;
-    }
-    .mode-btn:hover {
-      background: #f59e0b; color: #1c100b; transform: translateY(-3px);
-      box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
-    }
-    .mode-btn.p2-btn { border-color: #10b981; color: #34d399; background: rgba(16, 185, 129, 0.15); }
-    .mode-btn.p2-btn:hover { background: #10b981; color: #064e3b; box-shadow: 0 0 20px rgba(16, 185, 129, 0.6); }
-
-    .controls-hint {
-      margin-top: 12px; display: flex; gap: 30px; background: rgba(25, 16, 11, 0.85);
-      border: 1px solid rgba(245, 158, 11, 0.2); backdrop-filter: blur(8px);
-      padding: 10px 24px; border-radius: 8px; font-size: 0.85rem; color: #fde68a;
-    }
-    .controls-hint strong { color: #f43f5e; }
-  </style>
+    <meta charset="UTF-8">
+    <title>2D 槍械拾取與戰鬥原型</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #111;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        canvas {
+            border: 2px solid #555;
+            background-color: #1a1a24;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        .instructions {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #aaa;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
 
-  <div class="game-wrapper">
-    <canvas id="gameCanvas" width="860" height="520"></canvas>
+    <h2>2D 動作遊戲 Prototype</h2>
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
     
-    <div class="overlay" id="startOverlay">
-      <h1>⚔️ 像素大亂鬥 ⚔️</h1>
-      <div class="btn-group">
-        <button class="mode-btn" onclick="startGame(1)">👤 1P 單人模式</button>
-        <button class="mode-btn p2-btn" onclick="startGame(2)">👥 2P 雙人合作</button>
-      </div>
+    <div class="instructions">
+        <strong>操作說明：</strong> A / D 鍵或 ← / → 移動 | Space / W / ↑ 跳躍（可二連跳）<br>
+        <strong>S / ↓ 鍵：</strong> 撿起地上的槍 | <strong>1 / 2 鍵：</strong> 切換武器 | <strong>滑鼠左鍵：</strong> 發射（產生爆波）
     </div>
 
-    <div class="overlay" id="gameOverOverlay" style="display: none;">
-      <h1 style="color: #ef4444;">GAME OVER</h1>
-      <p style="font-size: 1.2rem; margin-bottom: 20px; color: #fde68a;">最終擊殺總數: <span id="finalKills">0</span></p>
-      <div class="btn-group">
-        <button class="mode-btn" onclick="showStartMenu()">🔄 返回選擇模式</button>
-      </div>
-    </div>
-  </div>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-  <div class="controls-hint" id="controlsHint">
-    <div><strong>1P (藍)：</strong> WASD 移動/跳 | <strong>C</strong> 開槍 | <strong>V</strong> 換槍/開箱</div>
-    <div><strong>2P (綠)：</strong> ↑↓←→ 移動/跳 | <strong>K</strong> 開槍 | <strong>L</strong> 換槍/開箱</div>
-  </div>
+// --- 遊戲環境與地圖設定 ---
+const FLOOR_Y = canvas.height - 40;
+const GRAVITY = 0.5;
 
-  <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+// --- 按鍵監聽 ---
+const keys = {};
+let mouseX = 0, mouseY = 0;
 
-    let gameMode = 1;
-    let totalKills = 0, isGameOver = false, isGameStarted = false;
-    let nextBossThreshold = 15;
-    const keys = {};
-
-    const WEAPONS = {
-      pistol:     { name: '手槍', fireRate: 250, ammoType: 'inf', dmg: 18, speed: 11, spread: 0.02, color: '#fbbf24' },
-      ak47:       { name: 'AK-47', fireRate: 130, ammoType: 'rifle', dmg: 26, speed: 13, spread: 0.08, color: '#f97316' },
-      mgun:       { name: '重機槍', fireRate: 70,  ammoType: 'rifle', dmg: 20, speed: 14, spread: 0.22, color: '#f59e0b' },
-      smg:        { name: 'SMG', fireRate: 80,  ammoType: 'pistol', dmg: 14, speed: 12, spread: 0.16, color: '#38bdf8' },
-      shotgun:    { name: '霰彈槍', fireRate: 500, ammoType: 'shotgun', dmg: 16, speed: 11, spread: 0.28, color: '#ef4444' },
-      crossbow:   { name: '十字弓', fireRate: 450, ammoType: 'special', dmg: 65, speed: 17, spread: 0.0, color: '#10b981' },
-      rpg:        { name: 'RPG', fireRate: 900, ammoType: 'explosive', dmg: 130, speed: 8, spread: 0.0, color: '#dc2626', splashRadius: 70 },
-      grenade:    { name: '榴彈槍', fireRate: 700, ammoType: 'explosive', dmg: 85, speed: 9, spread: 0.05, color: '#ea580c', gravity: 0.25, splashRadius: 50 },
-      mine:       { name: '地雷槍', fireRate: 800, ammoType: 'special', dmg: 160, speed: 6, spread: 0.0, color: '#a855f7', splashRadius: 60 }
-    };
-
-    const MONSTER_TYPES = [
-      { type: 'slime',  name: '史萊姆', w: 24, h: 20, hp: 35, speed: 1.0, color: '#10b981' },
-      { type: 'spider', name: '洞穴蜘蛛', w: 26, h: 18, hp: 30, speed: 1.5, color: '#a855f7' },
-      { type: 'skel',   name: '骷髏戰士', w: 22, h: 28, hp: 55, speed: 1.2, color: '#e2e8f0' }
-    ];
-
-    // 🏰 非單純長方形的組合式平台結構（階梯、凹凸與造型底座）
-    const platforms = [
-      // 底部中央主要底座（階梯造型凸起）
-      { x: 300, y: 440, w: 260, h: 50, type: 'main_podium' },
-      { x: 360, y: 410, w: 140, h: 30, type: 'main_podium_top' },
-      
-      // 底部左右側懸空階梯（不連到底部邊緣）
-      { x: 50,  y: 470, w: 180, h: 20 },
-      { x: 630, y: 470, w: 180, h: 20 },
-
-      // 中下層凸形 platform
-      { x: 0,   y: 340, w: 200, h: 20 },
-      { x: 20,  y: 320, w: 80,  h: 20 }, // 增添階梯感
-      { x: 660, y: 340, w: 200, h: 20 },
-      { x: 760, y: 320, w: 80,  h: 20 },
-
-      // 中層空中平台（多層次）
-      { x: 260, y: 260, w: 120, h: 18 },
-      { x: 480, y: 260, w: 120, h: 18 },
-      { x: 370, y: 200, w: 120, h: 18 }, // 中央高臺
-
-      // 上層兩側懸崖平台
-      { x: 80,  y: 160, w: 180, h: 20 },
-      { x: 600, y: 160, w: 180, h: 20 },
-      
-      // 頂層狹窄戰術 platform
-      { x: 220, y: 90,  w: 130, h: 18 },
-      { x: 510, y: 90,  w: 130, h: 18 },
-
-      // 寶箱專用小平台
-      { x: 140, y: 410, w: 80, h: 16 },
-      { x: 640, y: 410, w: 80, h: 16 }
-    ];
-
-    const chests = [
-      { x: 165, y: 386, w: 30, h: 24, opened: false },
-      { x: 665, y: 386, w: 30, h: 24, opened: false }
-    ];
-
-    function createPlayer(x, mainColor, accentColor, skinColor, isP1) {
-      return {
-        x: x, y: 360, w: 24, h: 36, vx: 0, vy: 0,
-        mainColor: mainColor, accentColor: accentColor, skinColor: skinColor,
-        isP1: isP1, facing: 1, isGrounded: false,
-        hp: 100, maxHp: 100, gold: 2835,
-        inventory: ['pistol', 'ak47'],
-        currentWpnIdx: 0,
-        ammoPool: { pistol: 120, rifle: 90, shotgun: 35, explosive: 12, special: 15 },
-        lastShot: 0, animTimer: 0
-      };
+window.addEventListener('keydown', e => {
+    // 阻止方向鍵與空白鍵滾動網頁
+    if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
+        e.preventDefault();
     }
-
-    let p1, p2, bullets = [], bossBullets = [], monsters = [], drops = [], mines = [], explosions = [], particles = [];
-    let boss = null;
-
-    window.addEventListener('keydown', e => { keys[e.code] = true; });
-    window.addEventListener('keyup', e => { keys[e.code] = false; });
-
-    function startGame(mode) {
-      gameMode = mode;
-      isGameStarted = true; isGameOver = false; totalKills = 0; nextBossThreshold = 15;
-      bullets = []; bossBullets = []; monsters = []; drops = []; mines = []; explosions = []; particles = []; boss = null;
-      chests.forEach(c => c.opened = false);
-
-      p1 = createPlayer(380, '#2563eb', '#60a5fa', '#fbcfe8', true);
-      p2 = gameMode === 2 ? createPlayer(460, '#16a34a', '#4ade80', '#fed7aa', false) : null;
-
-      document.getElementById('startOverlay').style.display = 'none';
-      document.getElementById('gameOverOverlay').style.display = 'none';
-    }
-
-    function showStartMenu() {
-      isGameStarted = false;
-      document.getElementById('startOverlay').style.display = 'flex';
-      document.getElementById('gameOverOverlay').style.display = 'none';
-    }
-
-    function spawnParticles(x, y, color, count = 6, speed = 3) {
-      for (let i = 0; i < count; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const spd = Math.random() * speed;
-        particles.push({
-          x: x, y: y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
-          size: Math.random() * 3 + 1, color: color, alpha: 1.0
-        });
-      }
-    }
-
-    function fireWeapon(player) {
-      if (!player || player.hp <= 0) return;
-      const now = Date.now();
-      const wpnKey = player.inventory[player.currentWpnIdx];
-      const wpn = WEAPONS[wpnKey];
-
-      if (now - player.lastShot < wpn.fireRate) return;
-
-      if (wpn.ammoType !== 'inf') {
-        if (player.ammoPool[wpn.ammoType] <= 0) return;
-        player.ammoPool[wpn.ammoType]--;
-      }
-
-      player.lastShot = now;
-      const spawnX = player.x + (player.facing === 1 ? player.w + 6 : -10);
-      const spawnY = player.y + 16;
-
-      spawnParticles(spawnX, spawnY, '#fbbf24', 5, 2);
-
-      if (wpnKey === 'shotgun') {
-        for (let i = -2; i <= 2; i++) {
-          let spreadAngle = (i * 0.08) + (Math.random() - 0.5) * 0.06;
-          let baseVx = player.facing * wpn.speed;
-          bullets.push({
-            x: spawnX, y: spawnY, w: 6, h: 5,
-            vx: baseVx * Math.cos(spreadAngle), vy: baseVx * Math.sin(spreadAngle),
-            type: wpnKey, dmg: wpn.dmg, color: wpn.color, owner: player, wrapCount: 0
-          });
+    
+    if (!keys[e.code]) {
+        // 二連跳觸發
+        if ((e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp')) {
+            player.jump();
         }
-      } else if (wpnKey === 'mine') {
-        mines.push({
-          x: spawnX, y: spawnY, w: 16, h: 10,
-          vx: player.facing * wpn.speed, vy: -2.5,
-          dmg: wpn.dmg, radius: wpn.splashRadius, isPlanted: false
-        });
-      } else {
-        let offsetAngle = (Math.random() - 0.5) * wpn.spread;
-        let baseVx = player.facing * wpn.speed;
-
-        bullets.push({
-          x: spawnX, y: spawnY,
-          w: wpnKey === 'crossbow' ? 14 : 9, h: wpnKey === 'crossbow' ? 3 : 5,
-          vx: baseVx * Math.cos(offsetAngle),
-          vy: baseVx * Math.sin(offsetAngle) + (wpnKey === 'grenade' ? -3.8 : 0),
-          type: wpnKey, dmg: wpn.dmg, color: wpn.color,
-          gravity: wpn.gravity || 0, radius: wpn.splashRadius || 0, owner: player, wrapCount: 0
-        });
-      }
+        // 撿起武器觸發 (按 S 或 下方向鍵)
+        if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+            player.tryPickupWeapon();
+        }
+        // 切換武器 (1 或 2)
+        if (e.code === 'Digit1') player.switchWeapon(0);
+        if (e.code === 'Digit2') player.switchWeapon(1);
     }
+    keys[e.code] = true;
+});
 
-    function interactChest(player) {
-      if (!player || player.hp <= 0) return;
-      chests.forEach(c => {
-        if (!c.opened && Math.abs((player.x + player.w/2) - (c.x + c.w/2)) < 35 && Math.abs(player.y - c.y) < 30) {
-          c.opened = true;
-          spawnParticles(c.x + c.w/2, c.y, '#fbbf24', 15, 4);
-          const weaponList = ['mgun', 'smg', 'crossbow', 'ak47', 'shotgun', 'rpg', 'grenade', 'mine'];
-          const picked = weaponList[Math.floor(Math.random() * weaponList.length)];
-          
-          if (!player.inventory.includes(picked)) player.inventory.push(picked);
-          
-          player.ammoPool.rifle += 60; player.ammoPool.shotgun += 20;
-          player.ammoPool.special += 10; player.ammoPool.explosive += 6;
-        }
-      });
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+});
+canvas.addEventListener('mousedown', e => {
+    if (e.button === 0) player.shoot();
+});
+
+// --- 槍枝類型資料 ---
+const WEAPON_TYPES = {
+    PISTOL: { name: '手槍', color: '#f39c12', bulletSpeed: 10, cooldown: 15, damage: 10, shockwaveRadius: 20 },
+    SHOTGUN: { name: '獵槍', color: '#e74c3c', bulletSpeed: 8, cooldown: 35, damage: 25, shockwaveRadius: 35 },
+    RIFLE: { name: '步槍', color: '#3498db', bulletSpeed: 14, cooldown: 8, damage: 7, shockwaveRadius: 15 }
+};
+
+// --- 爆波（特效）類別 ---
+class Shockwave {
+    constructor(x, y, maxRadius) {
+        this.x = x;
+        this.y = y;
+        this.radius = 5;
+        this.maxRadius = maxRadius;
+        this.alpha = 1;
     }
-
-    function spawnMonster() {
-      if (!isGameStarted || isGameOver || monsters.length > 10 || boss) return;
-      const pts = [{x: 180, y: 50}, {x: 580, y: 50}, {x: 400, y: 120}];
-      const pt = pts[Math.floor(Math.random() * pts.length)];
-      const t = MONSTER_TYPES[Math.floor(Math.random() * MONSTER_TYPES.length)];
-
-      monsters.push({
-        x: pt.x, y: pt.y, w: t.w, h: t.h, vx: 0, vy: 0,
-        type: t.type, color: t.color,
-        hp: t.hp + Math.floor(totalKills * 2.5), maxHp: t.hp + Math.floor(totalKills * 2.5),
-        speed: t.speed, isAggressive: false, roamTimer: 0, roamDir: 1
-      });
+    update() {
+        this.radius += 2.5;
+        this.alpha -= 0.05;
     }
-    setInterval(spawnMonster, 1800);
-
-    function checkBossSpawn() {
-      if (!boss && totalKills >= nextBossThreshold) {
-        boss = {
-          x: 390, y: 80, w: 65, h: 65, vx: 2, vy: 0,
-          hp: 700 + totalKills * 25, maxHp: 700 + totalKills * 25,
-          color: '#f43f5e', lastShot: 0, isGrounded: false
-        };
-        nextBossThreshold += 25;
-      }
+    draw() {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 235, 59, ${Math.max(0, this.alpha)})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.restore();
     }
+}
 
-    function createExplosion(x, y, radius, damage) {
-      explosions.push({ x: x, y: y, radius: radius, alpha: 1.0 });
-      spawnParticles(x, y, '#f97316', 20, 6);
-
-      monsters.forEach((m, idx) => {
-        if (Math.hypot((m.x + m.w/2) - x, (m.y + m.h/2) - y) < radius) {
-          m.hp -= damage;
-          m.isAggressive = true;
-          if (m.hp <= 0) { totalKills++; monsters.splice(idx, 1); }
-        }
-      });
-
-      if (boss && Math.hypot((boss.x + boss.w/2) - x, (boss.y + boss.h/2) - y) < radius + 25) {
-        boss.hp -= damage;
-      }
+// --- 掉落在地上的武器 ---
+class GroundWeapon {
+    constructor(x, y, type) {
+        this.x = x;
+        this.y = y;
+        this.type = type; // WEAPON_TYPES 的物件
+        this.width = 24;
+        this.height = 12;
     }
-
-    // ⭐ 核心修正：完美左右穿梭（Y 座標與速度完全不變，不觸發頂部轉移）
-    function updateEntity(ent, gravity = 0.48) {
-      ent.vy += gravity;
-      ent.x += ent.vx;
-      ent.y += ent.vy;
-
-      // 左右穿越，精確保留原 Y 軸位置與 vy 速度
-      if (ent.x > canvas.width) { 
-        ent.x = -ent.w + 1; 
-      } else if (ent.x + ent.w < 0) { 
-        ent.x = canvas.width - 1; 
-      }
-
-      // 掉落到最底部死亡/重置防護，防止摔出畫框
-      if (ent.y > canvas.height + 40) {
-        ent.y = 50;
-        ent.vy = 0;
-      }
-
-      ent.isGrounded = false;
-      platforms.forEach(p => {
-        if (ent.x + ent.w > p.x && ent.x < p.x + p.w &&
-            ent.y + ent.h >= p.y && ent.y + ent.h <= p.y + p.h + ent.vy + 2) {
-          ent.y = p.y - ent.h;
-          ent.vy = 0;
-          ent.isGrounded = true;
-        }
-      });
-    }
-
-    function update() {
-      if (!isGameStarted || isGameOver) return;
-      checkBossSpawn();
-
-      // 1P 操作
-      if (p1 && p1.hp > 0) {
-        p1.vx = 0;
-        if (keys['KeyA']) { p1.vx = -3.4; p1.facing = -1; p1.animTimer += 0.2; }
-        if (keys['KeyD']) { p1.vx = 3.4; p1.facing = 1; p1.animTimer += 0.2; }
-        if (keys['KeyW'] && p1.isGrounded) p1.vy = -10.2;
-        if (keys['KeyC']) fireWeapon(p1);
-        if (keys['KeyV']) {
-          interactChest(p1);
-          if (!keys['v_lock']) {
-            p1.currentWpnIdx = (p1.currentWpnIdx + 1) % p1.inventory.length;
-            keys['v_lock'] = true;
-          }
-        } else { keys['v_lock'] = false; }
-        updateEntity(p1);
-      }
-
-      // 2P 操作
-      if (gameMode === 2 && p2 && p2.hp > 0) {
-        p2.vx = 0;
-        if (keys['ArrowLeft']) { p2.vx = -3.4; p2.facing = -1; p2.animTimer += 0.2; }
-        if (keys['ArrowRight']) { p2.vx = 3.4; p2.facing = 1; p2.animTimer += 0.2; }
-        if (keys['ArrowUp'] && p2.isGrounded) p2.vy = -10.2;
-        if (keys['KeyK']) fireWeapon(p2);
-        if (keys['KeyL']) {
-          interactChest(p2);
-          if (!keys['l_lock']) {
-            p2.currentWpnIdx = (p2.currentWpnIdx + 1) % p2.inventory.length;
-            keys['l_lock'] = true;
-          }
-        } else { keys['l_lock'] = false; }
-        updateEntity(p2);
-      }
-
-      // 子彈更新
-      for (let i = bullets.length - 1; i >= 0; i--) {
-        let b = bullets[i];
-        if (b.gravity) b.vy += b.gravity;
-        b.x += b.vx; b.y += b.vy;
-
-        if (b.x > canvas.width) { b.x = 0; b.wrapCount++; }
-        else if (b.x < 0) { b.x = canvas.width; b.wrapCount++; }
-
-        if (b.wrapCount > 2 || b.y > canvas.height || b.y < -50) {
-          bullets.splice(i, 1); continue;
-        }
-
-        let hitPlatform = false;
-        platforms.forEach(p => {
-          if (b.x > p.x && b.x < p.x + p.w && b.y > p.y && b.y < p.y + p.h) hitPlatform = true;
-        });
-
-        if (hitPlatform) {
-          if (b.radius) createExplosion(b.x, b.y, b.radius, b.dmg);
-          else spawnParticles(b.x, b.y, b.color, 4, 2);
-          bullets.splice(i, 1); continue;
-        }
-
-        if (boss && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h) {
-          if (b.radius) createExplosion(b.x, b.y, b.radius, b.dmg);
-          else { boss.hp -= b.dmg; spawnParticles(b.x, b.y, '#f43f5e', 5, 3); }
-          bullets.splice(i, 1); continue;
-        }
-
-        for (let j = monsters.length - 1; j >= 0; j--) {
-          let m = monsters[j];
-          if (b.x > m.x && b.x < m.x + m.w && b.y > m.y && b.y < m.y + m.h) {
-            m.isAggressive = true;
-            spawnParticles(b.x, b.y, m.color, 5, 2);
-            if (b.radius) {
-              createExplosion(b.x, b.y, b.radius, b.dmg);
-            } else {
-              m.hp -= b.dmg;
-              if (m.hp <= 0) {
-                totalKills++;
-                if (b.owner) b.owner.gold += 15;
-                spawnParticles(m.x + m.w/2, m.y + m.h/2, m.color, 15, 4);
-                if (Math.random() < 0.5) drops.push({ x: m.x, y: m.y, w: 14, h: 14, type: 'gold' });
-                monsters.splice(j, 1);
-              }
-            }
-            bullets.splice(i, 1); break;
-          }
-        }
-      }
-
-      // 怪物 AI 與跳躍
-      monsters.forEach(m => {
-        updateEntity(m);
-        let targets = [p1, p2].filter(p => p && p.hp > 0);
+    draw() {
+        ctx.fillStyle = this.type.color;
+        ctx.fillRect(this.x - this.width/2, this.y - this.height, this.width, this.height);
         
-        if (targets.length > 0) {
-          targets.sort((a,b) => Math.hypot((a.x - m.x), (a.y - m.y)) - Math.hypot((b.x - m.x), (b.y - m.y)));
-          let target = targets[0];
-          let dist = Math.hypot((target.x + target.w/2) - (m.x + m.w/2), (target.y + target.h/2) - (m.y + m.h/2));
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.type.name, this.x, this.y - this.height - 4);
+    }
+}
 
-          if (dist < 160 || m.hp < m.maxHp) m.isAggressive = true;
+// --- 寶箱類別 ---
+class Chest {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.width = 30;
+        this.height = 24;
+    }
+    draw() {
+        ctx.fillStyle = '#f1c40f';
+        ctx.fillRect(this.x - this.width/2, this.y - this.height, this.width, this.height);
+        ctx.strokeStyle = '#d35400';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.x - this.width/2, this.y - this.height, this.width, this.height);
+    }
+}
 
-          if (m.isAggressive) {
-            m.vx = target.x > m.x ? m.speed * 1.25 : -m.speed * 1.25;
-            if (m.isGrounded) {
-              const playerAbove = target.y < m.y - 30;
-              const horizClose = Math.abs(target.x - m.x) < 140;
-              if ((playerAbove && horizClose) || Math.random() < 0.02) {
-                m.vy = -9.8;
-              }
+// --- 子彈類別 ---
+class Bullet {
+    constructor(x, y, vx, vy) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.life = 60;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+    }
+    draw() {
+        ctx.fillStyle = '#ffeb3b';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// --- 玩家類別 ---
+class Player {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.width = 24;
+        this.height = 40;
+        this.vx = 0;
+        this.vy = 0;
+        this.isGrounded = false;
+        
+        // 跳躍控制
+        this.jumpCount = 0;
+        this.maxJumps = 2; // 二連跳
+        
+        // 背包系統（最多 2 把槍，初始配備手槍）
+        this.inventory = [WEAPON_TYPES.PISTOL];
+        this.equippedIndex = 0;
+        this.shootCooldown = 0;
+    }
+
+    jump() {
+        if (this.jumpCount < this.maxJumps) {
+            this.vy = -10;
+            this.jumpCount++;
+            this.isGrounded = false;
+        }
+    }
+
+    switchWeapon(index) {
+        if (index < this.inventory.length) {
+            this.equippedIndex = index;
+        }
+    }
+
+    shoot() {
+        if (this.shootCooldown > 0) return;
+        
+        const currentWeapon = this.inventory[this.equippedIndex];
+        const angle = Math.atan2(mouseY - (this.y - this.height/2), mouseX - this.x);
+        
+        const vx = Math.cos(angle) * currentWeapon.bulletSpeed;
+        const vy = Math.sin(angle) * currentWeapon.bulletSpeed;
+        
+        bullets.push(new Bullet(this.x, this.y - this.height/2, vx, vy));
+        
+        // 產生爆波效果
+        shockwaves.push(new Shockwave(this.x, this.y - this.height/2, currentWeapon.shockwaveRadius));
+        
+        this.shootCooldown = currentWeapon.cooldown;
+    }
+
+    tryPickupWeapon() {
+        // 搜尋附近的地面槍枝
+        for (let i = 0; i < groundWeapons.length; i++) {
+            const gw = groundWeapons[i];
+            const dist = Math.hypot(this.x - gw.x, (this.y - this.height/2) - gw.y);
+            
+            if (dist < 45) { // 處於可拾取範圍
+                if (this.inventory.length < 2) {
+                    // 背包只有 1 把：直接拾取至第二欄
+                    this.inventory.push(gw.type);
+                    this.equippedIndex = 1;
+                } else {
+                    // 背包已有 2 把：將當前手上的槍丟到地上，換成新槍
+                    const droppedType = this.inventory[this.equippedIndex];
+                    this.inventory[this.equippedIndex] = gw.type;
+                    
+                    // 將換掉的槍留給其他人撿
+                    groundWeapons.push(new GroundWeapon(this.x, FLOOR_Y, droppedType));
+                }
+                
+                // 移除被撿起的地板武器
+                groundWeapons.splice(i, 1);
+                break;
             }
+        }
+    }
 
-            if (Math.abs(m.x - target.x) < 18 && Math.abs(m.y - target.y) < 18) {
-              target.hp = Math.max(0, target.hp - 0.45);
+    update() {
+        // 左右移動
+        if (keys['KeyA'] || keys['ArrowLeft']) this.vx = -4;
+        else if (keys['KeyD'] || keys['ArrowRight']) this.vx = 4;
+        else this.vx = 0;
+
+        // 重力計算
+        this.vy += GRAVITY;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // 地板碰撞
+        if (this.y >= FLOOR_Y) {
+            this.y = FLOOR_Y;
+            this.vy = 0;
+            this.isGrounded = true;
+            this.jumpCount = 0; // 著地重置跳躍次數
+        }
+
+        // 地圖邊界
+        if (this.x < 15) this.x = 15;
+        if (this.x > canvas.width - 15) this.x = canvas.width - 15;
+
+        // 冷卻時間更新
+        if (this.shootCooldown > 0) this.shootCooldown--;
+
+        // 觸碰寶箱邏輯：寶箱碰到就開，開完就不見
+        for (let i = chests.length - 1; i >= 0; i--) {
+            const chest = chests[i];
+            if (Math.abs(this.x - chest.x) < 25 && Math.abs(this.y - chest.y) < 25) {
+                // 隨機開出 獵槍 或 步槍
+                const randomWeapon = Math.random() < 0.5 ? WEAPON_TYPES.SHOTGUN : WEAPON_TYPES.RIFLE;
+                
+                // 寶箱位置產生槍枝
+                groundWeapons.push(new GroundWeapon(chest.x, FLOOR_Y, randomWeapon));
+                
+                // 寶箱消失
+                chests.splice(i, 1);
             }
-          } else {
-            m.roamTimer--;
-            if (m.roamTimer <= 0) {
-              m.roamTimer = Math.floor(60 + Math.random() * 120);
-              m.roamDir = Math.random() < 0.35 ? 1 : Math.random() < 0.7 ? -1 : 0;
-            }
-            m.vx = m.roamDir * m.speed * 0.5;
-            if (m.isGrounded && Math.random() < 0.015) {
-              m.vy = -8.5;
-            }
-          }
         }
-      });
-
-      // BOSS AI
-      if (boss) {
-        updateEntity(boss, 0.45);
-
-        let targets = [p1, p2].filter(p => p && p.hp > 0);
-        if (targets.length > 0) {
-          let target = targets[0];
-          boss.vx = target.x > boss.x ? 1.8 : -1.8;
-
-          if (boss.isGrounded) {
-            const playerAbove = target.y < boss.y - 20;
-            const isNear = Math.abs(target.x - boss.x) < 160;
-            if ((playerAbove && isNear) || Math.random() < 0.012) {
-              boss.vy = -10.5;
-            }
-          }
-        }
-
-        const now = Date.now();
-        if (now - boss.lastShot > 1200) {
-          boss.lastShot = now;
-          if (targets.length > 0) {
-            let t = targets[Math.floor(Math.random() * targets.length)];
-            let angle = Math.atan2((t.y + t.h/2) - (boss.y + boss.h/2), (t.x + t.w/2) - (boss.x + boss.w/2));
-            bossBullets.push({
-              x: boss.x + boss.w/2, y: boss.y + boss.h/2,
-              vx: Math.cos(angle) * 5.5, vy: Math.sin(angle) * 5.5
-            });
-          }
-        }
-
-        if (boss.hp <= 0) {
-          totalKills += 5;
-          spawnParticles(boss.x + boss.w/2, boss.y + boss.h/2, '#f43f5e', 35, 7);
-          for (let k = 0; k < 6; k++) {
-            drops.push({ x: boss.x + k*10, y: boss.y, w: 14, h: 14, type: 'hp' });
-            drops.push({ x: boss.x + k*12, y: boss.y, w: 14, h: 14, type: 'ammo_all' });
-          }
-          boss = null;
-        }
-      }
-
-      // BOSS 彈幕
-      for (let i = bossBullets.length - 1; i >= 0; i--) {
-        let bb = bossBullets[i];
-        bb.x += bb.vx; bb.y += bb.vy;
-
-        if (bb.x > canvas.width) bb.x = 0;
-        else if (bb.x < 0) bb.x = canvas.width;
-
-        [p1, p2].forEach(p => {
-          if (p && p.hp > 0 && Math.hypot((p.x + p.w/2) - bb.x, (p.y + p.h/2) - bb.y) < 18) {
-            p.hp = Math.max(0, p.hp - 18);
-            spawnParticles(bb.x, bb.y, '#f43f5e', 6, 3);
-            bossBullets.splice(i, 1);
-          }
-        });
-
-        if (bb.y < 0 || bb.y > canvas.height) bossBullets.splice(i, 1);
-      }
-
-      // 地雷
-      mines.forEach((m, idx) => {
-        if (!m.isPlanted) {
-          updateEntity(m);
-          if (m.isGrounded) m.isPlanted = true;
-        }
-        monsters.concat(boss ? [boss] : []).forEach(target => {
-          if (Math.hypot((target.x + target.w/2) - m.x, (target.y + target.h/2) - m.y) < 28) {
-            createExplosion(m.x, m.y, m.radius, m.dmg);
-            mines.splice(idx, 1);
-          }
-        });
-      });
-
-      // 特效淡出
-      explosions.forEach((ex, idx) => {
-        ex.alpha -= 0.05;
-        if (ex.alpha <= 0) explosions.splice(idx, 1);
-      });
-
-      particles.forEach((p, idx) => {
-        p.x += p.vx; p.y += p.vy; p.alpha -= 0.04;
-        if (p.alpha <= 0) particles.splice(idx, 1);
-      });
-
-      // 拾取物
-      drops.forEach((d, index) => {
-        d.y += 0.8;
-        platforms.forEach(p => {
-          if (d.x > p.x && d.x < p.x + p.w && d.y + d.h >= p.y && d.y <= p.y + p.h) d.y = p.y - d.h;
-        });
-
-        [p1, p2].forEach(p => {
-          if (p && p.hp > 0 && Math.abs(p.x - d.x) < 22 && Math.abs(p.y - d.y) < 22) {
-            if (d.type === 'gold') p.gold += 20;
-            if (d.type === 'hp') p.hp = Math.min(p.maxHp, p.hp + 30);
-            if (d.type === 'ammo_all') {
-              p.ammoPool.rifle += 45; p.ammoPool.shotgun += 18;
-              p.ammoPool.special += 10; p.ammoPool.explosive += 6;
-            }
-            spawnParticles(d.x, d.y, '#38bdf8', 8, 3);
-            drops.splice(index, 1);
-          }
-        });
-      });
-
-      if (gameMode === 1 && p1.hp <= 0) triggerGameOver();
-      if (gameMode === 2 && p1.hp <= 0 && p2.hp <= 0) triggerGameOver();
     }
 
-    function triggerGameOver() {
-      isGameOver = true;
-      document.getElementById('finalKills').textContent = totalKills;
-      document.getElementById('gameOverOverlay').style.display = 'flex';
+    draw() {
+        // 畫玩家主體
+        ctx.fillStyle = '#2ecc71';
+        ctx.fillRect(this.x - this.width/2, this.y - this.height, this.width, this.height);
+
+        // 畫當前持有的槍
+        const currentWeapon = this.inventory[this.equippedIndex];
+        const angle = Math.atan2(mouseY - (this.y - this.height/2), mouseX - this.x);
+        
+        ctx.save();
+        ctx.translate(this.x, this.y - this.height/2);
+        ctx.rotate(angle);
+        ctx.fillStyle = currentWeapon.color;
+        ctx.fillRect(0, -3, 18, 6);
+        ctx.restore();
+    }
+}
+
+// --- 實例化遊戲物件 ---
+const player = new Player(100, FLOOR_Y);
+const bullets = [];
+const shockwaves = [];
+const groundWeapons = [];
+const chests = [
+    new Chest(300, FLOOR_Y),
+    new Chest(550, FLOOR_Y)
+];
+
+// --- 繪製 UI UI/HUD ---
+function drawUI() {
+    // 繪製背包資訊
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(10, 10, 200, 70);
+    ctx.strokeStyle = '#555';
+    ctx.strokeRect(10, 10, 200, 70);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText("背包 (可持 2 把槍):", 20, 30);
+
+    for (let i = 0; i < 2; i++) {
+        const weapon = player.inventory[i];
+        const isSelected = (i === player.equippedIndex);
+        
+        ctx.fillStyle = isSelected ? '#ffeb3b' : '#aaa';
+        const label = weapon ? `[${i+1}] ${weapon.name}` : `[${i+1}] (空)`;
+        ctx.fillText((isSelected ? "➤ " : "   ") + label, 20, 50 + i * 20);
+    }
+}
+
+// --- 主遊戲循環 ---
+function gameLoop() {
+    // 1. 清空畫布
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 2. 繪製地板
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(0, FLOOR_Y, canvas.width, canvas.height - FLOOR_Y);
+    ctx.fillStyle = '#4caf50';
+    ctx.fillRect(0, FLOOR_Y, canvas.width, 5); // 草地頂層
+
+    // 3. 更新與繪製寶箱
+    chests.forEach(chest => chest.draw());
+
+    // 4. 更新與繪製地面槍枝
+    groundWeapons.forEach(gw => gw.draw());
+
+    // 5. 更新與繪製子彈
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        bullets[i].update();
+        bullets[i].draw();
+        if (bullets[i].life <= 0) bullets.splice(i, 1);
     }
 
-    // 人物繪製邏輯
-    function drawHumanoidPlayer(p) {
-      if (!p || p.hp <= 0) return;
-
-      ctx.save();
-      const centerX = p.x + p.w / 2;
-      const legSwing = Math.sin(p.animTimer) * (p.vx !== 0 ? 6 : 0);
-
-      // 1. 腳部
-      ctx.fillStyle = '#1e293b';
-      if (!p.isGrounded) {
-        ctx.fillRect(centerX - 7, p.y + 24, 5, 8);
-        ctx.fillRect(centerX + 2, p.y + 22, 5, 8);
-      } else {
-        ctx.fillRect(centerX - 6 + legSwing, p.y + 24, 5, 12);
-        ctx.fillRect(centerX + 1 - legSwing, p.y + 24, 5, 12);
-      }
-
-      ctx.fillStyle = '#0f172a';
-      if (p.isGrounded) {
-        ctx.fillRect(centerX - 7 + legSwing, p.y + 33, 6, 3);
-        ctx.fillRect(centerX + 1 - legSwing, p.y + 33, 6, 3);
-      }
-
-      // 2. 身體/衣服
-      ctx.fillStyle = p.mainColor;
-      ctx.fillRect(centerX - 8, p.y + 12, 16, 13);
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(centerX - 8, p.y + 23, 16, 2);
-
-      // 3. 頭部與面具/帽子
-      ctx.fillStyle = p.skinColor;
-      ctx.beginPath();
-      ctx.arc(centerX, p.y + 7, 7, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = p.accentColor;
-      ctx.fillRect(centerX - 7, p.y + 1, 14, 5);
-
-      ctx.fillStyle = '#0284c7';
-      let eyeOffsetX = p.facing === 1 ? 1 : -5;
-      ctx.fillRect(centerX + eyeOffsetX, p.y + 5, 5, 3);
-
-      // 4. 手部與武器
-      ctx.fillStyle = p.skinColor;
-      let armX = p.facing === 1 ? centerX + 2 : centerX - 10;
-      ctx.fillRect(armX, p.y + 14, 8, 4);
-
-      ctx.fillStyle = '#334155';
-      let gunX = p.facing === 1 ? centerX + 8 : centerX - 14;
-      ctx.fillRect(gunX, p.y + 13, 8, 5);
-      ctx.fillStyle = '#000';
-      let barrelX = p.facing === 1 ? centerX + 14 : centerX - 16;
-      ctx.fillRect(barrelX, p.y + 14, 3, 2);
-
-      ctx.restore();
+    // 6. 更新與繪製爆波
+    for (let i = shockwaves.length - 1; i >= 0; i--) {
+        shockwaves[i].update();
+        shockwaves[i].draw();
+        if (shockwaves[i].alpha <= 0) shockwaves.splice(i, 1);
     }
 
-    // ─── 🏰 繪製多樣化、非長方形的地板與平台造型 ───
-    function drawMapBackground() {
-      // 1. 背景磚牆質感
-      ctx.fillStyle = '#4a3225';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 7. 更新與繪製玩家
+    player.update();
+    player.draw();
 
-      ctx.strokeStyle = '#382318';
-      ctx.lineWidth = 2;
-      const gridSize = 40;
-      for (let x = 0; x < canvas.width; x += gridSize) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-      }
+    // 8. 繪製 UI
+    drawUI();
 
-      ctx.fillStyle = '#331f14';
-      ctx.fillRect(canvas.width / 2 - 20, 0, 40, canvas.height);
+    requestAnimationFrame(gameLoop);
+}
 
-      // 2. 繪製精緻非幾何單調的古典磚塊平台
-      platforms.forEach(p => {
-        // 主體色
-        ctx.fillStyle = '#a37c3f';
-        ctx.fillRect(p.x, p.y, p.w, p.h);
+// 啟動遊戲
+gameLoop();
+</script>
 
-        // 頂部金黃高光
-        ctx.fillStyle = '#dcae5b';
-        ctx.fillRect(p.x, p.y, p.w, 4);
-
-        // 底部深色陰影
-        ctx.fillStyle = '#6e5127';
-        ctx.fillRect(p.x, p.y + p.h - 4, p.w, 4);
-
-        // 凸顯不規則質感：兩側繪製下垂飾紋/磚塊鑲邊
-        ctx.fillStyle = '#523a1c';
-        ctx.fillRect(p.x - 2, p.y + 4, 4, p.h - 4);
-        ctx.fillRect(p.x + p.w - 2, p.y + 4, 4, p.h - 4);
-
-        // 內部石磚分格與紋理
-        if (p.w >= 60) {
-          ctx.strokeStyle = '#7c5d2b';
-          ctx.lineWidth = 1.5;
-          for (let bx = p.x + 20; bx < p.x + p.w - 10; bx += 25) {
-            ctx.beginPath();
-            ctx.moveTo(bx, p.y + 4);
-            ctx.lineTo(bx, p.y + p.h - 4);
-            ctx.stroke();
-          }
-        }
-      });
-    }
-
-    // ─── 🏛️ UI (血條與金幣) ───
-    function drawRetroUI() {
-      drawRetroHPBar(15, 10, p1 ? p1.hp : 0, true);
-      if (gameMode === 2 && p2) {
-        drawRetroHPBar(canvas.width - 115, 10, p2.hp, false);
-      }
-
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath(); ctx.arc(22, 85, 9, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#d97706';
-      ctx.beginPath(); ctx.arc(22, 85, 6, 0, Math.PI * 2); ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px Courier New';
-      ctx.textAlign = 'left';
-      ctx.fillText(`${p1 ? p1.gold : 0}`, 38, 91);
-
-      ctx.fillStyle = '#dcae5b';
-      ctx.fillRect(canvas.width / 2 - 12, 10, 8, 20);
-      ctx.fillRect(canvas.width / 2 + 4, 10, 8, 20);
-    }
-
-    function drawRetroHPBar(x, y, hp, isLeft) {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(x, y, 100, 22);
-
-      const maxBlocks = 8;
-      const currentBlocks = Math.ceil((hp / 100) * maxBlocks);
-      for (let i = 0; i < maxBlocks; i++) {
-        if (i < currentBlocks) {
-          ctx.fillStyle = i >= maxBlocks - 2 ? '#f97316' : '#22c55e';
-        } else {
-          ctx.fillStyle = '#450a0a';
-        }
-        ctx.fillRect(x + 3 + i * 12, y + 3, 10, 16);
-      }
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 14px Courier New';
-      ctx.textAlign = isLeft ? 'left' : 'right';
-      ctx.fillText(`40 🔋`, isLeft ? x : x + 100, y + 38);
-    }
-
-    // ─── 畫面渲染 ───
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      drawMapBackground();
-
-      // 寶箱
-      chests.forEach(c => {
-        ctx.fillStyle = c.opened ? '#6e5127' : '#f59e0b';
-        ctx.fillRect(c.x, c.y, c.w, c.h);
-        ctx.fillStyle = c.opened ? '#4a3225' : '#fef08a';
-        ctx.fillRect(c.x + 4, c.y + 4, c.w - 8, 6);
-        ctx.fillStyle = '#7c5d2b';
-        ctx.fillRect(c.x + c.w/2 - 3, c.y + 10, 6, 8);
-      });
-
-      // 掉落物
-      drops.forEach(d => {
-        ctx.fillStyle = d.type === 'gold' ? '#fbbf24' : d.type === 'hp' ? '#f43f5e' : '#a855f7';
-        ctx.beginPath(); ctx.arc(d.x + d.w/2, d.y + d.h/2, d.w/2, 0, Math.PI*2); ctx.fill();
-      });
-
-      // 角色
-      drawHumanoidPlayer(p1);
-      if (gameMode === 2) drawHumanoidPlayer(p2);
-
-      // 怪物
-      monsters.forEach(m => {
-        if (m.type === 'slime') {
-          const sGrad = ctx.createRadialGradient(m.x + m.w/2, m.y + m.h/2, 2, m.x + m.w/2, m.y + m.h/2, m.w/2);
-          sGrad.addColorStop(0, '#34d399'); sGrad.addColorStop(1, '#059669');
-          ctx.fillStyle = sGrad; ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#a7f3d0'; ctx.fillRect(m.x + 6, m.y + 4, 4, 4);
-        } else if (m.type === 'spider') {
-          ctx.fillStyle = '#a855f7';
-          ctx.beginPath(); ctx.arc(m.x + m.w/2, m.y + m.h/2, m.w/2, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#e9d5ff'; ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(m.x, m.y + 4); ctx.lineTo(m.x - 5, m.y + 14);
-          ctx.moveTo(m.x + 6, m.y + 2); ctx.lineTo(m.x + 2, m.y + 16);
-          ctx.moveTo(m.x + m.w - 6, m.y + 2); ctx.lineTo(m.x + m.w - 2, m.y + 16);
-          ctx.moveTo(m.x + m.w, m.y + 4); ctx.lineTo(m.x + m.w + 5, m.y + 14);
-          ctx.stroke();
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(m.x + 6, m.y + 4, 4, 4); ctx.fillRect(m.x + 16, m.y + 4, 4, 4);
-        } else {
-          ctx.fillStyle = '#e2e8f0'; ctx.fillRect(m.x, m.y, m.w, m.h);
-          ctx.fillStyle = '#09090b'; ctx.fillRect(m.x + 3, m.y + 5, 5, 5); ctx.fillRect(m.x + 14, m.y + 5, 5, 5);
-        }
-
-        if (m.isAggressive) {
-          ctx.fillStyle = '#ef4444'; ctx.font = 'bold 14px Segoe UI'; ctx.textAlign = 'center';
-          ctx.fillText('⚡', m.x + m.w/2, m.y - 4);
-        }
-      });
-
-      // BOSS
-      if (boss) {
-        const bGrad = ctx.createLinearGradient(boss.x, boss.y, boss.x + boss.w, boss.y + boss.h);
-        bGrad.addColorStop(0, '#ef4444'); bGrad.addColorStop(1, '#991b1b');
-        ctx.fillStyle = bGrad; ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
-        ctx.fillStyle = '#fbbf24'; ctx.fillRect(boss.x + 10, boss.y + 14, 14, 14); ctx.fillRect(boss.x + 40, boss.y + 14, 14, 14);
-
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)'; ctx.fillRect(230, 42, 400, 16);
-        ctx.fillStyle = '#ef4444'; ctx.fillRect(233, 44, (boss.hp / boss.maxHp) * 394, 12);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Segoe UI'; ctx.textAlign = 'center';
-        ctx.fillText('⚠️ BOSS 霸主 ⚠️', canvas.width / 2, 54);
-      }
-
-      // 子彈與特效
-      bullets.forEach(b => {
-        ctx.shadowColor = b.color; ctx.shadowBlur = 8;
-        ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h);
-        ctx.shadowBlur = 0;
-      });
-
-      bossBullets.forEach(bb => {
-        ctx.shadowColor = '#f43f5e'; ctx.shadowBlur = 10;
-        ctx.fillStyle = '#ef4444'; ctx.fillRect(bb.x - 6, bb.y - 6, 12, 12);
-        ctx.shadowBlur = 0;
-      });
-
-      mines.forEach(m => { ctx.fillStyle = '#a855f7'; ctx.fillRect(m.x, m.y, m.w, m.h); });
-
-      explosions.forEach(ex => {
-        ctx.beginPath(); ctx.arc(ex.x, ex.y, ex.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(249, 115, 22, ${ex.alpha})`; ctx.fill();
-      });
-
-      particles.forEach(p => {
-        ctx.fillStyle = p.color; ctx.globalAlpha = p.alpha;
-        ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1.0;
-      });
-
-      drawRetroUI();
-
-      if (isGameStarted) {
-        ctx.fillStyle = '#ffffff'; ctx.font = '800 28px Courier New'; ctx.textAlign = 'center';
-        ctx.fillText(`KILLS ${totalKills}`, canvas.width / 2, 490);
-      }
-    }
-
-    function loop() { update(); draw(); requestAnimationFrame(loop); }
-    loop();
-  </script>
 </body>
 </html>
