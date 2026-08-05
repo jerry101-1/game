@@ -3,170 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft 巨型螺旋跑酷塔 - 分區關卡版</title>
+    <title>Minecraft 無柱·極限螺旋跑酷塔</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { overflow: hidden; background-color: #111; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+        #canvas-container { width: 100vw; height: 100vh; }
 
-        body {
-            overflow: hidden;
-            background-color: #111;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
-        }
-
-        #canvas-container {
-            width: 100vw;
-            height: 100vh;
-        }
-
-        /* 頂部資訊列 */
         #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #fff;
-            font-size: 18px;
-            font-weight: bold;
-            z-index: 10;
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
+            position: absolute; top: 20px; left: 20px; color: #fff; font-size: 18px; font-weight: bold; z-index: 10;
+            display: flex; gap: 12px; flex-wrap: wrap;
         }
-
         .ui-box {
-            background: rgba(0, 0, 0, 0.75);
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: 2px solid #555;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            text-shadow: 1px 1px 2px #000;
+            background: rgba(0, 0, 0, 0.8); padding: 8px 16px; border-radius: 8px; border: 2px solid #555;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); text-shadow: 1px 1px 2px #000;
         }
 
-        /* 當前分區提示 */
         #stage-banner {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(20, 20, 30, 0.85);
-            border: 2px solid #00fff5;
-            color: #00fff5;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-size: 20px;
-            font-weight: bold;
-            z-index: 10;
-            box-shadow: 0 0 15px rgba(0, 255, 245, 0.4);
+            position: absolute; top: 20px; right: 20px; background: rgba(20, 20, 30, 0.9); border: 2px solid #55ff55;
+            color: #55ff55; padding: 8px 20px; border-radius: 8px; font-size: 20px; font-weight: bold; z-index: 10;
+            box-shadow: 0 0 15px rgba(85, 255, 85, 0.4);
         }
 
         #checkpoint-msg {
-            display: none;
-            position: absolute;
-            top: 15%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(85, 255, 85, 0.9);
-            color: #000;
-            padding: 12px 25px;
-            border-radius: 8px;
-            font-size: 22px;
-            font-weight: bold;
-            border: 2px solid #fff;
-            z-index: 15;
-            box-shadow: 0 0 20px rgba(85, 255, 85, 0.8);
+            display: none; position: absolute; top: 15%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(85, 255, 85, 0.9); color: #000; padding: 12px 25px; border-radius: 8px; font-size: 22px;
+            font-weight: bold; border: 2px solid #fff; z-index: 15; box-shadow: 0 0 20px rgba(85, 255, 85, 0.8);
             animation: popIn 0.3s ease;
         }
-
         @keyframes popIn {
             0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
             100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
 
         #instructions {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #fff;
-            font-size: 14px;
-            background: rgba(0, 0, 0, 0.75);
-            padding: 8px 18px;
-            border-radius: 6px;
-            border: 1px solid #777;
-            z-index: 10;
-            pointer-events: none;
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 14px;
+            background: rgba(0, 0, 0, 0.8); padding: 8px 18px; border-radius: 6px; border: 1px solid #777; z-index: 10; pointer-events: none;
         }
 
-        /* 結算/重生選單 */
         #game-over {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            background: rgba(20, 20, 20, 0.95);
-            padding: 35px 55px;
-            border-radius: 12px;
-            border: 3px solid #00fff5;
-            box-shadow: 0 0 30px rgba(0, 255, 245, 0.4);
-            color: #fff;
-            z-index: 20;
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;
+            background: rgba(20, 20, 20, 0.95); padding: 35px 55px; border-radius: 12px; border: 3px solid #55ff55;
+            box-shadow: 0 0 30px rgba(85, 255, 85, 0.4); color: #fff; z-index: 20;
         }
-
-        #game-over h1 {
-            font-size: 36px;
-            color: #00fff5;
-            margin-bottom: 15px;
-        }
-
-        #reward-text {
-            font-size: 20px;
-            color: #ffff55;
-            margin-bottom: 15px;
-            font-weight: bold;
-        }
-
-        #game-over p {
-            font-size: 18px;
-            margin-bottom: 25px;
-        }
-
+        #game-over h1 { font-size: 36px; color: #55ff55; margin-bottom: 15px; }
+        #reward-text { font-size: 20px; color: #ffff55; margin-bottom: 15px; font-weight: bold; }
+        #game-over p { font-size: 18px; margin-bottom: 25px; }
         .btn {
-            padding: 12px 30px;
-            font-size: 18px;
-            font-weight: bold;
-            background-color: #00fff5;
-            color: #000;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            box-shadow: 0 0 15px #00fff5;
-            transition: 0.2s;
+            padding: 12px 30px; font-size: 18px; font-weight: bold; background-color: #55ff55; color: #000; border: none;
+            border-radius: 6px; cursor: pointer; box-shadow: 0 0 15px #55ff55; transition: 0.2s;
         }
-
-        .btn:hover {
-            background-color: #fff;
-            transform: scale(1.05);
-        }
+        .btn:hover { background-color: #fff; transform: scale(1.05); }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
     <div id="ui">
-        <div class="ui-box">🏰 跑酷塔: <span style="color: #ffff55;">MC 螺旋五分區塔</span></div>
+        <div class="ui-box">🏰 跑酷塔: <span style="color: #ffff55;">MC 空中懸空螺旋塔</span></div>
         <div class="ui-box">🚩 紀錄點: <span id="checkpoint-txt" style="color: #55ff55;">起點</span></div>
         <div class="ui-box">📏 高度: <span id="score" style="color: #00fff5;">0</span> m</div>
     </div>
 
-    <div id="stage-banner">📍 目前區域：<span id="stage-name">Stage 1 綠野</span></div>
-
+    <div id="stage-banner">📍 目前區域：<span id="stage-name">Stage 1 綠野大跳區</span></div>
     <div id="checkpoint-msg">🚩 紀錄點已儲存！</div>
-
     <div id="instructions">WASD 移動 | 空白鍵跳躍 | 滑鼠左鍵拖曳旋轉視角</div>
 
     <div id="game-over">
@@ -179,13 +78,13 @@
     <div id="canvas-container"></div>
 
     <script>
-        // --- 1. 5 大主題分區關卡數據 ---
+        // --- 1. 5 大特化跑酷關卡數據 ---
         const STAGES = [
-            { id: 1, name: "Stage 1：綠野草地區", sky: 0x7ec0ee, blockColor: 0x55aa33, fog: 0x7ec0ee },
-            { id: 2, name: "Stage 2：冰雪滑行區", sky: 0xb0e0e6, blockColor: 0xddffff, fog: 0xb0e0e6 },
-            { id: 3, name: "Stage 3：地獄烈焰區", sky: 0x330000, blockColor: 0xff3300, fog: 0x220000 },
-            { id: 4, name: "Stage 4：末日紫晶區", sky: 0x1a0033, blockColor: 0xaa00ff, fog: 0x100020 },
-            { id: 5, name: "Stage 5：黃金神殿區", sky: 0x332600, blockColor: 0xffd700, fog: 0x221a00 }
+            { id: 1, name: "Stage 1：綠野大跳區 (極限距離跳)", sky: 0x7ec0ee, blockColor: 0x55aa33, fog: 0x7ec0ee, isIce: false },
+            { id: 2, name: "Stage 2：冰雪滑行區 (微滑物理機制)", sky: 0xb0e0e6, blockColor: 0xddffff, fog: 0xb0e0e6, isIce: true },
+            { id: 3, name: "Stage 3：地獄烈焰區 (動態移動平台)", sky: 0x330000, blockColor: 0xff3300, fog: 0x220000, isIce: false },
+            { id: 4, name: "Stage 4：末日紫晶區 (極窄柱與轉角跳)", sky: 0x1a0033, blockColor: 0xaa00ff, fog: 0x100020, isIce: false },
+            { id: 5, name: "Stage 5：黃金登頂區 (終極高空衝刺)", sky: 0x332600, blockColor: 0xffd700, fog: 0x221a00, isIce: false }
         ];
 
         const container = document.getElementById('canvas-container');
@@ -209,78 +108,76 @@
         renderer.shadowMap.enabled = true;
         container.appendChild(renderer.domElement);
 
-        // 光源
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
-
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
         dirLight.position.set(40, 80, 40);
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // --- 2. 地圖生成邏輯 ---
+        // --- 2. 幾何地圖與多元障礙設計 ---
         let platforms = [];
         let lastCheckpointPos = new THREE.Vector3(0, 2, 0);
         let lastCheckpointName = "起點";
         let isWinState = false;
 
-        const towerRadius = 9;
-        const totalSteps = 75; // 75 階，每 15 階為一個分區關卡
+        const towerRadius = 10;
+        const totalSteps = 60;
 
-        function createBlock(x, y, z, w, h, d, colorHex) {
+        function createBlock(x, y, z, w, h, d, colorHex, isMoving = false) {
             const geo = new THREE.BoxGeometry(w, h, d);
-            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.8 });
+            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6 });
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(x, y, z);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
 
-            mesh.userData = { width: w, height: h, depth: d, isTop: false, isCheckpoint: false, stageIdx: 0 };
+            mesh.userData = { 
+                width: w, height: h, depth: d, 
+                isTop: false, isCheckpoint: false, stageIdx: 0,
+                isMoving: isMoving, startX: x, moveRange: 3, moveSpeed: 0.02
+            };
             return mesh;
         }
 
-        function buildSpiralTower() {
-            // 中央支柱
-            const coreGeo = new THREE.BoxGeometry(4, 260, 4);
-            const coreMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.9 });
-            const core = new THREE.Mesh(coreGeo, coreMat);
-            core.position.y = 120;
-            scene.add(core);
-
-            // 起始平台
-            const baseBlock = createBlock(0, 0, 0, 10, 1, 10, STAGES[0].blockColor);
+        function buildParkourTower() {
+            // 起始大平台
+            const baseBlock = createBlock(0, 0, 0, 8, 1, 8, STAGES[0].blockColor);
             scene.add(baseBlock);
             platforms.push(baseBlock);
 
-            // 5 大分區螺旋階梯生成
+            let currentY = 2;
+            let currentAngle = 0;
+
             for (let i = 1; i <= totalSteps; i++) {
-                const angle = i * 0.42;
-                const height = i * 3.0;
-
-                const x = Math.cos(angle) * towerRadius;
-                const z = Math.sin(angle) * towerRadius;
-
-                // 計算當前屬於第幾個分區關卡 (0 ~ 4)
-                const stageIdx = Math.min(4, Math.floor((i - 1) / 15));
+                const stageIdx = Math.min(4, Math.floor((i - 1) / 12));
                 const currentStage = STAGES[stageIdx];
 
                 const isTop = (i === totalSteps);
-                const isCheckpoint = (i % 15 === 0 && !isTop); // 每個 Stage 結尾設紀錄點
+                const isCheckpoint = (i % 12 === 0 && !isTop);
+                const isMoving = (stageIdx === 2 && !isCheckpoint && i % 2 === 0);
 
-                // 方塊大小依關卡遞減，難度遞增
-                const w = isTop ? 6 : (isCheckpoint ? 4 : Math.max(1.8, 3.2 - stageIdx * 0.3));
-                const d = isTop ? 6 : (isCheckpoint ? 4 : Math.max(1.8, 3.2 - stageIdx * 0.3));
+                currentAngle += 0.5 + (Math.random() * 0.3);
+                currentY += 2.2 + (Math.random() * 0.8);
+
+                const x = Math.cos(currentAngle) * towerRadius;
+                const z = Math.sin(currentAngle) * towerRadius;
+
+                let w = 2.2, d = 2.2;
+                if (stageIdx === 3) { w = 1.2; d = 1.2; }
+                if (isCheckpoint) { w = 3.5; d = 3.5; }
+                if (isTop) { w = 6; d = 6; }
 
                 let colorHex = isTop ? 0xffd700 : (isCheckpoint ? 0xffffff : currentStage.blockColor);
 
-                const block = createBlock(x, height, z, w, 0.8, d, colorHex);
+                const block = createBlock(x, currentY, z, w, 0.8, d, colorHex, isMoving);
                 block.userData.isTop = isTop;
                 block.userData.isCheckpoint = isCheckpoint;
                 block.userData.cpIndex = i;
                 block.userData.stageIdx = stageIdx;
 
                 if (isCheckpoint) {
-                    const poleGeo = new THREE.BoxGeometry(0.4, 2, 0.4);
+                    const poleGeo = new THREE.BoxGeometry(0.3, 2, 0.3);
                     const poleMat = new THREE.MeshStandardMaterial({ color: 0x00fff5 });
                     const pole = new THREE.Mesh(poleGeo, poleMat);
                     pole.position.set(0, 1.4, 0);
@@ -292,7 +189,7 @@
             }
         }
 
-        // --- 3. 玩家角色與控制 ---
+        // --- 3. 玩家操控與物理 ---
         const playerGroup = new THREE.Group();
         const playerGeo = new THREE.BoxGeometry(0.8, 1.8, 0.8);
         const playerMat = new THREE.MeshStandardMaterial({ color: 0x00fff5, emissive: 0x004455 });
@@ -307,6 +204,7 @@
         let playerVel = new THREE.Vector3(0, 0, 0);
         let isGrounded = false;
         let isGameOver = false;
+        let currentOnIce = false;
 
         const gravity = 0.018;
         const moveSpeed = 0.17;
@@ -316,17 +214,12 @@
         window.addEventListener('keydown', (e) => keys[e.code] = true);
         window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-        // 視角控制
-        let cameraAngleX = 0;
-        let cameraAngleY = 0.3;
-        let isMouseDown = false;
-        let prevMouseX = 0, prevMouseY = 0;
+        let cameraAngleX = 0, cameraAngleY = 0.3;
+        let isMouseDown = false, prevMouseX = 0, prevMouseY = 0;
 
         window.addEventListener('mousedown', (e) => {
             if (e.target.tagName !== 'BUTTON') {
-                isMouseDown = true;
-                prevMouseX = e.clientX;
-                prevMouseY = e.clientY;
+                isMouseDown = true; prevMouseX = e.clientX; prevMouseY = e.clientY;
             }
         });
         window.addEventListener('mouseup', () => isMouseDown = false);
@@ -336,22 +229,28 @@
                 const deltaY = e.clientY - prevMouseY;
                 cameraAngleX -= deltaX * 0.005;
                 cameraAngleY = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, cameraAngleY + deltaY * 0.005));
-                prevMouseX = e.clientX;
-                prevMouseY = e.clientY;
+                prevMouseX = e.clientX; prevMouseY = e.clientY;
             }
         });
 
         function triggerCheckpointMsg(text) {
             checkpointTxt.textContent = text;
             checkpointMsg.style.display = 'block';
-            setTimeout(() => {
-                checkpointMsg.style.display = 'none';
-            }, 1800);
+            setTimeout(() => { checkpointMsg.style.display = 'none'; }, 1800);
         }
 
-        // --- 4. 物理與關卡切換 ---
+        // --- 4. 運動邏輯更新 ---
+        let globalTime = 0;
+
         function updatePhysics() {
             if (isGameOver) return;
+            globalTime += 0.03;
+
+            platforms.forEach(p => {
+                if (p.userData.isMoving) {
+                    p.position.x = p.userData.startX + Math.sin(globalTime) * p.userData.moveRange;
+                }
+            });
 
             const forward = new THREE.Vector3(-Math.sin(cameraAngleX), 0, -Math.cos(cameraAngleX)).normalize();
             const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
@@ -364,8 +263,13 @@
 
             if (moveDir.length() > 0) moveDir.normalize();
 
-            playerVel.x = moveDir.x * moveSpeed;
-            playerVel.z = moveDir.z * moveSpeed;
+            if (currentOnIce) {
+                playerVel.x = playerVel.x * 0.95 + moveDir.x * moveSpeed * 0.1;
+                playerVel.z = playerVel.z * 0.95 + moveDir.z * moveSpeed * 0.1;
+            } else {
+                playerVel.x = moveDir.x * moveSpeed;
+                playerVel.z = moveDir.z * moveSpeed;
+            }
 
             if ((keys['Space']) && isGrounded) {
                 playerVel.y = jumpForce;
@@ -378,8 +282,8 @@
             let nextY = playerPos.y + playerVel.y;
             let nextZ = playerPos.z + playerVel.z;
 
-            // 碰撞與關卡區塊動態更新
             isGrounded = false;
+            currentOnIce = false;
             const playerHalfW = 0.4;
 
             for (let p of platforms) {
@@ -399,20 +303,24 @@
                         playerVel.y = 0;
                         isGrounded = true;
 
-                        // 更新當前關卡 Stage UI 與天空顏色
-                        const currentStage = STAGES[p.userData.stageIdx || 0];
+                        const stageIdx = p.userData.stageIdx || 0;
+                        currentOnIce = STAGES[stageIdx].isIce;
+
+                        if (p.userData.isMoving) {
+                            nextX += (Math.cos(globalTime) * p.userData.moveRange * 0.03);
+                        }
+
+                        const currentStage = STAGES[stageIdx];
                         stageNameDisplay.textContent = currentStage.name;
                         scene.background.setHex(currentStage.sky);
                         scene.fog.color.setHex(currentStage.fog);
 
-                        // 踩到關卡紀錄點
-                        if (p.userData.isCheckpoint && lastCheckpointName !== `${p.userData.cpIndex} 階`) {
+                        if (p.userData.isCheckpoint && lastCheckpointName !== `${p.userData.cpIndex} 關`) {
                             lastCheckpointPos.set(pBox.x, pBox.y + ph + 0.5, pBox.z);
-                            lastCheckpointName = `${p.userData.cpIndex} 階 (${currentStage.name})`;
+                            lastCheckpointName = `${p.userData.cpIndex} 關 (${currentStage.name})`;
                             triggerCheckpointMsg(`🚩 抵達 ${currentStage.name} 紀錄點！`);
                         }
 
-                        // 登頂
                         if (p.userData.isTop) {
                             endGame(true);
                             return;
@@ -424,16 +332,13 @@
             playerPos.set(nextX, nextY, nextZ);
             playerGroup.position.copy(playerPos);
 
-            // 掉落
-            if (playerPos.y < -10) {
-                endGame(false);
-            }
+            if (playerPos.y < -10) endGame(false);
 
             scoreDisplay.textContent = Math.max(0, Math.floor(playerPos.y));
         }
 
         function updateCamera() {
-            const camDistance = 11;
+            const camDistance = 10;
             const camX = playerPos.x + camDistance * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
             const camY = playerPos.y + 1.8 + camDistance * Math.sin(cameraAngleY);
             const camZ = playerPos.z + camDistance * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
@@ -445,25 +350,22 @@
         function animate() {
             if (isGameOver) return;
             requestAnimationFrame(animate);
-
             updatePhysics();
             updateCamera();
-
             renderer.render(scene, camera);
         }
 
-        // --- 5. 遊戲狀態重置 ---
+        // --- 5. 重生與流程 ---
         function endGame(isWin) {
-            isGameOver = true;
-            isWinState = isWin;
+            isGameOver = true; isWinState = isWin;
 
             if (isWin) {
-                overTitle.textContent = "🏆 成功破關！征服整座螺旋塔！";
-                rewardText.textContent = "恭喜你通過了所有 5 個主題分區關卡！";
+                overTitle.textContent = "🏆 成功登頂極限螺旋塔！";
+                rewardText.textContent = "太強了！你完美過關了所有跑酷障礙！";
                 actionBtn.textContent = "再次挑戰";
             } else {
-                overTitle.textContent = "💥 掉落高空！";
-                rewardText.textContent = `將於紀錄点 [ ${lastCheckpointName} ] 復活`;
+                overTitle.textContent = "💥 掉落失足！";
+                rewardText.textContent = `重生於紀錄點 [ ${lastCheckpointName} ]`;
                 actionBtn.textContent = "從紀錄點重生";
             }
 
@@ -482,18 +384,14 @@
 
         function resetGame() {
             isGameOver = false;
-
             playerPos.copy(lastCheckpointPos);
             playerVel.set(0, 0, 0);
-            cameraAngleX = 0;
-            cameraAngleY = 0.3;
-
+            cameraAngleX = 0; cameraAngleY = 0.3;
             gameOverScreen.style.display = 'none';
             animate();
         }
 
-        // 啟動
-        buildSpiralTower();
+        buildParkourTower();
         resetGame();
 
         window.addEventListener('resize', () => {
