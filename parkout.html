@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft 巨型彩虹螺旋跑酷塔</title>
+    <title>Minecraft 巨型螺旋跑酷塔 - 分區關卡版</title>
     <style>
         * {
             box-sizing: border-box;
@@ -13,7 +13,7 @@
 
         body {
             overflow: hidden;
-            background-color: #7ec0ee;
+            background-color: #111;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
         }
@@ -23,7 +23,7 @@
             height: 100vh;
         }
 
-        /* 頂部 UI 介面 */
+        /* 頂部資訊列 */
         #ui {
             position: absolute;
             top: 20px;
@@ -34,15 +34,32 @@
             z-index: 10;
             display: flex;
             gap: 12px;
+            flex-wrap: wrap;
         }
 
         .ui-box {
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             padding: 8px 16px;
-            border-radius: 6px;
-            border: 2px solid #fff;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border-radius: 8px;
+            border: 2px solid #555;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             text-shadow: 1px 1px 2px #000;
+        }
+
+        /* 當前分區提示 */
+        #stage-banner {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 20, 30, 0.85);
+            border: 2px solid #00fff5;
+            color: #00fff5;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(0, 255, 245, 0.4);
         }
 
         #checkpoint-msg {
@@ -81,10 +98,9 @@
             border: 1px solid #777;
             z-index: 10;
             pointer-events: none;
-            text-shadow: 1px 1px 2px #000;
         }
 
-        /* 通關/重生彈窗 */
+        /* 結算/重生選單 */
         #game-over {
             display: none;
             position: absolute;
@@ -95,17 +111,16 @@
             background: rgba(20, 20, 20, 0.95);
             padding: 35px 55px;
             border-radius: 12px;
-            border: 3px solid #55ff55;
-            box-shadow: 0 0 30px rgba(85, 255, 85, 0.4);
+            border: 3px solid #00fff5;
+            box-shadow: 0 0 30px rgba(0, 255, 245, 0.4);
             color: #fff;
             z-index: 20;
         }
 
         #game-over h1 {
             font-size: 36px;
-            color: #55ff55;
+            color: #00fff5;
             margin-bottom: 15px;
-            text-shadow: 0 0 10px #55ff55;
         }
 
         #reward-text {
@@ -124,12 +139,12 @@
             padding: 12px 30px;
             font-size: 18px;
             font-weight: bold;
-            background-color: #55ff55;
+            background-color: #00fff5;
             color: #000;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            box-shadow: 0 0 15px #55ff55;
+            box-shadow: 0 0 15px #00fff5;
             transition: 0.2s;
         }
 
@@ -143,39 +158,41 @@
 <body>
 
     <div id="ui">
-        <div class="ui-box">🏰 地圖: <span style="color: #ffff55;">MC 彩虹巨型螺旋塔</span></div>
+        <div class="ui-box">🏰 跑酷塔: <span style="color: #ffff55;">MC 螺旋五分區塔</span></div>
         <div class="ui-box">🚩 紀錄點: <span id="checkpoint-txt" style="color: #55ff55;">起點</span></div>
         <div class="ui-box">📏 高度: <span id="score" style="color: #00fff5;">0</span> m</div>
     </div>
 
+    <div id="stage-banner">📍 目前區域：<span id="stage-name">Stage 1 綠野</span></div>
+
     <div id="checkpoint-msg">🚩 紀錄點已儲存！</div>
 
-    <div id="instructions">WASD 移動 | 空白鍵跳躍 | 按住滑鼠左鍵拖曳旋轉視角</div>
+    <div id="instructions">WASD 移動 | 空白鍵跳躍 | 滑鼠左鍵拖曳旋轉視角</div>
 
     <div id="game-over">
         <h1 id="over-title">挑戰結果</h1>
         <div id="reward-text"></div>
-        <p>攀爬高度: <span id="final-score">0</span> 米</p>
+        <p>到達高度: <span id="final-score">0</span> 米</p>
         <button id="action-btn" class="btn" onclick="handleButtonClick()">從紀錄點重生</button>
     </div>
 
     <div id="canvas-container"></div>
 
     <script>
-        // --- 1. 彩虹配色方案與場景設定 ---
-        const RAINBOW_COLORS = [
-            0x00ff88, // 螢光綠
-            0xffff00, // 鮮黃
-            0xff8800, // 橘色
-            0xff0055, // 紅/粉紅
-            0x00ccff, // 水藍
-            0xaa00ff  // 紫色
+        // --- 1. 5 大主題分區關卡數據 ---
+        const STAGES = [
+            { id: 1, name: "Stage 1：綠野草地區", sky: 0x7ec0ee, blockColor: 0x55aa33, fog: 0x7ec0ee },
+            { id: 2, name: "Stage 2：冰雪滑行區", sky: 0xb0e0e6, blockColor: 0xddffff, fog: 0xb0e0e6 },
+            { id: 3, name: "Stage 3：地獄烈焰區", sky: 0x330000, blockColor: 0xff3300, fog: 0x220000 },
+            { id: 4, name: "Stage 4：末日紫晶區", sky: 0x1a0033, blockColor: 0xaa00ff, fog: 0x100020 },
+            { id: 5, name: "Stage 5：黃金神殿區", sky: 0x332600, blockColor: 0xffd700, fog: 0x221a00 }
         ];
 
         const container = document.getElementById('canvas-container');
         const scoreDisplay = document.getElementById('score');
         const checkpointTxt = document.getElementById('checkpoint-txt');
         const checkpointMsg = document.getElementById('checkpoint-msg');
+        const stageNameDisplay = document.getElementById('stage-name');
         const gameOverScreen = document.getElementById('game-over');
         const finalScoreDisplay = document.getElementById('final-score');
         const overTitle = document.getElementById('over-title');
@@ -183,8 +200,8 @@
         const actionBtn = document.getElementById('action-btn');
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x7ec0ee); // 藍天
-        scene.fog = new THREE.FogExp2(0x7ec0ee, 0.005);
+        scene.background = new THREE.Color(STAGES[0].sky);
+        scene.fog = new THREE.FogExp2(STAGES[0].sky, 0.005);
 
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -192,81 +209,79 @@
         renderer.shadowMap.enabled = true;
         container.appendChild(renderer.domElement);
 
-        // 陽光效果
+        // 光源
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
         dirLight.position.set(40, 80, 40);
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // --- 2. 幾何巨塔建構 ---
+        // --- 2. 地圖生成邏輯 ---
         let platforms = [];
         let lastCheckpointPos = new THREE.Vector3(0, 2, 0);
         let lastCheckpointName = "起點";
         let isWinState = false;
 
-        const towerRadius = 10;   // 螺旋半徑
-        const totalSteps = 60;     // 階梯總數
+        const towerRadius = 9;
+        const totalSteps = 75; // 75 階，每 15 階為一個分區關卡
 
-        // 建立單個 MC 幾何方塊平台
         function createBlock(x, y, z, w, h, d, colorHex) {
             const geo = new THREE.BoxGeometry(w, h, d);
-            const mat = new THREE.MeshStandardMaterial({ 
-                color: colorHex, 
-                roughness: 0.8,
-                metalness: 0.1
-            });
+            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.8 });
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(x, y, z);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
 
-            mesh.userData = { width: w, height: h, depth: d, isTop: false, isCheckpoint: false };
+            mesh.userData = { width: w, height: h, depth: d, isTop: false, isCheckpoint: false, stageIdx: 0 };
             return mesh;
         }
 
         function buildSpiralTower() {
-            // 1. 中央巨型幾何地標柱
-            const coreGeo = new THREE.BoxGeometry(4, 220, 4);
-            const coreMat = new THREE.MeshStandardMaterial({ color: 0x333344, roughness: 0.9 });
+            // 中央支柱
+            const coreGeo = new THREE.BoxGeometry(4, 260, 4);
+            const coreMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.9 });
             const core = new THREE.Mesh(coreGeo, coreMat);
-            core.position.y = 100;
+            core.position.y = 120;
             scene.add(core);
 
-            // 2. 底層大平台 (綠色草地風)
-            const baseBlock = createBlock(0, 0, 0, 12, 1, 12, 0x55aa33);
+            // 起始平台
+            const baseBlock = createBlock(0, 0, 0, 10, 1, 10, STAGES[0].blockColor);
             scene.add(baseBlock);
             platforms.push(baseBlock);
 
-            // 3. 巨型幾何螺旋跑酷階梯
+            // 5 大分區螺旋階梯生成
             for (let i = 1; i <= totalSteps; i++) {
-                const angle = i * 0.45; // 螺旋密度
-                const height = i * 2.8;  // 高度遞增
+                const angle = i * 0.42;
+                const height = i * 3.0;
 
                 const x = Math.cos(angle) * towerRadius;
                 const z = Math.sin(angle) * towerRadius;
 
+                // 計算當前屬於第幾個分區關卡 (0 ~ 4)
+                const stageIdx = Math.min(4, Math.floor((i - 1) / 15));
+                const currentStage = STAGES[stageIdx];
+
                 const isTop = (i === totalSteps);
-                const isCheckpoint = (i % 12 === 0 && !isTop); // 每 12 階一個紀錄點
+                const isCheckpoint = (i % 15 === 0 && !isTop); // 每個 Stage 結尾設紀錄點
 
-                // 選用彩虹分區色彩
-                const colorIdx = Math.floor(i / 10) % RAINBOW_COLORS.length;
-                let colorHex = isTop ? 0xffffd700 : (isCheckpoint ? 0xffffff : RAINBOW_COLORS[colorIdx]);
+                // 方塊大小依關卡遞減，難度遞增
+                const w = isTop ? 6 : (isCheckpoint ? 4 : Math.max(1.8, 3.2 - stageIdx * 0.3));
+                const d = isTop ? 6 : (isCheckpoint ? 4 : Math.max(1.8, 3.2 - stageIdx * 0.3));
 
-                const w = isTop ? 6 : (isCheckpoint ? 3.5 : 2.2);
-                const d = isTop ? 6 : (isCheckpoint ? 3.5 : 2.2);
+                let colorHex = isTop ? 0xffd700 : (isCheckpoint ? 0xffffff : currentStage.blockColor);
 
                 const block = createBlock(x, height, z, w, 0.8, d, colorHex);
                 block.userData.isTop = isTop;
                 block.userData.isCheckpoint = isCheckpoint;
                 block.userData.cpIndex = i;
+                block.userData.stageIdx = stageIdx;
 
-                // 若為紀錄點，放置白色/黃色標誌柱
                 if (isCheckpoint) {
                     const poleGeo = new THREE.BoxGeometry(0.4, 2, 0.4);
-                    const poleMat = new THREE.MeshStandardMaterial({ color: 0xffaa00 });
+                    const poleMat = new THREE.MeshStandardMaterial({ color: 0x00fff5 });
                     const pole = new THREE.Mesh(poleGeo, poleMat);
                     pole.position.set(0, 1.4, 0);
                     block.add(pole);
@@ -277,10 +292,10 @@
             }
         }
 
-        // --- 3. 玩家角色與操控 ---
+        // --- 3. 玩家角色與控制 ---
         const playerGroup = new THREE.Group();
         const playerGeo = new THREE.BoxGeometry(0.8, 1.8, 0.8);
-        const playerMat = new THREE.MeshStandardMaterial({ color: 0x00a8ff });
+        const playerMat = new THREE.MeshStandardMaterial({ color: 0x00fff5, emissive: 0x004455 });
         const playerMesh = new THREE.Mesh(playerGeo, playerMat);
         playerMesh.position.y = 0.9;
         playerMesh.castShadow = true;
@@ -301,7 +316,7 @@
         window.addEventListener('keydown', (e) => keys[e.code] = true);
         window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-        // 視角控制器
+        // 視角控制
         let cameraAngleX = 0;
         let cameraAngleY = 0.3;
         let isMouseDown = false;
@@ -334,7 +349,7 @@
             }, 1800);
         }
 
-        // --- 4. 物理與碰撞判定 ---
+        // --- 4. 物理與關卡切換 ---
         function updatePhysics() {
             if (isGameOver) return;
 
@@ -363,7 +378,7 @@
             let nextY = playerPos.y + playerVel.y;
             let nextZ = playerPos.z + playerVel.z;
 
-            // 方塊碰撞判定
+            // 碰撞與關卡區塊動態更新
             isGrounded = false;
             const playerHalfW = 0.4;
 
@@ -384,11 +399,17 @@
                         playerVel.y = 0;
                         isGrounded = true;
 
-                        // 紀錄點
+                        // 更新當前關卡 Stage UI 與天空顏色
+                        const currentStage = STAGES[p.userData.stageIdx || 0];
+                        stageNameDisplay.textContent = currentStage.name;
+                        scene.background.setHex(currentStage.sky);
+                        scene.fog.color.setHex(currentStage.fog);
+
+                        // 踩到關卡紀錄點
                         if (p.userData.isCheckpoint && lastCheckpointName !== `${p.userData.cpIndex} 階`) {
                             lastCheckpointPos.set(pBox.x, pBox.y + ph + 0.5, pBox.z);
-                            lastCheckpointName = `${p.userData.cpIndex} 階`;
-                            triggerCheckpointMsg(`🚩 第 ${p.userData.cpIndex} 階紀錄點！`);
+                            lastCheckpointName = `${p.userData.cpIndex} 階 (${currentStage.name})`;
+                            triggerCheckpointMsg(`🚩 抵達 ${currentStage.name} 紀錄點！`);
                         }
 
                         // 登頂
@@ -403,7 +424,7 @@
             playerPos.set(nextX, nextY, nextZ);
             playerGroup.position.copy(playerPos);
 
-            // 摔落底下
+            // 掉落
             if (playerPos.y < -10) {
                 endGame(false);
             }
@@ -431,18 +452,18 @@
             renderer.render(scene, camera);
         }
 
-        // --- 5. 遊戲狀態與重置 ---
+        // --- 5. 遊戲狀態重置 ---
         function endGame(isWin) {
             isGameOver = true;
             isWinState = isWin;
 
             if (isWin) {
-                overTitle.textContent = "🏆 成功登頂彩虹塔！";
-                rewardText.textContent = "恭喜你完成了這座巨型螺旋跑酷塔！";
+                overTitle.textContent = "🏆 成功破關！征服整座螺旋塔！";
+                rewardText.textContent = "恭喜你通過了所有 5 個主題分區關卡！";
                 actionBtn.textContent = "再次挑戰";
             } else {
-                overTitle.textContent = "💥 摔落高空！";
-                rewardText.textContent = `將於紀錄點 [ ${lastCheckpointName} ] 復活`;
+                overTitle.textContent = "💥 掉落高空！";
+                rewardText.textContent = `將於紀錄点 [ ${lastCheckpointName} ] 復活`;
                 actionBtn.textContent = "從紀錄點重生";
             }
 
