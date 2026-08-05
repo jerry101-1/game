@@ -2,11 +2,11 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>2D 像素動作戰鬥 - Temple of Boom 風格修正版</title>
+    <title>2D 像素動作戰鬥 - Temple of Boom 修正版</title>
     <style>
         body {
             margin: 0;
-            background-color: #0b0b10;
+            background-color: #050508;
             color: #fff;
             font-family: 'Courier New', Courier, monospace;
             display: flex;
@@ -14,6 +14,7 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+            user-select: none;
         }
         .game-container {
             position: relative;
@@ -21,9 +22,9 @@
             height: 450px;
         }
         canvas {
-            border: 4px solid #5a3d28;
-            background-color: #3d281d;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
+            border: 4px solid #3d281d;
+            background-color: #2b1d14;
+            box-shadow: 0 0 35px rgba(0, 0, 0, 0.95);
             image-rendering: pixelated;
         }
         #menuOverlay {
@@ -44,30 +45,30 @@
             color: #f39c12;
             font-size: 32px;
             font-weight: bold;
-            margin-bottom: 30px;
-            text-shadow: 2px 2px #000;
+            margin-bottom: 25px;
+            text-shadow: 3px 3px #000;
         }
         .btn-container {
             display: flex;
             gap: 20px;
         }
         .mode-btn {
-            background-color: #5c3a21;
+            background-color: #6b4423;
             color: #fff;
-            border: 3px solid #d4ac0d;
+            border: 3px solid #f1c40f;
             padding: 14px 28px;
             font-size: 18px;
             font-family: inherit;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.15s ease;
-            box-shadow: 0 4px 0 #3a2313;
+            box-shadow: 0 5px 0 #3a2313;
         }
         .mode-btn:hover {
-            background-color: #794d2b;
-            border-color: #f39c12;
+            background-color: #8c582d;
+            border-color: #fff;
             transform: translateY(-2px);
-            box-shadow: 0 6px 0 #3a2313;
+            box-shadow: 0 7px 0 #3a2313;
         }
         .instructions {
             margin-top: 12px;
@@ -80,7 +81,7 @@
 </head>
 <body>
 
-    <h2 style="color: #f39c12; margin-bottom: 8px;">2D 像素動作戰鬥 (準確傷害與血條顯示版)</h2>
+    <h2 style="color: #f39c12; margin-bottom: 8px;">TEMPLE OF BOOM (完全修復版)</h2>
     
     <div class="game-container">
         <div id="menuOverlay">
@@ -146,7 +147,7 @@ window.addEventListener('keydown', e => {
 
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
-// 線段與矩形碰撞檢測 (解決高速子彈穿透問題)
+// 線段-矩形碰撞檢測
 function checkLineRectCollision(x1, y1, x2, y2, rx, ry, rw, rh) {
     const minX = Math.min(x1, x2);
     const maxX = Math.max(x1, x2);
@@ -157,42 +158,36 @@ function checkLineRectCollision(x1, y1, x2, y2, rx, ry, rw, rh) {
     return true;
 }
 
-// --- 地圖平台資料 ---
+// 地圖平台
 const platforms = [
-    { x: 0, y: 410, w: 800, h: 40, isGround: true },
-    { x: 290, y: 340, w: 220, h: 70, isGround: true },
-    { x: 135, y: 360, w: 100, h: 14 },
-    { x: 565, y: 360, w: 100, h: 14 },
-    { x: 50, y: 280, w: 200, h: 14 },
-    { x: 550, y: 280, w: 200, h: 14 },
-    { x: 110, y: 200, w: 200, h: 14 },
-    { x: 490, y: 200, w: 200, h: 14 },
-    { x: 350, y: 150, w: 100, h: 14 },
-    { x: 130, y: 70, w: 200, h: 14 },
-    { x: 470, y: 70, w: 200, h: 14 },
-    { x: 0, y: 140, w: 90, h: 14 },
-    { x: 710, y: 140, w: 90, h: 14 }
+    { x: 0, y: 420, w: 800, h: 30, isGround: true },
+    { x: 300, y: 350, w: 200, h: 70, isGround: true },
+    { x: 135, y: 370, w: 90, h: 14 },
+    { x: 575, y: 370, w: 90, h: 14 },
+    { x: 40, y: 290, w: 180, h: 14 },
+    { x: 580, y: 290, w: 180, h: 14 },
+    { x: 350, y: 250, w: 100, h: 14 },
+    { x: 120, y: 190, w: 180, h: 14 },
+    { x: 500, y: 190, w: 180, h: 14 },
+    { x: 130, y: 80, w: 200, h: 14 },
+    { x: 470, y: 80, w: 200, h: 14 }
 ];
 
-// --- 武器資料庫 ---
+// 武器資料
 const WEAPON_TYPES = {
-    PISTOL:   { id: 'PISTOL', name: '手槍', color: '#f39c12', rarity: 'COMMON', speed: 12, cooldown: 14, damage: 20, shockwave: 18, bulletType: 'STANDARD' },
-    SMG:      { id: 'SMG', name: '衝鋒槍', color: '#f1c40f', rarity: 'COMMON', speed: 14, cooldown: 6, damage: 12, shockwave: 12, bulletType: 'STANDARD' },
-    SHOTGUN:  { id: 'SHOTGUN', name: '散彈槍', color: '#e67e22', rarity: 'COMMON', speed: 10, cooldown: 35, damage: 18, shockwave: 30, bulletType: 'SPREAD' },
-    SNIPER:   { id: 'SNIPER', name: '狙擊槍', color: '#3498db', rarity: 'RARE', speed: 22, cooldown: 45, damage: 80, shockwave: 25, bulletType: 'PIERCING' },
-    GRENADE:  { id: 'GRENADE', name: '榴彈槍', color: '#e74c3c', rarity: 'RARE', speed: 9, cooldown: 40, damage: 60, shockwave: 40, bulletType: 'GRENADE' },
-    MINE:     { id: 'MINE', name: '地雷槍', color: '#2ecc71', rarity: 'LEGEND', speed: 6, cooldown: 50, damage: 100, shockwave: 45, bulletType: 'MINE' }
+    PISTOL:   { id: 'PISTOL', name: '手槍', color: '#f39c12', speed: 13, cooldown: 14, damage: 25, ammo: 40 },
+    SMG:      { id: 'SMG', name: '衝鋒槍', color: '#f1c40f', speed: 15, cooldown: 6, damage: 15, ammo: 80 },
+    SHOTGUN:  { id: 'SHOTGUN', name: '散彈槍', color: '#e67e22', speed: 11, cooldown: 35, damage: 20, ammo: 24 },
+    SNIPER:   { id: 'SNIPER', name: '狙擊槍', color: '#3498db', speed: 22, cooldown: 45, damage: 90, ammo: 12 },
+    GRENADE:  { id: 'GRENADE', name: '榴彈槍', color: '#e74c3c', speed: 9, cooldown: 40, damage: 70, ammo: 15 }
 };
 
 function getRandomWeapon() {
-    const rand = Math.random();
-    if (rand < 0.10) return WEAPON_TYPES.MINE;
-    if (rand < 0.40) return Math.random() < 0.5 ? WEAPON_TYPES.SNIPER : WEAPON_TYPES.GRENADE;
-    const commons = [WEAPON_TYPES.SMG, WEAPON_TYPES.SHOTGUN];
-    return commons[Math.floor(Math.random() * commons.length)];
+    const list = [WEAPON_TYPES.SMG, WEAPON_TYPES.SHOTGUN, WEAPON_TYPES.SNIPER, WEAPON_TYPES.GRENADE];
+    return list[Math.floor(Math.random() * list.length)];
 }
 
-// --- 特效與粒子 ---
+// 粒子特效
 class Particle {
     constructor(x, y, vx, vy, color, size, life) {
         this.x = x; this.y = y; this.vx = vx; this.vy = vy;
@@ -207,128 +202,104 @@ class Particle {
     }
 }
 
-class Shockwave {
-    constructor(x, y, maxRadius) {
-        this.x = x; this.y = y; this.radius = 4; this.maxRadius = maxRadius; this.alpha = 1;
-    }
-    update() { this.radius += 3; this.alpha -= 0.08; }
-    draw() {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255, 240, 150, ${Math.max(0, this.alpha)})`;
-        ctx.lineWidth = 3; ctx.stroke();
-        ctx.restore();
-    }
-}
-
-// --- 子彈類別 ---
+// 子彈類別
 class Bullet {
-    constructor(x, y, vx, vy, bulletType, isEnemy = false, damage = 10) {
+    constructor(x, y, vx, vy, weaponType, isEnemy = false) {
         this.x = x; this.y = y;
         this.prevX = x; this.prevY = y;
         this.vx = vx; this.vy = vy;
-        this.bulletType = bulletType; this.isEnemy = isEnemy; this.damage = damage;
-        this.life = 120; this.isArmedMine = false; this.hitEnemies = [];
+        this.type = weaponType;
+        this.isEnemy = isEnemy;
+        this.damage = isEnemy ? 10 : weaponType.damage;
+        this.life = 100;
     }
 
     update() {
         this.prevX = this.x;
         this.prevY = this.y;
 
-        if (this.bulletType === 'GRENADE') this.vy += 0.25;
-        if (this.bulletType === 'MINE' && this.isArmedMine) return;
+        if (this.type && this.type.id === 'GRENADE') this.vy += 0.25;
 
         this.x += this.vx; this.y += this.vy; this.life--;
 
-        if (this.bulletType === 'GRENADE' || this.bulletType === 'MINE') {
+        if (this.type && this.type.id === 'GRENADE') {
             platforms.forEach(p => {
                 if (this.x > p.x && this.x < p.x + p.w && this.y >= p.y - 2 && this.y <= p.y + p.h) {
-                    if (this.bulletType === 'GRENADE') { this.explode(); this.life = 0; }
-                    else if (this.bulletType === 'MINE') { this.y = p.y - 4; this.vx = 0; this.vy = 0; this.isArmedMine = true; }
+                    this.explode(); this.life = 0;
                 }
             });
         }
     }
 
     explode() {
-        shockwaves.push(new Shockwave(this.x, this.y, 40));
-        for (let i = 0; i < 16; i++) {
+        for (let i = 0; i < 15; i++) {
             particles.push(new Particle(this.x, this.y, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, '#e74c3c', 3, 20));
         }
         enemies.forEach(e => {
-            if (Math.hypot(e.x - this.x, (e.y - e.h/2) - this.y) < 55) {
+            if (Math.hypot(e.x - this.x, (e.y - e.h/2) - this.y) < 60) {
                 e.takeDamage(this.damage, this.vx > 0 ? 1 : -1);
             }
         });
     }
 
     draw() {
-        if (this.isEnemy) {
-            ctx.fillStyle = '#ff4d4d';
-            ctx.fillRect(this.x - 3, this.y - 3, 6, 6);
-            return;
-        }
-
-        switch (this.bulletType) {
-            case 'STANDARD': ctx.fillStyle = '#ffe100'; ctx.fillRect(this.x - 2, this.y - 2, 5, 5); break;
-            case 'SPREAD':   ctx.fillStyle = '#e67e22'; ctx.fillRect(this.x - 2, this.y - 2, 4, 4); break;
-            case 'PIERCING': ctx.fillStyle = '#3498db'; ctx.fillRect(this.x - 6, this.y - 2, 12, 4); break;
-            case 'GRENADE':  ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI * 2); ctx.fill(); break;
-            case 'MINE':     ctx.fillStyle = this.isArmedMine ? '#2ecc71' : '#27ae60'; ctx.fillRect(this.x - 4, this.y - 3, 8, 4); break;
-        }
+        ctx.fillStyle = this.isEnemy ? '#ff4d4d' : (this.type ? this.type.color : '#ffe100');
+        ctx.fillRect(this.x - 3, this.y - 2, 6, 4);
     }
 }
 
-// --- 掉落槍枝與寶箱 ---
+// 寶箱與掉落武器
+class Chest {
+    constructor(x, y) { this.x = x; this.y = y; this.w = 26; this.h = 18; }
+    draw() {
+        ctx.fillStyle = '#8b5a2b';
+        ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
+        ctx.fillStyle = '#f1c40f';
+        ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, 4);
+        ctx.fillRect(this.x - this.w/2, this.y - 4, this.w, 4);
+        ctx.fillRect(this.x - 3, this.y - this.h/2 - 2, 6, 6);
+    }
+}
+
 class GroundWeapon {
     constructor(x, y, type) {
-        this.x = x; this.y = y; this.type = type; this.w = 22; this.h = 10; this.bounce = 0;
+        this.x = x; this.y = y; this.type = type; this.bounce = 0;
     }
     draw() {
         this.bounce += 0.08;
         const offsetY = Math.sin(this.bounce) * 3;
         ctx.fillStyle = this.type.color;
-        ctx.fillRect(this.x - this.w/2, this.y - this.h + offsetY, this.w, this.h);
-        ctx.fillStyle = this.type.rarity === 'LEGEND' ? '#2ecc71' : (this.type.rarity === 'RARE' ? '#3498db' : '#fff');
-        ctx.font = '10px monospace';
+        ctx.fillRect(this.x - 10, this.y - 8 + offsetY, 20, 8);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(this.type.name, this.x, this.y - this.h + offsetY - 6);
+        ctx.fillText(this.type.name, this.x, this.y - 12 + offsetY);
     }
 }
 
-class Chest {
-    constructor(x, y) { this.x = x; this.y = y; this.w = 24; this.h = 18; }
-    draw() {
-        ctx.fillStyle = '#b76d29'; ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
-        ctx.fillStyle = '#f1c40f'; ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, 4);
-        ctx.fillRect(this.x - 3, this.y - this.h/2 - 2, 6, 6);
-    }
-}
-
-// --- 怪物類別 (含血條與打擊效果) ---
+// 怪物類別 (修復穿牆與扣血)
 class Enemy {
-    constructor(x, y, color = '#8e44ad') {
-        this.x = x; this.y = y; this.w = 22; this.h = 24;
-        this.color = color;
+    constructor(x, y, type = 'GOBLIN') {
+        this.x = x; this.y = y; this.type = type;
+        this.w = type === 'SPIDER' ? 26 : 20;
+        this.h = type === 'SPIDER' ? 18 : 24;
+        this.color = type === 'SPIDER' ? '#8e44ad' : '#27ae60';
         this.vx = (Math.random() > 0.5 ? 1 : -1) * 1.5;
         this.vy = 0;
-        this.maxHp = 40;
-        this.hp = 40;
+        this.maxHp = type === 'SPIDER' ? 30 : 45;
+        this.hp = this.maxHp;
         this.shootCooldown = 0;
-        this.animTimer = 0;
+        this.flashTimer = 0;
         this.onGround = false;
-        this.flashTimer = 0; // 受擊閃紅光
     }
 
     takeDamage(amount, direction) {
         this.hp -= amount;
-        this.flashTimer = 5;
-        this.vx += direction * 2.5; // 打擊擊退感 (Knockback)
-        this.vy = -2;
+        this.flashTimer = 6;
+        this.vx += direction * 2.0; // 擊退效果
+        this.vy = -2.5;
 
-        // 血花粒子
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 6; i++) {
             particles.push(new Particle(this.x, this.y - this.h/2, (Math.random() - 0.5) * 4, -Math.random() * 3, '#ff4d4d', 2, 15));
         }
     }
@@ -339,112 +310,98 @@ class Enemy {
         this.y += this.vy;
         this.onGround = false;
 
-        // 阻尼恢復移動速度
-        if (Math.abs(this.vx) > 1.5) this.vx *= 0.85;
+        if (Math.abs(this.vx) > 1.5) this.vx *= 0.88;
 
+        // 平台與地面防穿透
         platforms.forEach(p => {
             if (this.vy >= 0 &&
                 this.x + this.w/2 > p.x &&
                 this.x - this.w/2 < p.x + p.w &&
-                this.y >= p.y && this.y - this.vy <= p.y + 6) {
+                this.y >= p.y && this.y - this.vy <= p.y + 8) {
                 this.y = p.y;
                 this.vy = 0;
                 this.onGround = true;
             }
         });
 
-        if (this.x < 20) { this.x = 20; this.vx = Math.abs(this.vx); }
-        if (this.x > canvas.width - 20) { this.x = canvas.width - 20; this.vx = -Math.abs(this.vx); }
+        // 嚴格地圖左右邊界防穿牆
+        if (this.x - this.w/2 < 15) { 
+            this.x = 15 + this.w/2; 
+            this.vx = Math.abs(this.vx); 
+        }
+        if (this.x + this.w/2 > canvas.width - 15) { 
+            this.x = canvas.width - 15 - this.w/2; 
+            this.vx = -Math.abs(this.vx); 
+        }
 
         let targets = [player1, player2].filter(p => p && p.hp > 0);
-        let target = null;
-        if (targets.length > 0) {
-            target = targets.reduce((prev, curr) => 
-                Math.hypot(curr.x - this.x, curr.y - this.y) < Math.hypot(prev.x - this.x, prev.y - this.y) ? curr : prev
-            );
-        }
+        let target = targets.length > 0 ? targets[0] : null;
 
         if (target) {
-            if (Math.abs(target.x - this.x) > 30) {
-                this.vx = target.x > this.x ? (this.vx > 0 ? 1.5 : -1.5) : (this.vx < 0 ? -1.5 : 1.5);
+            if (Math.abs(target.x - this.x) > 15) {
+                this.vx = target.x > this.x ? 1.5 : -1.5;
             }
 
-            if (this.onGround && target.y < this.y - 40 && Math.abs(target.x - this.x) < 150 && Math.random() < 0.03) {
-                this.vy = -9;
+            if (this.onGround && (target.y < this.y - 30 || Math.random() < 0.015)) {
+                this.vy = -8.5;
             }
         }
 
-        if (this.onGround && Math.random() < 0.005) {
-            this.vy = -8.5;
-        }
-
-        if (this.shootCooldown > 0) this.shootCooldown--;
-        if (target && Math.hypot(target.x - this.x, target.y - this.y) < 260 && this.shootCooldown <= 0) {
-            const baseAngle = Math.atan2((target.y - 12) - this.y, target.x - this.x);
-            const spread = (Math.random() - 0.5) * 0.3;
-            const finalAngle = baseAngle + spread;
-            
-            bullets.push(new Bullet(this.x, this.y - 12, Math.cos(finalAngle)*5.5, Math.sin(finalAngle)*5.5, 'STANDARD', true, 10));
-            this.shootCooldown = 90 + Math.floor(Math.random() * 30);
+        if (this.type === 'GOBLIN') {
+            if (this.shootCooldown > 0) this.shootCooldown--;
+            if (target && Math.hypot(target.x - this.x, target.y - this.y) < 260 && this.shootCooldown <= 0) {
+                const angle = Math.atan2((target.y - 12) - this.y, target.x - this.x);
+                bullets.push(new Bullet(this.x, this.y - 12, Math.cos(angle)*5.5, Math.sin(angle)*5.5, null, true));
+                this.shootCooldown = 90 + Math.floor(Math.random() * 40);
+            }
         }
 
         if (this.flashTimer > 0) this.flashTimer--;
-        this.animTimer += 0.1;
     }
 
     draw() {
-        // 受擊閃紅/白光
         ctx.fillStyle = this.flashTimer > 0 ? '#ffffff' : this.color;
-        ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
 
-        ctx.fillStyle = '#fff';
-        const eyeOffset = this.vx > 0 ? 2 : -2;
-        ctx.fillRect(this.x - 5 + eyeOffset, this.y - this.h + 6, 4, 4);
-        ctx.fillRect(this.x + 1 + eyeOffset, this.y - this.h + 6, 4, 4);
-        ctx.fillStyle = '#000';
-        ctx.fillRect(this.x - 4 + eyeOffset, this.y - this.h + 7, 2, 2);
-        ctx.fillRect(this.x + 2 + eyeOffset, this.y - this.h + 7, 2, 2);
-
-        const legOffset = Math.sin(this.animTimer * 5) * 2;
-        ctx.fillStyle = '#111';
-        ctx.fillRect(this.x - this.w/2 + 2, this.y, 4, 2 + legOffset);
-        ctx.fillRect(this.x + this.w/2 - 6, this.y, 4, 2 - legOffset);
-
-        // --- 怪物頭頂血條 ---
-        if (this.hp < this.maxHp) {
-            const barW = 24;
-            const barH = 4;
-            const barX = this.x - barW / 2;
-            const barY = this.y - this.h - 8;
-
-            ctx.fillStyle = '#000';
-            ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-            ctx.fillStyle = '#e74c3c';
-            ctx.fillRect(barX, barY, Math.max(0, (this.hp / this.maxHp) * barW), barH);
+        if (this.type === 'SPIDER') {
+            ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(this.x - 8, this.y - this.h - 4, 4, 5);
+            ctx.fillRect(this.x + 4, this.y - this.h - 4, 4, 5);
+        } else {
+            ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
+            ctx.fillStyle = '#111';
+            ctx.fillRect(this.vx > 0 ? this.x : this.x - 10, this.y - 12, 10, 4);
         }
+
+        // 血條
+        const barW = 22;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(this.x - barW/2 - 1, this.y - this.h - 8, barW + 2, 4);
+        ctx.fillStyle = '#e74c3c';
+        ctx.fillRect(this.x - barW/2, this.y - this.h - 7, Math.max(0, (this.hp / this.maxHp) * barW), 2);
     }
 }
 
-// --- 玩家類別 ---
+// 玩家類別
 class Player {
-    constructor(x, y, bodyColor, headbandColor, controls) {
-        this.x = x; this.y = y; this.w = 20; this.h = 30;
-        this.bodyColor = bodyColor; this.headbandColor = headbandColor;
+    constructor(x, y, bodyColor, styleType, controls) {
+        this.x = x; this.y = y; this.w = 20; this.h = 28;
+        this.bodyColor = bodyColor; this.styleType = styleType;
         this.controls = controls;
         this.facing = 1; this.vx = 0; this.vy = 0;
         this.hp = 100;
-        this.jumpCount = 0; this.maxJumps = 2;
+        this.jumpCount = 0;
         this.inventory = [WEAPON_TYPES.PISTOL];
         this.equippedIndex = 0;
         this.shootCooldown = 0;
     }
 
     jump() {
-        if (this.jumpCount < this.maxJumps) {
-            this.vy = -9.5;
+        if (this.jumpCount < 2) {
+            this.vy = -9.2;
             this.jumpCount++;
-            for (let i = 0; i < 5; i++) {
-                particles.push(new Particle(this.x, this.y, (Math.random() - 0.5) * 3, -Math.random() * 2, '#aaa', 3, 15));
+            for (let i = 0; i < 4; i++) {
+                particles.push(new Particle(this.x, this.y, (Math.random() - 0.5) * 3, -Math.random() * 2, '#ccc', 2, 12));
             }
         }
     }
@@ -459,26 +416,23 @@ class Player {
         if (this.shootCooldown > 0) return;
         const weapon = this.inventory[this.equippedIndex];
         const gunX = this.x + (this.facing * 12);
-        const gunY = this.y - this.h/2;
-        
+        const gunY = this.y - 14;
+
         if (weapon.id === 'SHOTGUN') {
-            for (let angle of [-0.2, 0, 0.2]) {
-                bullets.push(new Bullet(gunX, gunY, this.facing * weapon.speed * Math.cos(angle), weapon.speed * Math.sin(angle), weapon.bulletType, false, weapon.damage));
+            for (let a of [-0.18, 0, 0.18]) {
+                bullets.push(new Bullet(gunX, gunY, this.facing * weapon.speed * Math.cos(a), weapon.speed * Math.sin(a), weapon));
             }
-        } else if (weapon.id === 'GRENADE') {
-            bullets.push(new Bullet(gunX, gunY, this.facing * weapon.speed, -3, weapon.bulletType, false, weapon.damage));
         } else {
-            bullets.push(new Bullet(gunX, gunY, this.facing * weapon.speed, 0, weapon.bulletType, false, weapon.damage));
+            bullets.push(new Bullet(gunX, gunY, this.facing * weapon.speed, 0, weapon));
         }
-        
-        shockwaves.push(new Shockwave(gunX, gunY, weapon.shockwave));
+
         this.shootCooldown = weapon.cooldown;
     }
 
     tryPickupWeapon() {
         for (let i = groundWeapons.length - 1; i >= 0; i--) {
             const gw = groundWeapons[i];
-            if (Math.hypot(this.x - gw.x, (this.y - this.h/2) - gw.y) < 40) {
+            if (Math.hypot(this.x - gw.x, (this.y - 14) - gw.y) < 35) {
                 if (this.inventory.length < 2) {
                     this.inventory.push(gw.type);
                     this.equippedIndex = 1;
@@ -525,7 +479,7 @@ class Player {
             if (Math.abs(this.x - c.x) < 22 && Math.abs(this.y - c.y) < 25) {
                 groundWeapons.push(new GroundWeapon(c.x, c.y, getRandomWeapon()));
                 for (let k = 0; k < 12; k++) {
-                    particles.push(new Particle(c.x, c.y - 10, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, '#f1c40f', 3, 25));
+                    particles.push(new Particle(c.x, c.y - 10, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, '#f1c40f', 3, 20));
                 }
                 chests.splice(i, 1);
             }
@@ -538,32 +492,37 @@ class Player {
         ctx.fillStyle = this.bodyColor;
         ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
 
-        ctx.fillStyle = this.headbandColor;
-        ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, 6);
+        if (this.styleType === 'BANDANA') {
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, 6);
+        } else {
+            ctx.fillStyle = '#8b5a2b';
+            ctx.fillRect(this.x - this.w/2 - 4, this.y - this.h - 2, this.w + 8, 4);
+            ctx.fillRect(this.x - 6, this.y - this.h - 8, 12, 6);
+        }
 
         ctx.fillStyle = '#fff';
-        const eyeOffset = this.facing === 1 ? 2 : -4;
-        ctx.fillRect(this.x + eyeOffset, this.y - this.h + 8, 4, 4);
+        const eyeX = this.facing === 1 ? this.x + 2 : this.x - 6;
+        ctx.fillRect(eyeX, this.y - this.h + 8, 4, 4);
 
         const weapon = this.inventory[this.equippedIndex];
         ctx.fillStyle = weapon.color;
-        const gunX = this.facing === 1 ? this.x : this.x - 14;
-        ctx.fillRect(gunX, this.y - this.h/2 - 2, 14, 5);
+        const gunX = this.facing === 1 ? this.x : this.x - 12;
+        ctx.fillRect(gunX, this.y - 16, 12, 5);
     }
 }
 
-// --- 初始化與開局 ---
 let player1, player2;
 let bullets = [];
-let shockwaves = [];
 let particles = [];
 let groundWeapons = [];
 let chests = [];
 let enemies = [];
 
 function spawnEnemies() {
-    if (enemies.length < 3) {
-        enemies.push(new Enemy(80 + Math.random() * 640, 60, Math.random() > 0.5 ? '#8e44ad' : '#27ae60'));
+    if (enemies.length < 4) {
+        const type = Math.random() > 0.5 ? 'SPIDER' : 'GOBLIN';
+        enemies.push(new Enemy(100 + Math.random() * 600, 60, type));
     }
 }
 
@@ -575,58 +534,67 @@ function startGame(mode) {
     menuOverlay.style.display = 'none';
 
     bullets = [];
-    shockwaves = [];
     particles = [];
     groundWeapons = [];
     
-    chests = [new Chest(185, 360), new Chest(615, 360)];
+    chests = [new Chest(180, 370), new Chest(620, 370)];
 
     enemies = [
-        new Enemy(400, 80, '#8e44ad'),
-        new Enemy(80, 410, '#27ae60'),
-        new Enemy(720, 280, '#27ae60')
+        new Enemy(400, 80, 'SPIDER'),
+        new Enemy(100, 420, 'GOBLIN'),
+        new Enemy(700, 290, 'GOBLIN')
     ];
 
-    player1 = new Player(350, 340, '#3498db', '#e74c3c', { left: 'KeyA', right: 'KeyD' });
-    player2 = gameMode === 2 ? new Player(450, 340, '#2ecc71', '#f1c40f', { left: 'ArrowLeft', right: 'ArrowRight' }) : null;
+    player1 = new Player(360, 350, '#3498db', 'BANDANA', { left: 'KeyA', right: 'KeyD' });
+    player2 = gameMode === 2 ? new Player(440, 350, '#1abc9c', 'HAT', { left: 'ArrowLeft', right: 'ArrowRight' }) : null;
 }
 
 function drawMapAndUI() {
-    ctx.fillStyle = '#2c1a12';
+    ctx.fillStyle = '#4a3324';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = '#21130d';
-    for (let y = 0; y < canvas.height; y += 30) ctx.fillRect(0, y, canvas.width, 2);
+    ctx.fillStyle = '#3a271b';
+    for (let x = 0; x < canvas.width; x += 80) ctx.fillRect(x, 0, 3, canvas.height);
 
     platforms.forEach(p => {
-        ctx.fillStyle = p.isGround ? '#5c3a21' : '#794d2b';
+        ctx.fillStyle = '#8c6d3f';
         ctx.fillRect(p.x, p.y, p.w, p.h);
         ctx.fillStyle = '#d4ac0d';
         ctx.fillRect(p.x, p.y, p.w, 3);
+        ctx.fillStyle = '#5c4528';
+        ctx.fillRect(p.x, p.y + p.h - 3, p.w, 3);
     });
 
-    // 1P HUD
-    ctx.fillStyle = '#3498db';
-    ctx.font = 'bold 13px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`1P HP: ${Math.max(0, player1.hp)}`, 20, 25);
-    ctx.fillText(`武器: ${player1.inventory[player1.equippedIndex].name}`, 20, 42);
-
-    // 2P HUD
-    if (player2) {
-        ctx.fillStyle = '#2ecc71';
-        ctx.textAlign = 'right';
-        ctx.fillText(`2P HP: ${Math.max(0, player2.hp)}`, canvas.width - 20, 25);
-        ctx.fillText(`武器: ${player2.inventory[player2.equippedIndex].name}`, canvas.width - 20, 42);
-    }
+    drawHealthBar(20, 15, player1.hp, 100, '#3498db', '1P');
+    if (player2) drawHealthBar(canvas.width - 150, 15, player2.hp, 100, '#1abc9c', '2P');
 
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 18px monospace';
+    ctx.fillRect(canvas.width / 2 - 6, 12, 4, 14);
+    ctx.fillRect(canvas.width / 2 + 2, 12, 4, 14);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 22px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`KILLS ${killCount}`, canvas.width / 2, 435);
+    ctx.fillText(`KILLS ${killCount}`, canvas.width / 2, 432);
 }
 
-// --- 遊戲主循環 ---
+function drawHealthBar(x, y, hp, maxHp, color, label) {
+    const width = 130;
+    const height = 16;
+    
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x - 2, y - 2, width + 4, height + 4);
+
+    const segments = 10;
+    const segW = (width - (segments - 1) * 2) / segments;
+    const currentSegs = Math.ceil((Math.max(0, hp) / maxHp) * segments);
+
+    for (let i = 0; i < segments; i++) {
+        ctx.fillStyle = (i < currentSegs) ? ((i === segments - 1) ? '#e74c3c' : '#2ecc71') : '#444';
+        ctx.fillRect(x + i * (segW + 2), y, segW, height);
+    }
+}
+
+// 主循環
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -636,7 +604,7 @@ function gameLoop() {
     }
 
     if (gameState === 'GAMEOVER') {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#e74c3c';
         ctx.font = 'bold 36px monospace';
@@ -655,51 +623,41 @@ function gameLoop() {
     chests.forEach(c => c.draw());
     groundWeapons.forEach(gw => gw.draw());
 
-    if (Math.random() < 0.008) spawnEnemies();
+    if (Math.random() < 0.006) spawnEnemies();
 
-    // 準確子彈碰撞計算 (CCD 線段檢測)
+    // 1. 更新並繪製怪物
+    enemies.forEach(e => e.update());
+
+    // 2. ★ 全域怪物死亡檢查 (徹底解決打不死的 Bug) ★
+    for (let j = enemies.length - 1; j >= 0; j--) {
+        if (enemies[j].hp <= 0) {
+            const e = enemies[j];
+            for (let k = 0; k < 16; k++) {
+                particles.push(new Particle(e.x, e.y - e.h/2, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, e.color, 3, 20));
+            }
+            enemies.splice(j, 1);
+            killCount++;
+        }
+    }
+
+    // 3. 子彈與碰撞處理
     for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
         b.update();
         b.draw();
 
         if (!b.isEnemy) {
-            for (let j = enemies.length - 1; j >= 0; j--) {
+            for (let j = 0; j < enemies.length; j++) {
                 const e = enemies[j];
                 const enemyBox = { x: e.x - e.w/2, y: e.y - e.h, w: e.w, h: e.h };
 
-                // 檢查這幀子彈移動線段是否交錯怪物盒
-                const isHit = checkLineRectCollision(b.prevX, b.prevY, b.x, b.y, enemyBox.x, enemyBox.y, enemyBox.w, enemyBox.h);
-
-                if (b.bulletType === 'MINE' && b.isArmedMine && isHit) {
-                    b.explode(); b.life = 0; break;
-                }
-
-                if (isHit) {
-                    if (b.bulletType === 'PIERCING') {
-                        if (!b.hitEnemies.includes(e)) {
-                            e.takeDamage(b.damage, b.vx > 0 ? 1 : -1);
-                            b.hitEnemies.push(e);
-                        }
-                    } else if (b.bulletType === 'GRENADE') {
-                        b.explode(); b.life = 0; break;
-                    } else {
-                        e.takeDamage(b.damage, b.vx > 0 ? 1 : -1);
-                        bullets.splice(i, 1);
-                        break;
-                    }
-
-                    if (e.hp <= 0) {
-                        for (let k = 0; k < 12; k++) {
-                            particles.push(new Particle(e.x, e.y - e.h/2, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, e.color, 3, 20));
-                        }
-                        enemies.splice(j, 1);
-                        killCount++;
-                    }
+                if (checkLineRectCollision(b.prevX, b.prevY, b.x, b.y, enemyBox.x, enemyBox.y, enemyBox.w, enemyBox.h)) {
+                    e.takeDamage(b.damage, b.vx > 0 ? 1 : -1);
+                    bullets.splice(i, 1);
+                    break;
                 }
             }
         } else {
-            // 打擊玩家 (1P & 2P)
             [player1, player2].forEach(p => {
                 if (p && p.hp > 0) {
                     const pBox = { x: p.x - p.w/2, y: p.y - p.h, w: p.w, h: p.h };
@@ -717,16 +675,10 @@ function gameLoop() {
         if (b && b.life <= 0) bullets.splice(i, 1);
     }
 
-    // 玩家死亡檢測
     const is1PDead = player1.hp <= 0;
     const is2PDead = gameMode === 2 ? (player2.hp <= 0) : true;
     if (is1PDead && is2PDead) {
         gameState = 'GAMEOVER';
-    }
-
-    for (let i = shockwaves.length - 1; i >= 0; i--) {
-        shockwaves[i].update(); shockwaves[i].draw();
-        if (shockwaves[i].alpha <= 0) shockwaves.splice(i, 1);
     }
 
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -734,7 +686,7 @@ function gameLoop() {
         if (particles[i].life <= 0) particles.splice(i, 1);
     }
 
-    enemies.forEach(e => { e.update(); e.draw(); });
+    enemies.forEach(e => e.draw());
 
     player1.update(); player1.draw();
     if (player2) { player2.update(); player2.draw(); }
