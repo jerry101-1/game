@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft 風格跑酷塔 - Checkpoint 版</title>
+    <title>Roblox / TOH 風格極限跑酷塔</title>
     <style>
         * {
             box-sizing: border-box;
@@ -13,7 +13,7 @@
 
         body {
             overflow: hidden;
-            background-color: #1a1a1a;
+            background-color: #111;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
         }
@@ -29,19 +29,36 @@
             top: 20px;
             left: 20px;
             color: #fff;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             z-index: 10;
             display: flex;
-            gap: 15px;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         .ui-box {
-            background: rgba(0, 0, 0, 0.75);
-            padding: 10px 18px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 16px;
             border-radius: 8px;
-            border: 2px solid #555;
+            border: 2px solid #444;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        /* 倒數計時器 (TOH 經典風格) */
+        #timer-box {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(233, 69, 96, 0.85);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 22px;
+            font-weight: bold;
+            border: 2px solid #fff;
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.8);
         }
 
         #checkpoint-msg {
@@ -74,7 +91,7 @@
             transform: translateX(-50%);
             color: #fff;
             font-size: 14px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             padding: 8px 18px;
             border-radius: 6px;
             border: 1px solid #444;
@@ -90,18 +107,18 @@
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            background: rgba(20, 20, 20, 0.95);
+            background: rgba(15, 15, 20, 0.95);
             padding: 35px 55px;
             border-radius: 12px;
-            border: 3px solid #ffaa00;
-            box-shadow: 0 0 30px rgba(255, 170, 0, 0.4);
+            border: 3px solid #ff0055;
+            box-shadow: 0 0 30px rgba(255, 0, 85, 0.5);
             color: #fff;
             z-index: 20;
         }
 
         #game-over h1 {
             font-size: 36px;
-            color: #ffaa00;
+            color: #ff0055;
             margin-bottom: 15px;
         }
 
@@ -121,12 +138,12 @@
             padding: 12px 30px;
             font-size: 18px;
             font-weight: bold;
-            background-color: #55ff55;
+            background-color: #00fff5;
             color: #000;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            box-shadow: 0 0 10px #55ff55;
+            box-shadow: 0 0 15px #00fff5;
             transition: 0.2s;
         }
 
@@ -140,14 +157,16 @@
 <body>
 
     <div id="ui">
-        <div class="ui-box">🗺️ 關卡: <span id="map-name" style="color: #55ff55;">Minecraft 草原塔</span></div>
-        <div class="ui-box">🚩 最新紀錄點: <span id="checkpoint-txt" style="color: #ffaa00;">起點</span></div>
+        <div class="ui-box">🗺️ 關卡: <span id="map-name" style="color: #00fff5;">Tower of Hell</span></div>
+        <div class="ui-box">🚩 紀錄點: <span id="checkpoint-txt" style="color: #ffaa00;">起點</span></div>
         <div class="ui-box">💰 金幣: <span id="coins" style="color: #ffff55;">0</span></div>
     </div>
 
+    <div id="timer-box">⏱️ <span id="timer-txt">02:00</span></div>
+
     <div id="checkpoint-msg">🚩 紀錄點已儲存！</div>
 
-    <div id="instructions">WASD / 方向鍵移動 | 空白鍵跳躍 | 滑鼠拖曳旋轉視角</div>
+    <div id="instructions">WASD / 方向鍵移動 | 空白鍵跳躍 | 按住滑鼠左鍵拖曳旋轉視角</div>
 
     <div id="game-over">
         <h1 id="over-title">挑戰結果</h1>
@@ -159,34 +178,35 @@
     <div id="canvas-container"></div>
 
     <script>
-        // --- 1. MC 像素風主題配置 ---
+        // --- 1. 地圖主題 ---
         const THEMES = [
             {
-                name: "1. 經典草方塊塔",
-                sky: 0x7ec0ee,
-                lava: 0xd35400,
-                blockGrass: 0x55aa33,
-                blockDirt: 0x8b5a2b,
-                checkpointColor: 0xffaa00,
+                name: "1. 霓虹極限地獄塔",
+                sky: 0x0a0a1a,
+                lava: 0xff0055,
+                blockColor: 0x1a1a3a,
+                laserColor: 0xff0055,
+                checkpointColor: 0x00fff5,
                 topBlock: 0xffd700
             },
             {
-                name: "2. 地獄黑曜石塔",
-                sky: 0x2c0000,
-                lava: 0xff2200,
-                blockGrass: 0x333344,
-                blockDirt: 0x111122,
-                checkpointColor: 0x00ffff,
-                topBlock: 0x00ffcc
+                name: "2. 毒液科幻塔",
+                sky: 0x051a0e,
+                lava: 0x00ff44,
+                blockColor: 0x0a2a18,
+                laserColor: 0x00ff88,
+                checkpointColor: 0xffff00,
+                topBlock: 0xffffd700
             }
         ];
 
-        // --- 2. 場景初始化 ---
+        // --- 2. 系統變數 ---
         const container = document.getElementById('canvas-container');
         const coinsDisplay = document.getElementById('coins');
         const mapNameDisplay = document.getElementById('map-name');
         const checkpointTxt = document.getElementById('checkpoint-txt');
         const checkpointMsg = document.getElementById('checkpoint-msg');
+        const timerTxt = document.getElementById('timer-txt');
         const gameOverScreen = document.getElementById('game-over');
         const finalScoreDisplay = document.getElementById('final-score');
         const overTitle = document.getElementById('over-title');
@@ -200,69 +220,91 @@
         renderer.shadowMap.enabled = true;
         container.appendChild(renderer.domElement);
 
-        // 光源 (陽光感)
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+        // 光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
         dirLight.position.set(30, 60, 30);
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // 方塊與紀錄點資料
         let lava;
         let platforms = [];
-        let checkpoints = [];
+        let lasers = []; // 動態雷射障礙
         let lastCheckpointPos = new THREE.Vector3(0, 2, 0);
         let lastCheckpointName = "起點";
-        
+
         let currentLevel = 0;
         let totalCoins = 0;
         let isWinState = false;
-        const platformCount = 40;
+        let timeRemaining = 120; // 2分鐘倒數
+        let timerInterval = null;
 
-        // --- 3. 生成 MC 風格方塊 ---
-        function createCubePlatform(x, y, z, width, height, depth, colorTop, colorSide) {
-            const group = new THREE.Group();
+        const platformCount = 35;
+        const towerRadius = 7;
 
+        // --- 3. 生成平台與機關 ---
+        function createCubePlatform(x, y, z, width, height, depth, color, isMoving = false, moveRange = 3) {
             const geo = new THREE.BoxGeometry(width, height, depth);
-            const topMat = new THREE.MeshStandardMaterial({ color: colorTop, roughness: 0.9 });
-            const sideMat = new THREE.MeshStandardMaterial({ color: colorSide, roughness: 0.9 });
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: color, 
+                roughness: 0.3,
+                emissive: isMoving ? 0x112233 : 0x000000 
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
 
-            // MC 經典頂面/側面分色 (草地與土塊)
-            const materials = [
-                sideMat, sideMat, 
-                topMat, sideMat, 
-                sideMat, sideMat
-            ];
+            mesh.userData = { 
+                width: width, 
+                height: height, 
+                depth: depth, 
+                isTop: false, 
+                isCheckpoint: false,
+                isMoving: isMoving,
+                startX: x,
+                moveRange: moveRange,
+                moveSpeed: 0.02 + Math.random() * 0.02
+            };
 
-            const cube = new THREE.Mesh(geo, materials);
-            cube.castShadow = true;
-            cube.receiveShadow = true;
-            group.add(cube);
+            return mesh;
+        }
 
+        // 生成旋轉雷射障礙棒
+        function createLaserObstacle(x, y, z, length, color) {
+            const group = new THREE.Group();
+            const geo = new THREE.CylinderGeometry(0.15, 0.15, length);
+            const mat = new THREE.MeshBasicMaterial({ color: color });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.rotation.z = Math.PI / 2; // 橫置雷射
+            group.add(mesh);
             group.position.set(x, y, z);
-            group.userData = { width: width, height: height, depth: depth, isTop: false, isCheckpoint: false };
+
+            group.userData = {
+                length: length,
+                rotSpeed: 0.03 + Math.random() * 0.02
+            };
 
             return group;
         }
 
-        // 地圖重建器
         function buildMap(levelIdx) {
             const theme = THEMES[levelIdx % THEMES.length];
             mapNameDisplay.textContent = theme.name;
 
             scene.background = new THREE.Color(theme.sky);
-            scene.fog = new THREE.FogExp2(theme.sky, 0.01);
+            scene.fog = new THREE.FogExp2(theme.sky, 0.012);
 
-            // 清理物件
+            // 清理舊物件
             if (lava) scene.remove(lava);
             platforms.forEach(p => scene.remove(p));
-            checkpoints.forEach(c => scene.remove(c));
+            lasers.forEach(l => scene.remove(l));
             platforms = [];
-            checkpoints = [];
+            lasers = [];
 
-            // 1. 熔岩海
+            // 1. 底層熔岩
             const lavaGeo = new THREE.PlaneGeometry(300, 300);
             const lavaMat = new THREE.MeshBasicMaterial({ color: theme.lava, side: THREE.DoubleSide });
             lava = new THREE.Mesh(lavaGeo, lavaMat);
@@ -270,66 +312,100 @@
             lava.position.y = -2;
             scene.add(lava);
 
-            // 2. 起始大方塊
-            const startPlatform = createCubePlatform(0, 0, 0, 8, 1, 8, theme.blockGrass, theme.blockDirt);
+            // 2. 起始大平台
+            const startPlatform = createCubePlatform(0, 0, 0, 8, 1, 8, 0x00fff5);
             scene.add(startPlatform);
             platforms.push(startPlatform);
 
-            // 3. 生成螺旋方塊塔
-            const radius = 7;
+            // 3. 生成跑酷塔平台與動態機關
             for (let i = 1; i <= platformCount; i++) {
                 const angle = i * 0.7;
-                const height = i * 3.2;
+                const height = i * 3.4;
 
                 const isTop = (i === platformCount);
-                const isCheckpoint = (i % 10 === 0 && !isTop); // 每 10 層設一個紀錄點
+                const isCheckpoint = (i % 8 === 0 && !isTop); // 每 8 層設紀錄點
+                const isMoving = (!isTop && !isCheckpoint && i % 3 === 0); // 每 3 層出現移動平台
 
-                const width = isTop ? 4 : (isCheckpoint ? 3.5 : Math.max(1.8, 3.2 - i * 0.02));
-                const depth = isTop ? 4 : (isCheckpoint ? 3.5 : Math.max(1.8, 3.2 - i * 0.02));
+                const width = isTop ? 5 : (isCheckpoint ? 3.5 : 2.5);
+                const depth = isTop ? 5 : (isCheckpoint ? 3.5 : 2.5);
 
-                let topColor = isTop ? theme.topBlock : (isCheckpoint ? theme.checkpointColor : theme.blockGrass);
-                let sideColor = isTop ? theme.topBlock : theme.blockDirt;
+                let pColor = isTop ? theme.topBlock : (isCheckpoint ? theme.checkpointColor : theme.blockColor);
 
                 const platform = createCubePlatform(
-                    Math.cos(angle) * radius,
+                    Math.cos(angle) * towerRadius,
                     height,
-                    Math.sin(angle) * radius,
+                    Math.sin(angle) * towerRadius,
                     width, 0.8, depth,
-                    topColor, sideColor
+                    pColor, isMoving
                 );
 
                 platform.userData.isTop = isTop;
                 platform.userData.isCheckpoint = isCheckpoint;
                 platform.userData.cpIndex = i;
 
-                // 如果是紀錄點，在上面放置一個🚩旗幟裝飾
+                // 紀錄點旗幟
                 if (isCheckpoint) {
                     const flagGeo = new THREE.CylinderGeometry(0.1, 0.1, 2);
                     const flagMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
                     const flagPole = new THREE.Mesh(flagGeo, flagMat);
                     flagPole.position.set(0, 1.4, 0);
 
-                    const topBannerGeo = new THREE.BoxGeometry(0.8, 0.5, 0.1);
-                    const topBannerMat = new THREE.MeshStandardMaterial({ color: theme.checkpointColor });
-                    const topBanner = new THREE.Mesh(topBannerGeo, topBannerMat);
-                    topBanner.position.set(0.4, 2, 0);
+                    const bannerGeo = new THREE.BoxGeometry(0.8, 0.5, 0.1);
+                    const bannerMat = new THREE.MeshStandardMaterial({ color: theme.checkpointColor });
+                    const banner = new THREE.Mesh(bannerGeo, bannerMat);
+                    banner.position.set(0.4, 2, 0);
 
                     platform.add(flagPole);
-                    platform.add(topBanner);
-                    checkpoints.push(platform);
+                    platform.add(banner);
+                }
+
+                // 隨機在普通平台上加入「旋轉雷射棒」障礙
+                if (!isTop && !isCheckpoint && i % 4 === 0) {
+                    const laser = createLaserObstacle(
+                        platform.position.x,
+                        height + 1.2,
+                        platform.position.z,
+                        4.5,
+                        theme.laserColor
+                    );
+                    scene.add(laser);
+                    lasers.push(laser);
                 }
 
                 scene.add(platform);
                 platforms.push(platform);
             }
+
+            startTimer();
         }
 
-        // --- 4. 玩家角色 (MC 人物造型簡化版) ---
+        // --- 4. 倒數計時系統 ---
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeRemaining = 120; // 2 分鐘
+            updateTimerDisplay();
+
+            timerInterval = setInterval(() => {
+                if (isGameOver) return;
+                timeRemaining--;
+                updateTimerDisplay();
+
+                if (timeRemaining <= 0) {
+                    endGame(false, "⏰ 時間到！崩塌死亡！");
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+            const secs = (timeRemaining % 60).toString().padStart(2, '0');
+            timerTxt.textContent = `${mins}:${secs}`;
+        }
+
+        // --- 5. 玩家角色 ---
         const playerGroup = new THREE.Group();
-        
-        // 身體方塊
         const bodyGeo = new THREE.BoxGeometry(0.8, 1.6, 0.8);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00a8ff });
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00fff5, emissive: 0x004455 });
         const playerBody = new THREE.Mesh(bodyGeo, bodyMat);
         playerBody.position.y = 0.8;
         playerBody.castShadow = true;
@@ -350,7 +426,7 @@
         window.addEventListener('keydown', (e) => keys[e.code] = true);
         window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-        // 滑鼠視角
+        // 視角控制
         let cameraAngleX = 0;
         let cameraAngleY = 0.3;
         let isMouseDown = false;
@@ -375,7 +451,6 @@
             }
         });
 
-        // 提示訊息淡出
         function triggerCheckpointMsg(text) {
             checkpointTxt.textContent = text;
             checkpointMsg.style.display = 'block';
@@ -384,10 +459,34 @@
             }, 1800);
         }
 
-        // --- 5. 物理與紀錄點檢測 ---
+        // --- 6. 物理運動與動態障礙物更新 ---
+        let timeGlobal = 0;
+
         function updatePhysics() {
             if (isGameOver) return;
 
+            timeGlobal += 0.03;
+
+            // 1. 更新動態平台 (左右滑動)
+            platforms.forEach(p => {
+                if (p.userData.isMoving) {
+                    p.position.x = p.userData.startX + Math.sin(timeGlobal) * p.userData.moveRange;
+                }
+            });
+
+            // 2. 更新旋轉雷射棒
+            lasers.forEach(l => {
+                l.rotation.y += l.userData.rotSpeed;
+
+                // 雷射碰撞檢測 (與玩家距離)
+                const dist = playerPos.distanceTo(l.position);
+                if (dist < 2.2 && Math.abs(playerPos.y - l.position.y) < 1.0) {
+                    endGame(false, "⚡ 觸碰死亡雷射！");
+                    return;
+                }
+            });
+
+            // 3. 玩家移動計算
             const forward = new THREE.Vector3(-Math.sin(cameraAngleX), 0, -Math.cos(cameraAngleX)).normalize();
             const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
@@ -413,7 +512,7 @@
             let nextY = playerPos.y + playerVel.y;
             let nextZ = playerPos.z + playerVel.z;
 
-            // 碰撞判定
+            // 4. 平台碰撞判定
             isGrounded = false;
             const playerHalfW = 0.4;
 
@@ -434,6 +533,11 @@
                         playerVel.y = 0;
                         isGrounded = true;
 
+                        // 踩上移動平台時，同步移動玩家
+                        if (p.userData.isMoving) {
+                            nextX += (Math.cos(timeGlobal) * p.userData.moveRange * 0.03);
+                        }
+
                         // 踩到紀錄點
                         if (p.userData.isCheckpoint && lastCheckpointName !== `${p.userData.cpIndex} 層`) {
                             lastCheckpointPos.set(pBox.x, pBox.y + ph + 0.5, pBox.z);
@@ -441,7 +545,7 @@
                             triggerCheckpointMsg(`🚩 第 ${p.userData.cpIndex} 層紀錄點！`);
                         }
 
-                        // 踩到終點
+                        // 通關終點
                         if (p.userData.isTop) {
                             endGame(true);
                             return;
@@ -453,9 +557,9 @@
             playerPos.set(nextX, nextY, nextZ);
             playerGroup.position.copy(playerPos);
 
-            // 掉落熔岩 -> 回紀錄點/重生
+            // 掉落熔岩
             if (playerPos.y < 0) {
-                endGame(false);
+                endGame(false, "🔥 跌落熔岩！");
             }
         }
 
@@ -479,21 +583,22 @@
             renderer.render(scene, camera);
         }
 
-        // --- 6. 結算與重生控制 ---
-        function endGame(isWin) {
+        // --- 7. 結算控制 ---
+        function endGame(isWin, customMsg = "") {
             isGameOver = true;
             isWinState = isWin;
+            clearInterval(timerInterval);
 
             if (isWin) {
-                const rewardCoins = 1500;
+                const rewardCoins = 2000;
                 totalCoins += rewardCoins;
                 coinsDisplay.textContent = totalCoins;
 
-                overTitle.textContent = "🏆 成功攀至塔頂！";
-                rewardText.textContent = `🎁 獲得 +${rewardCoins} 金幣！`;
-                actionBtn.textContent = "進入下一個地圖 ➔";
+                overTitle.textContent = "🏆 成功征服地獄塔！";
+                rewardText.textContent = `🎁 通關獎勵：+${rewardCoins} 金幣！`;
+                actionBtn.textContent = "進入下一座塔 ➔";
             } else {
-                overTitle.textContent = "🔥 跌落熔岩！";
+                overTitle.textContent = customMsg || "💥 挑戰失敗！";
                 rewardText.textContent = `將於紀錄點 [ ${lastCheckpointName} ] 復活`;
                 actionBtn.textContent = "從紀錄點重生";
             }
@@ -505,13 +610,11 @@
         function handleButtonClick() {
             if (isWinState) {
                 currentLevel++;
-                // 重設紀錄點到起點
                 lastCheckpointPos.set(0, 2, 0);
                 lastCheckpointName = "起點";
                 checkpointTxt.textContent = "起點";
                 resetGame(true);
             } else {
-                // 從紀錄點重生
                 resetGame(false);
             }
         }
@@ -521,9 +624,10 @@
 
             if (isNewMap) {
                 buildMap(currentLevel);
+            } else {
+                startTimer();
             }
 
-            // 將玩家放回紀錄點位置
             playerPos.copy(lastCheckpointPos);
             playerVel.set(0, 0, 0);
             cameraAngleX = 0;
