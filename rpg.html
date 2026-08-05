@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>2D 像素動作戰鬥 - 選單按鈕版</title>
+    <title>2D 像素動作戰鬥 - Temple of Boom 風格修正版</title>
     <style>
         body {
             margin: 0;
@@ -26,20 +26,18 @@
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
             image-rendering: pixelated;
         }
-        /* 選單 Overlay 與按鈕樣式 */
         #menuOverlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(15, 10, 12, 0.85);
+            background: rgba(15, 10, 12, 0.88);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 10;
-            border: 4px solid transparent; /* 與 Canvas 對齊 */
             box-sizing: border-box;
         }
         .menu-title {
@@ -71,10 +69,6 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 0 #3a2313;
         }
-        .mode-btn:active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 #3a2313;
-        }
         .instructions {
             margin-top: 12px;
             font-size: 13px;
@@ -86,7 +80,7 @@
 </head>
 <body>
 
-    <h2 style="color: #f39c12; margin-bottom: 8px;">2D 像素動作戰鬥</h2>
+    <h2 style="color: #f39c12; margin-bottom: 8px;">2D 像素動作戰鬥 (準確傷害與血條顯示版)</h2>
     
     <div class="game-container">
         <div id="menuOverlay">
@@ -113,7 +107,7 @@ const menuOverlay = document.getElementById('menuOverlay');
 
 const GRAVITY = 0.45;
 let killCount = 0;
-let gameState = 'MENU'; // 'MENU', 'PLAYING', 'GAMEOVER'
+let gameState = 'MENU'; 
 let gameMode = 1;      
 
 const keys = {};
@@ -135,13 +129,11 @@ window.addEventListener('keydown', e => {
     }
 
     if (!keys[e.code]) {
-        // 1P
         if (e.code === 'KeyW' && player1 && player1.hp > 0) player1.jump();
         if (e.code === 'KeyS' && player1 && player1.hp > 0) player1.tryPickupWeapon();
         if (e.code === 'KeyC' && player1 && player1.hp > 0) player1.cycleWeapon();
         if (e.code === 'KeyV' && player1 && player1.hp > 0) player1.shoot();
 
-        // 2P
         if (gameMode === 2 && player2 && player2.hp > 0) {
             if (e.code === 'ArrowUp') player2.jump();
             if (e.code === 'ArrowDown') player2.tryPickupWeapon();
@@ -153,6 +145,17 @@ window.addEventListener('keydown', e => {
 });
 
 window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// 線段與矩形碰撞檢測 (解決高速子彈穿透問題)
+function checkLineRectCollision(x1, y1, x2, y2, rx, ry, rw, rh) {
+    const minX = Math.min(x1, x2);
+    const maxX = Math.max(x1, x2);
+    const minY = Math.min(y1, y2);
+    const maxY = Math.max(y1, y2);
+
+    if (maxX < rx || minX > rx + rw || maxY < ry || minY > ry + rh) return false;
+    return true;
+}
 
 // --- 地圖平台資料 ---
 const platforms = [
@@ -173,12 +176,12 @@ const platforms = [
 
 // --- 武器資料庫 ---
 const WEAPON_TYPES = {
-    PISTOL:   { id: 'PISTOL', name: '手槍', color: '#f39c12', rarity: 'COMMON', speed: 11, cooldown: 14, damage: 25, shockwave: 18, bulletType: 'STANDARD' },
-    SMG:      { id: 'SMG', name: '衝鋒槍', color: '#f1c40f', rarity: 'COMMON', speed: 13, cooldown: 6, damage: 14, shockwave: 12, bulletType: 'STANDARD' },
-    SHOTGUN:  { id: 'SHOTGUN', name: '散彈槍', color: '#e67e22', rarity: 'COMMON', speed: 9, cooldown: 35, damage: 22, shockwave: 30, bulletType: 'SPREAD' },
-    SNIPER:   { id: 'SNIPER', name: '狙擊槍', color: '#3498db', rarity: 'RARE', speed: 22, cooldown: 45, damage: 90, shockwave: 25, bulletType: 'PIERCING' },
-    GRENADE:  { id: 'GRENADE', name: '榴彈槍', color: '#e74c3c', rarity: 'RARE', speed: 8, cooldown: 40, damage: 65, shockwave: 40, bulletType: 'GRENADE' },
-    MINE:     { id: 'MINE', name: '地雷槍', color: '#2ecc71', rarity: 'LEGEND', speed: 6, cooldown: 50, damage: 110, shockwave: 45, bulletType: 'MINE' }
+    PISTOL:   { id: 'PISTOL', name: '手槍', color: '#f39c12', rarity: 'COMMON', speed: 12, cooldown: 14, damage: 20, shockwave: 18, bulletType: 'STANDARD' },
+    SMG:      { id: 'SMG', name: '衝鋒槍', color: '#f1c40f', rarity: 'COMMON', speed: 14, cooldown: 6, damage: 12, shockwave: 12, bulletType: 'STANDARD' },
+    SHOTGUN:  { id: 'SHOTGUN', name: '散彈槍', color: '#e67e22', rarity: 'COMMON', speed: 10, cooldown: 35, damage: 18, shockwave: 30, bulletType: 'SPREAD' },
+    SNIPER:   { id: 'SNIPER', name: '狙擊槍', color: '#3498db', rarity: 'RARE', speed: 22, cooldown: 45, damage: 80, shockwave: 25, bulletType: 'PIERCING' },
+    GRENADE:  { id: 'GRENADE', name: '榴彈槍', color: '#e74c3c', rarity: 'RARE', speed: 9, cooldown: 40, damage: 60, shockwave: 40, bulletType: 'GRENADE' },
+    MINE:     { id: 'MINE', name: '地雷槍', color: '#2ecc71', rarity: 'LEGEND', speed: 6, cooldown: 50, damage: 100, shockwave: 45, bulletType: 'MINE' }
 };
 
 function getRandomWeapon() {
@@ -222,12 +225,17 @@ class Shockwave {
 // --- 子彈類別 ---
 class Bullet {
     constructor(x, y, vx, vy, bulletType, isEnemy = false, damage = 10) {
-        this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+        this.x = x; this.y = y;
+        this.prevX = x; this.prevY = y;
+        this.vx = vx; this.vy = vy;
         this.bulletType = bulletType; this.isEnemy = isEnemy; this.damage = damage;
         this.life = 120; this.isArmedMine = false; this.hitEnemies = [];
     }
 
     update() {
+        this.prevX = this.x;
+        this.prevY = this.y;
+
         if (this.bulletType === 'GRENADE') this.vy += 0.25;
         if (this.bulletType === 'MINE' && this.isArmedMine) return;
 
@@ -250,7 +258,7 @@ class Bullet {
         }
         enemies.forEach(e => {
             if (Math.hypot(e.x - this.x, (e.y - e.h/2) - this.y) < 55) {
-                e.hp -= this.damage;
+                e.takeDamage(this.damage, this.vx > 0 ? 1 : -1);
             }
         });
     }
@@ -298,17 +306,31 @@ class Chest {
     }
 }
 
-// --- 怪物類別 ---
+// --- 怪物類別 (含血條與打擊效果) ---
 class Enemy {
     constructor(x, y, color = '#8e44ad') {
         this.x = x; this.y = y; this.w = 22; this.h = 24;
         this.color = color;
         this.vx = (Math.random() > 0.5 ? 1 : -1) * 1.5;
         this.vy = 0;
-        this.hp = 45;
+        this.maxHp = 40;
+        this.hp = 40;
         this.shootCooldown = 0;
         this.animTimer = 0;
         this.onGround = false;
+        this.flashTimer = 0; // 受擊閃紅光
+    }
+
+    takeDamage(amount, direction) {
+        this.hp -= amount;
+        this.flashTimer = 5;
+        this.vx += direction * 2.5; // 打擊擊退感 (Knockback)
+        this.vy = -2;
+
+        // 血花粒子
+        for (let i = 0; i < 5; i++) {
+            particles.push(new Particle(this.x, this.y - this.h/2, (Math.random() - 0.5) * 4, -Math.random() * 3, '#ff4d4d', 2, 15));
+        }
     }
 
     update() {
@@ -316,6 +338,9 @@ class Enemy {
         this.x += this.vx;
         this.y += this.vy;
         this.onGround = false;
+
+        // 阻尼恢復移動速度
+        if (Math.abs(this.vx) > 1.5) this.vx *= 0.85;
 
         platforms.forEach(p => {
             if (this.vy >= 0 &&
@@ -341,7 +366,7 @@ class Enemy {
 
         if (target) {
             if (Math.abs(target.x - this.x) > 30) {
-                this.vx = target.x > this.x ? 1.5 : -1.5;
+                this.vx = target.x > this.x ? (this.vx > 0 ? 1.5 : -1.5) : (this.vx < 0 ? -1.5 : 1.5);
             }
 
             if (this.onGround && target.y < this.y - 40 && Math.abs(target.x - this.x) < 150 && Math.random() < 0.03) {
@@ -359,15 +384,17 @@ class Enemy {
             const spread = (Math.random() - 0.5) * 0.3;
             const finalAngle = baseAngle + spread;
             
-            bullets.push(new Bullet(this.x, this.y - 12, Math.cos(finalAngle)*5.5, Math.sin(finalAngle)*5.5, 'STANDARD', true, 12));
+            bullets.push(new Bullet(this.x, this.y - 12, Math.cos(finalAngle)*5.5, Math.sin(finalAngle)*5.5, 'STANDARD', true, 10));
             this.shootCooldown = 90 + Math.floor(Math.random() * 30);
         }
 
+        if (this.flashTimer > 0) this.flashTimer--;
         this.animTimer += 0.1;
     }
 
     draw() {
-        ctx.fillStyle = this.color;
+        // 受擊閃紅/白光
+        ctx.fillStyle = this.flashTimer > 0 ? '#ffffff' : this.color;
         ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
 
         ctx.fillStyle = '#fff';
@@ -382,6 +409,19 @@ class Enemy {
         ctx.fillStyle = '#111';
         ctx.fillRect(this.x - this.w/2 + 2, this.y, 4, 2 + legOffset);
         ctx.fillRect(this.x + this.w/2 - 6, this.y, 4, 2 - legOffset);
+
+        // --- 怪物頭頂血條 ---
+        if (this.hp < this.maxHp) {
+            const barW = 24;
+            const barH = 4;
+            const barX = this.x - barW / 2;
+            const barY = this.y - this.h - 8;
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(barX, barY, Math.max(0, (this.hp / this.maxHp) * barW), barH);
+        }
     }
 }
 
@@ -532,7 +572,6 @@ function startGame(mode) {
     gameState = 'PLAYING';
     killCount = 0;
 
-    // 隱藏選單 UI
     menuOverlay.style.display = 'none';
 
     bullets = [];
@@ -616,9 +655,9 @@ function gameLoop() {
     chests.forEach(c => c.draw());
     groundWeapons.forEach(gw => gw.draw());
 
-    if (Math.random() < 0.01) spawnEnemies();
+    if (Math.random() < 0.008) spawnEnemies();
 
-    // 子彈與碰撞計算
+    // 準確子彈碰撞計算 (CCD 線段檢測)
     for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
         b.update();
@@ -627,7 +666,10 @@ function gameLoop() {
         if (!b.isEnemy) {
             for (let j = enemies.length - 1; j >= 0; j--) {
                 const e = enemies[j];
-                const isHit = Math.abs(b.x - e.x) < e.w/2 + 2 && b.y > e.y - e.h && b.y < e.y;
+                const enemyBox = { x: e.x - e.w/2, y: e.y - e.h, w: e.w, h: e.h };
+
+                // 檢查這幀子彈移動線段是否交錯怪物盒
+                const isHit = checkLineRectCollision(b.prevX, b.prevY, b.x, b.y, enemyBox.x, enemyBox.y, enemyBox.w, enemyBox.h);
 
                 if (b.bulletType === 'MINE' && b.isArmedMine && isHit) {
                     b.explode(); b.life = 0; break;
@@ -636,20 +678,20 @@ function gameLoop() {
                 if (isHit) {
                     if (b.bulletType === 'PIERCING') {
                         if (!b.hitEnemies.includes(e)) {
-                            e.hp -= b.damage;
+                            e.takeDamage(b.damage, b.vx > 0 ? 1 : -1);
                             b.hitEnemies.push(e);
                         }
                     } else if (b.bulletType === 'GRENADE') {
                         b.explode(); b.life = 0; break;
                     } else {
-                        e.hp -= b.damage;
+                        e.takeDamage(b.damage, b.vx > 0 ? 1 : -1);
                         bullets.splice(i, 1);
                         break;
                     }
 
                     if (e.hp <= 0) {
-                        for (let k = 0; k < 10; k++) {
-                            particles.push(new Particle(e.x, e.y - e.h/2, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, e.color, 3, 20));
+                        for (let k = 0; k < 12; k++) {
+                            particles.push(new Particle(e.x, e.y - e.h/2, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, e.color, 3, 20));
                         }
                         enemies.splice(j, 1);
                         killCount++;
@@ -657,13 +699,17 @@ function gameLoop() {
                 }
             }
         } else {
+            // 打擊玩家 (1P & 2P)
             [player1, player2].forEach(p => {
-                if (p && p.hp > 0 && Math.abs(b.x - p.x) < p.w/2 + 2 && b.y > p.y - p.h && b.y < p.y) {
-                    p.hp -= b.damage;
-                    for (let k = 0; k < 6; k++) {
-                        particles.push(new Particle(p.x, p.y - p.h/2, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, '#e74c3c', 2, 15));
+                if (p && p.hp > 0) {
+                    const pBox = { x: p.x - p.w/2, y: p.y - p.h, w: p.w, h: p.h };
+                    if (checkLineRectCollision(b.prevX, b.prevY, b.x, b.y, pBox.x, pBox.y, pBox.w, pBox.h)) {
+                        p.hp -= b.damage;
+                        for (let k = 0; k < 6; k++) {
+                            particles.push(new Particle(p.x, p.y - p.h/2, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, '#e74c3c', 2, 15));
+                        }
+                        bullets.splice(i, 1);
                     }
-                    bullets.splice(i, 1);
                 }
             });
         }
@@ -671,7 +717,7 @@ function gameLoop() {
         if (b && b.life <= 0) bullets.splice(i, 1);
     }
 
-    // 死亡檢測
+    // 玩家死亡檢測
     const is1PDead = player1.hp <= 0;
     const is2PDead = gameMode === 2 ? (player2.hp <= 0) : true;
     if (is1PDead && is2PDead) {
