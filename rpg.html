@@ -2,13 +2,13 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>2D 雙人射擊遊戲 Prototype</title>
+    <title>2D 像素動作戰鬥 - 多武器與機率掉落版</title>
     <style>
         body {
             margin: 0;
-            background-color: #111;
+            background-color: #0b0b10;
             color: #fff;
-            font-family: monospace, sans-serif;
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -16,23 +16,23 @@
             min-height: 100vh;
         }
         canvas {
-            border: 4px solid #3d2d1d;
-            background-color: #3b2b22;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            border: 4px solid #5a3d28;
+            background-color: #21181b;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
             image-rendering: pixelated;
         }
         .instructions {
-            margin-top: 10px;
+            margin-top: 12px;
             font-size: 13px;
-            color: #ccc;
+            color: #aaa;
             text-align: center;
-            line-height: 1.5;
+            line-height: 1.6;
         }
     </style>
 </head>
 <body>
 
-    <h2>2D 動作射擊 Prototype</h2>
+    <h2 style="color: #f39c12; margin-bottom: 8px;">2D 像素動作戰鬥 (武器機率掉落與特殊彈藥)</h2>
     <canvas id="gameCanvas" width="800" height="450"></canvas>
     
     <div class="instructions">
@@ -46,8 +46,8 @@ const ctx = canvas.getContext('2d');
 
 const GRAVITY = 0.45;
 let killCount = 0;
-let gameState = 'MENU'; // 'MENU' 或 'PLAYING'
-let gameMode = 1;      // 1P 或 2P
+let gameState = 'MENU'; 
+let gameMode = 1;      
 
 const keys = {};
 
@@ -63,13 +63,13 @@ window.addEventListener('keydown', e => {
     }
 
     if (!keys[e.code]) {
-        // --- 1P 按鍵觸發 ---
+        // 1P 操作
         if (e.code === 'KeyW') player1.jump();
         if (e.code === 'KeyS') player1.tryPickupWeapon();
         if (e.code === 'KeyC') player1.cycleWeapon();
         if (e.code === 'KeyV') player1.shoot();
 
-        // --- 2P 按鍵觸發 (僅雙人模式) ---
+        // 2P 操作
         if (gameMode === 2 && player2) {
             if (e.code === 'ArrowUp') player2.jump();
             if (e.code === 'ArrowDown') player2.tryPickupWeapon();
@@ -84,28 +84,70 @@ window.addEventListener('keyup', e => { keys[e.code] = false; });
 
 // --- 地圖平台資料 ---
 const platforms = [
-    { x: 0, y: 420, w: 800, h: 30, isGround: true },
-    { x: 290, y: 350, w: 220, h: 70, isGround: true },
-    { x: 135, y: 370, w: 100, h: 16 },
-    { x: 565, y: 370, w: 100, h: 16 },
-    { x: 50, y: 290, w: 200, h: 16 },
-    { x: 550, y: 290, w: 200, h: 16 },
-    { x: 110, y: 210, w: 200, h: 16 },
-    { x: 490, y: 210, w: 200, h: 16 },
-    { x: 350, y: 160, w: 100, h: 16 },
-    { x: 130, y: 80, w: 200, h: 16 },
-    { x: 470, y: 80, w: 200, h: 16 },
-    { x: 0, y: 150, w: 90, h: 16 },
-    { x: 710, y: 150, w: 90, h: 16 }
+    { x: 0, y: 410, w: 800, h: 40, isGround: true },
+    { x: 290, y: 340, w: 220, h: 70, isGround: true },
+    { x: 135, y: 360, w: 100, h: 14 },
+    { x: 565, y: 360, w: 100, h: 14 },
+    { x: 50, y: 280, w: 200, h: 14 },
+    { x: 550, y: 280, w: 200, h: 14 },
+    { x: 110, y: 200, w: 200, h: 14 },
+    { x: 490, y: 200, w: 200, h: 14 },
+    { x: 350, y: 150, w: 100, h: 14 },
+    { x: 130, y: 70, w: 200, h: 14 },
+    { x: 470, y: 70, w: 200, h: 14 },
+    { x: 0, y: 140, w: 90, h: 14 },
+    { x: 710, y: 140, w: 90, h: 14 }
 ];
 
-// --- 槍枝類型 ---
+// --- 武器資料庫與稀有度 ---
 const WEAPON_TYPES = {
-    PISTOL: { name: '手槍', color: '#f39c12', speed: 10, cooldown: 15, damage: 25, shockwave: 18 },
-    SHOTGUN: { name: '獵槍', color: '#e74c3c', speed: 8, cooldown: 30, damage: 50, shockwave: 32 },
-    RIFLE: { name: '步槍', color: '#3498db', speed: 14, cooldown: 8, damage: 18, shockwave: 14 }
+    PISTOL:   { id: 'PISTOL', name: '手槍', color: '#f39c12', rarity: 'COMMON', speed: 11, cooldown: 14, damage: 25, shockwave: 18, bulletType: 'STANDARD' },
+    SMG:      { id: 'SMG', name: '衝鋒槍', color: '#f1c40f', rarity: 'COMMON', speed: 13, cooldown: 5, damage: 12, shockwave: 12, bulletType: 'STANDARD' },
+    SHOTGUN:  { id: 'SHOTGUN', name: '散彈槍', color: '#e67e22', rarity: 'COMMON', speed: 9, cooldown: 35, damage: 20, shockwave: 30, bulletType: 'SPREAD' },
+    SNIPER:   { id: 'SNIPER', name: '狙擊槍', color: '#3498db', rarity: 'RARE', speed: 22, cooldown: 45, damage: 90, shockwave: 25, bulletType: 'PIERCING' },
+    GRENADE:  { id: 'GRENADE', name: '榴彈槍', color: '#e74c3c', rarity: 'RARE', speed: 8, cooldown: 40, damage: 60, shockwave: 40, bulletType: 'GRENADE' },
+    MINE:     { id: 'MINE', name: '地雷槍', color: '#2ecc71', rarity: 'LEGEND', speed: 6, cooldown: 50, damage: 100, shockwave: 45, bulletType: 'MINE' }
 };
 
+// 機率抽取武器
+function getRandomWeapon() {
+    const rand = Math.random();
+    if (rand < 0.10) { // 10% 傳說武器
+        return WEAPON_TYPES.MINE;
+    } else if (rand < 0.40) { // 30% 稀有武器
+        return Math.random() < 0.5 ? WEAPON_TYPES.SNIPER : WEAPON_TYPES.GRENADE;
+    } else { // 60% 普通武器
+        const commons = [WEAPON_TYPES.SMG, WEAPON_TYPES.SHOTGUN];
+        return commons[Math.floor(Math.random() * commons.length)];
+    }
+}
+
+// --- 粒子系統 ---
+class Particle {
+    constructor(x, y, vx, vy, color, size, life) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.color = color;
+        this.size = size;
+        this.life = life;
+        this.maxLife = life;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+    }
+    draw() {
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+// --- 爆波特效 ---
 class Shockwave {
     constructor(x, y, maxRadius) {
         this.x = x;
@@ -115,89 +157,169 @@ class Shockwave {
         this.alpha = 1;
     }
     update() {
-        this.radius += 2.5;
+        this.radius += 3;
         this.alpha -= 0.08;
     }
     draw() {
         ctx.save();
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255, 235, 59, ${Math.max(0, this.alpha)})`;
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(255, 240, 150, ${Math.max(0, this.alpha)})`;
+        ctx.lineWidth = 3;
         ctx.stroke();
         ctx.restore();
     }
 }
 
+// --- 子彈系統 ---
 class Bullet {
-    constructor(x, y, vx, vy, isEnemy = false, damage = 10) {
+    constructor(x, y, vx, vy, bulletType, isEnemy = false, damage = 10) {
         this.x = x;
         this.y = y;
         this.vx = vx;
         this.vy = vy;
+        this.bulletType = bulletType; // STANDARD, SPREAD, PIERCING, GRENADE, MINE
         this.isEnemy = isEnemy;
         this.damage = damage;
-        this.life = 80;
+        this.life = 120;
+        this.isArmedMine = false;
+        this.hitEnemies = []; // 供貫穿彈記錄
     }
+
     update() {
+        if (this.bulletType === 'GRENADE') {
+            this.vy += 0.25; // 榴彈重力效果
+        }
+
+        if (this.bulletType === 'MINE' && this.isArmedMine) {
+            // 已放置的地雷靜止不動
+            return;
+        }
+
         this.x += this.vx;
         this.y += this.vy;
         this.life--;
+
+        // 榴彈與地雷的地形碰撞
+        if (this.bulletType === 'GRENADE' || this.bulletType === 'MINE') {
+            platforms.forEach(p => {
+                if (this.x > p.x && this.x < p.x + p.w && this.y >= p.y - 2 && this.y <= p.y + p.h) {
+                    if (this.bulletType === 'GRENADE') {
+                        this.explode();
+                        this.life = 0;
+                    } else if (this.bulletType === 'MINE') {
+                        this.y = p.y - 4;
+                        this.vx = 0;
+                        this.vy = 0;
+                        this.isArmedMine = true;
+                    }
+                }
+            });
+        }
     }
+
+    explode() {
+        shockwaves.push(new Shockwave(this.x, this.y, 40));
+        for (let i = 0; i < 16; i++) {
+            particles.push(new Particle(this.x, this.y, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, '#e74c3c', 3, 20));
+        }
+        // 範圍傷害
+        enemies.forEach(e => {
+            if (Math.hypot(e.x - this.x, (e.y - e.h/2) - this.y) < 50) {
+                e.hp -= this.damage;
+            }
+        });
+    }
+
     draw() {
-        ctx.fillStyle = this.isEnemy ? '#e74c3c' : '#ffeb3b';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.isEnemy ? 3 : 4, 0, Math.PI * 2);
-        ctx.fill();
+        if (this.isEnemy) {
+            ctx.fillStyle = '#ff4d4d';
+            ctx.fillRect(this.x - 2, this.y - 2, 5, 5);
+            return;
+        }
+
+        switch (this.bulletType) {
+            case 'STANDARD':
+                ctx.fillStyle = '#ffe100'; // 標準黃色子彈
+                ctx.fillRect(this.x - 2, this.y - 2, 5, 5);
+                break;
+            case 'SPREAD':
+                ctx.fillStyle = '#e67e22'; // 散彈橙紅色彈丸
+                ctx.fillRect(this.x - 2, this.y - 2, 4, 4);
+                break;
+            case 'PIERCING':
+                ctx.fillStyle = '#3498db'; // 狙擊穿透藍色光束
+                ctx.fillRect(this.x - 6, this.y - 2, 12, 4);
+                break;
+            case 'GRENADE':
+                ctx.fillStyle = '#e74c3c'; // 榴彈深紅色球體
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'MINE':
+                ctx.fillStyle = this.isArmedMine ? '#2ecc71' : '#27ae60'; // 地雷閃爍綠光
+                ctx.fillRect(this.x - 4, this.y - 3, 8, 4);
+                break;
+        }
     }
 }
 
+// --- 掉落槍枝類別 ---
 class GroundWeapon {
     constructor(x, y, type) {
         this.x = x;
         this.y = y;
         this.type = type;
-        this.w = 20;
+        this.w = 22;
         this.h = 10;
+        this.bounce = 0;
     }
     draw() {
+        this.bounce += 0.08;
+        const offsetY = Math.sin(this.bounce) * 3;
+        
         ctx.fillStyle = this.type.color;
-        ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
-        ctx.fillStyle = '#fff';
+        ctx.fillRect(this.x - this.w/2, this.y - this.h + offsetY, this.w, this.h);
+        
+        // 顯示名稱與稀有度顏色標籤
+        ctx.fillStyle = this.type.rarity === 'LEGEND' ? '#2ecc71' : (this.type.rarity === 'RARE' ? '#3498db' : '#fff');
         ctx.font = '10px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(this.type.name, this.x, this.y - this.h - 4);
+        ctx.fillText(this.type.name, this.x, this.y - this.h + offsetY - 6);
     }
 }
 
+// --- 寶箱類別 ---
 class Chest {
     constructor(x, y) {
         this.x = x;
         this.y = y;
         this.w = 24;
-        this.h = 20;
+        this.h = 18;
     }
     draw() {
-        ctx.fillStyle = '#d4ac0d';
+        ctx.fillStyle = '#b76d29';
         ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
-        ctx.strokeStyle = '#784212';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
+        ctx.fillStyle = '#f1c40f';
+        ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, 4);
+        ctx.fillRect(this.x - 3, this.y - this.h/2 - 2, 6, 6);
     }
 }
 
-// --- 怪物類別 (無名字) ---
+// --- 怪物類別 (無名稱/無血條) ---
 class Enemy {
-    constructor(x, y, color = '#8e44ad') {
+    constructor(x, y, color = '#9b59b6') {
         this.x = x;
         this.y = y;
         this.w = 22;
-        this.h = 22;
+        this.h = 24;
         this.color = color;
         this.vx = (Math.random() > 0.5 ? 1 : -1) * 1.5;
         this.vy = 0;
-        this.hp = 40;
+        this.hp = 50;
         this.shootCooldown = 0;
+        this.animTimer = 0;
     }
 
     update() {
@@ -219,7 +341,6 @@ class Enemy {
 
         if (this.shootCooldown > 0) this.shootCooldown--;
         
-        // 尋找最近的玩家進行攻擊
         let target = player1;
         if (player2) {
             const d1 = Math.hypot(player1.x - this.x, player1.y - this.y);
@@ -228,33 +349,45 @@ class Enemy {
         }
 
         const dist = Math.hypot(target.x - this.x, target.y - this.y);
-        if (dist < 260 && this.shootCooldown <= 0) {
-            const angle = Math.atan2((target.y - 15) - this.y, target.x - this.x);
-            bullets.push(new Bullet(this.x, this.y - 10, Math.cos(angle)*5, Math.sin(angle)*5, true, 8));
-            this.shootCooldown = 100;
+        if (dist < 280 && this.shootCooldown <= 0) {
+            const angle = Math.atan2((target.y - 12) - this.y, target.x - this.x);
+            bullets.push(new Bullet(this.x, this.y - 12, Math.cos(angle)*5, Math.sin(angle)*5, 'STANDARD', true, 10));
+            this.shootCooldown = 95;
         }
+
+        this.animTimer += 0.1;
     }
 
     draw() {
-        // 僅畫怪物外觀，無視覺血條與名字
         ctx.fillStyle = this.color;
         ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
+
         ctx.fillStyle = '#fff';
-        ctx.fillRect(this.x - 5, this.y - this.h + 4, 3, 3);
-        ctx.fillRect(this.x + 2, this.y - this.h + 4, 3, 3);
+        const eyeOffset = this.vx > 0 ? 2 : -2;
+        ctx.fillRect(this.x - 5 + eyeOffset, this.y - this.h + 6, 4, 4);
+        ctx.fillRect(this.x + 1 + eyeOffset, this.y - this.h + 6, 4, 4);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(this.x - 4 + eyeOffset, this.y - this.h + 7, 2, 2);
+        ctx.fillRect(this.x + 2 + eyeOffset, this.y - this.h + 7, 2, 2);
+
+        const legOffset = Math.sin(this.animTimer * 5) * 2;
+        ctx.fillStyle = '#111';
+        ctx.fillRect(this.x - this.w/2 + 2, this.y, 4, 2 + legOffset);
+        ctx.fillRect(this.x + this.w/2 - 6, this.y, 4, 2 - legOffset);
     }
 }
 
 // --- 玩家類別 ---
 class Player {
-    constructor(x, y, color, controls) {
+    constructor(x, y, bodyColor, headbandColor, controls) {
         this.x = x;
         this.y = y;
         this.w = 20;
-        this.h = 32;
-        this.color = color;
-        this.controls = controls; // 按鍵組設定
-        this.facing = 1; // 1: 右, -1: 左
+        this.h = 30;
+        this.bodyColor = bodyColor;
+        this.headbandColor = headbandColor;
+        this.controls = controls;
+        this.facing = 1;
         this.vx = 0;
         this.vy = 0;
         this.hp = 100;
@@ -263,12 +396,16 @@ class Player {
         this.inventory = [WEAPON_TYPES.PISTOL];
         this.equippedIndex = 0;
         this.shootCooldown = 0;
+        this.animTimer = 0;
     }
 
     jump() {
         if (this.jumpCount < this.maxJumps) {
             this.vy = -9.5;
             this.jumpCount++;
+            for (let i = 0; i < 5; i++) {
+                particles.push(new Particle(this.x, this.y, (Math.random() - 0.5) * 3, -Math.random() * 2, '#aaa', 3, 15));
+            }
         }
     }
 
@@ -281,15 +418,25 @@ class Player {
     shoot() {
         if (this.shootCooldown > 0) return;
         const weapon = this.inventory[this.equippedIndex];
+        const gunX = this.x + (this.facing * 12);
+        const gunY = this.y - this.h/2;
         
-        bullets.push(new Bullet(
-            this.x, this.y - this.h/2, 
-            this.facing * weapon.speed, 0, 
-            false, 
-            weapon.damage
-        ));
+        if (weapon.id === 'SHOTGUN') {
+            // 散彈槍：發射 3 發擴散彈
+            for (let angle of [-0.2, 0, 0.2]) {
+                const vx = this.facing * weapon.speed * Math.cos(angle);
+                const vy = weapon.speed * Math.sin(angle);
+                bullets.push(new Bullet(gunX, gunY, vx, vy, weapon.bulletType, false, weapon.damage));
+            }
+        } else if (weapon.id === 'GRENADE') {
+            // 榴彈槍：帶有向上弧度的拋物線
+            bullets.push(new Bullet(gunX, gunY, this.facing * weapon.speed, -3, weapon.bulletType, false, weapon.damage));
+        } else {
+            // 一般/衝鋒/狙擊/地雷槍
+            bullets.push(new Bullet(gunX, gunY, this.facing * weapon.speed, 0, weapon.bulletType, false, weapon.damage));
+        }
         
-        shockwaves.push(new Shockwave(this.x + (this.facing * 10), this.y - this.h/2, weapon.shockwave));
+        shockwaves.push(new Shockwave(gunX, gunY, weapon.shockwave));
         this.shootCooldown = weapon.cooldown;
     }
 
@@ -312,13 +459,14 @@ class Player {
     }
 
     update() {
-        // 移動控制
         if (keys[this.controls.left]) {
             this.vx = -3.5;
             this.facing = -1;
+            this.animTimer += 0.15;
         } else if (keys[this.controls.right]) {
             this.vx = 3.5;
             this.facing = 1;
+            this.animTimer += 0.15;
         } else {
             this.vx = 0;
         }
@@ -343,37 +491,45 @@ class Player {
 
         if (this.shootCooldown > 0) this.shootCooldown--;
 
-        // 寶箱碰撞
+        // 開寶箱 (根據機率刷新武器)
         for (let i = chests.length - 1; i >= 0; i--) {
             const c = chests[i];
-            if (Math.abs(this.x - c.x) < 20 && Math.abs(this.y - c.y) < 25) {
-                const dropType = Math.random() < 0.5 ? WEAPON_TYPES.SHOTGUN : WEAPON_TYPES.RIFLE;
+            if (Math.abs(this.x - c.x) < 22 && Math.abs(this.y - c.y) < 25) {
+                const dropType = getRandomWeapon();
                 groundWeapons.push(new GroundWeapon(c.x, c.y, dropType));
+                
+                for (let k = 0; k < 12; k++) {
+                    particles.push(new Particle(c.x, c.y - 10, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, '#f1c40f', 3, 25));
+                }
+
                 chests.splice(i, 1);
             }
         }
     }
 
     draw() {
-        // 畫角色
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = this.bodyColor;
         ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, this.h);
 
-        // 畫槍枝 (朝向當前方向)
+        ctx.fillStyle = this.headbandColor;
+        ctx.fillRect(this.x - this.w/2, this.y - this.h, this.w, 6);
+
+        ctx.fillStyle = '#fff';
+        const eyeOffset = this.facing === 1 ? 2 : -4;
+        ctx.fillRect(this.x + eyeOffset, this.y - this.h + 8, 4, 4);
+
         const weapon = this.inventory[this.equippedIndex];
         ctx.fillStyle = weapon.color;
-        if (this.facing === 1) {
-            ctx.fillRect(this.x, this.y - this.h/2 - 3, 16, 6);
-        } else {
-            ctx.fillRect(this.x - 16, this.y - this.h/2 - 3, 16, 6);
-        }
+        const gunX = this.facing === 1 ? this.x : this.x - 14;
+        ctx.fillRect(gunX, this.y - this.h/2 - 2, 14, 5);
     }
 }
 
-// --- 遊戲變數 ---
+// --- 全域變數 ---
 let player1, player2;
 let bullets = [];
 let shockwaves = [];
+let particles = [];
 let groundWeapons = [];
 let chests = [];
 let enemies = [];
@@ -385,111 +541,131 @@ function startGame(mode) {
 
     bullets = [];
     shockwaves = [];
+    particles = [];
     groundWeapons = [];
     
     chests = [
-        new Chest(185, 370),
-        new Chest(615, 370)
+        new Chest(185, 360),
+        new Chest(615, 360)
     ];
 
     enemies = [
-        new Enemy(400, 80, '#8e44ad'),
-        new Enemy(80, 420, '#27ae60'),
-        new Enemy(720, 290, '#27ae60')
+        new Enemy(400, 80, '#9b59b6'),
+        new Enemy(80, 410, '#2ecc71'),
+        new Enemy(720, 280, '#2ecc71')
     ];
 
-    // 初始化 1P
-    player1 = new Player(350, 350, '#3498db', { left: 'KeyA', right: 'KeyD' });
+    player1 = new Player(350, 340, '#3498db', '#e74c3c', { left: 'KeyA', right: 'KeyD' });
 
-    // 初始化 2P
     if (gameMode === 2) {
-        player2 = new Player(450, 350, '#e67e22', { left: 'ArrowLeft', right: 'ArrowRight' });
+        player2 = new Player(450, 340, '#2ecc71', '#f1c40f', { left: 'ArrowLeft', right: 'ArrowRight' });
     } else {
         player2 = null;
     }
 }
 
-function drawUI() {
-    // 繪製地圖牆壁
-    ctx.fillStyle = '#2c1d17';
-    for (let y = 0; y < canvas.height; y += 40) {
-        ctx.fillRect(0, y, canvas.width, 2);
-    }
+function drawMapAndUI() {
+    ctx.fillStyle = '#1e1518';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 繪製平台
     platforms.forEach(p => {
-        ctx.fillStyle = p.isGround ? '#784212' : '#a0522d';
+        ctx.fillStyle = p.isGround ? '#5c3a21' : '#794d2b';
         ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#f39c12';
+        ctx.fillStyle = '#d4ac0d';
         ctx.fillRect(p.x, p.y, p.w, 3);
     });
 
-    // 1P 狀態欄 (左上)
+    // 1P HUD
     ctx.fillStyle = '#3498db';
-    ctx.font = 'bold 12px monospace';
+    ctx.font = 'bold 13px monospace';
+    ctx.textAlign = 'left';
     ctx.fillText(`1P HP: ${player1.hp}`, 20, 25);
-    ctx.fillText(`槍: ${player1.inventory[player1.equippedIndex].name}`, 20, 42);
+    ctx.fillText(`武器: ${player1.inventory[player1.equippedIndex].name}`, 20, 42);
 
-    // 2P 狀態欄 (右上)
+    // 2P HUD
     if (player2) {
-        ctx.fillStyle = '#e67e22';
+        ctx.fillStyle = '#2ecc71';
         ctx.textAlign = 'right';
         ctx.fillText(`2P HP: ${player2.hp}`, canvas.width - 20, 25);
-        ctx.fillText(`槍: ${player2.inventory[player2.equippedIndex].name}`, canvas.width - 20, 42);
+        ctx.fillText(`武器: ${player2.inventory[player2.equippedIndex].name}`, canvas.width - 20, 42);
     }
 
-    // KILLS 計數
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 20px monospace';
+    ctx.font = 'bold 18px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`KILLS ${killCount}`, canvas.width / 2, 410);
+    ctx.fillText(`KILLS ${killCount}`, canvas.width / 2, 435);
 }
 
+// --- 遊戲主循環 ---
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (gameState === 'MENU') {
+        ctx.fillStyle = '#1e1518';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
         ctx.fillStyle = '#f39c12';
-        ctx.font = 'bold 30px monospace';
+        ctx.font = 'bold 28px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText("選擇遊戲模式", canvas.width / 2, 160);
+        ctx.fillText("選擇遊戲模式", canvas.width / 2, 170);
 
         ctx.fillStyle = '#fff';
-        ctx.font = '20px monospace';
-        ctx.fillText("按下 [ 1 ] 鍵：單人模式 (1P)", canvas.width / 2, 230);
-        ctx.fillText("按下 [ 2 ] 鍵：雙人模式 (1P + 2P)", canvas.width / 2, 270);
+        ctx.font = '16px monospace';
+        ctx.fillText("按 [ 1 ] 鍵：單人模式 (1P)", canvas.width / 2, 230);
+        ctx.fillText("按 [ 2 ] 鍵：雙人同樂 (1P + 2P)", canvas.width / 2, 270);
         
         requestAnimationFrame(gameLoop);
         return;
     }
 
-    drawUI();
+    drawMapAndUI();
 
     chests.forEach(c => c.draw());
     groundWeapons.forEach(gw => gw.draw());
 
-    // 子彈碰撞
+    // 子彈計算
     for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
         b.update();
         b.draw();
 
         if (!b.isEnemy) {
-            // 擊中怪物
+            // 玩家子彈撞擊怪物
             for (let j = enemies.length - 1; j >= 0; j--) {
                 const e = enemies[j];
-                if (Math.abs(b.x - e.x) < e.w/2 && Math.abs(b.y - (e.y - e.h/2)) < e.h/2) {
-                    e.hp -= b.damage;
-                    bullets.splice(i, 1);
+                const isColliding = Math.abs(b.x - e.x) < e.w/2 && Math.abs(b.y - (e.y - e.h/2)) < e.h/2;
+
+                if (b.bulletType === 'MINE' && b.isArmedMine && isColliding) {
+                    b.explode();
+                    b.life = 0;
+                    break;
+                }
+
+                if (isColliding) {
+                    if (b.bulletType === 'PIERCING') {
+                        // 狙擊貫穿彈
+                        if (!b.hitEnemies.includes(e)) {
+                            e.hp -= b.damage;
+                            b.hitEnemies.push(e);
+                        }
+                    } else if (b.bulletType === 'GRENADE') {
+                        b.explode();
+                        b.life = 0;
+                        break;
+                    } else {
+                        e.hp -= b.damage;
+                        bullets.splice(i, 1);
+                        break;
+                    }
+
                     if (e.hp <= 0) {
                         enemies.splice(j, 1);
                         killCount++;
                     }
-                    break;
                 }
             }
         } else {
-            // 擊中玩家
+            // 怪物子彈打中玩家
             if (Math.abs(b.x - player1.x) < player1.w/2 && Math.abs(b.y - (player1.y - player1.h/2)) < player1.h/2) {
                 player1.hp = Math.max(0, player1.hp - b.damage);
                 bullets.splice(i, 1);
@@ -509,13 +685,17 @@ function gameLoop() {
         if (shockwaves[i].alpha <= 0) shockwaves.splice(i, 1);
     }
 
-    // 怪物更新
+    for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        particles[i].draw();
+        if (particles[i].life <= 0) particles.splice(i, 1);
+    }
+
     enemies.forEach(e => {
         e.update();
         e.draw();
     });
 
-    // 玩家更新
     player1.update();
     player1.draw();
 
