@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft 巨型螺旋幾何跑酷塔 (蹲走與滑行機制增強版)</title>
+    <title>Minecraft 巨型幾何螺旋塔 (第一人稱貼壁版)</title>
     <style>
         * {
             box-sizing: border-box;
@@ -21,6 +21,29 @@
         #canvas-container {
             width: 100vw;
             height: 100vh;
+        }
+
+        /* 準心 (第一人稱必備) */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 15;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        #crosshair::before {
+            top: 4px; left: 0; width: 10px; height: 2px;
+        }
+        #crosshair::after {
+            top: 0; left: 4px; width: 2px; height: 10px;
         }
 
         /* 頂部資訊列 */
@@ -66,13 +89,14 @@
             left: 50%;
             transform: translateX(-50%);
             color: rgba(255, 255, 255, 0.9);
-            font-size: 14px;
-            background: rgba(0, 0, 0, 0.8);
+            font-size: 13px;
+            background: rgba(0, 0, 0, 0.85);
             padding: 8px 22px;
             border-radius: 20px;
             z-index: 10;
             pointer-events: none;
             border: 1px solid rgba(0, 240, 255, 0.3);
+            text-align: center;
         }
 
         /* GAME OVER / 結算視窗 */
@@ -122,14 +146,21 @@
 </head>
 <body>
 
+    <div id="crosshair"></div>
+
     <div id="ui">
-        <div class="ui-card">🏰 螺旋塔高度: <span id="height-val" style="color: #00f0ff;">0</span> m</div>
+        <div class="ui-card">🏰 高度: <span id="height-val" style="color: #00f0ff;">0</span> m</div>
         <div class="ui-card">🚩 檢查點: <span id="cp-val" style="color: #55ff55;">起點</span></div>
+        <div class="ui-card">🎥 視角: <span id="view-val" style="color: #ff00ff;">第一人稱 (按 V 切換)</span></div>
     </div>
 
     <div id="stage-banner">📍 區域：<span id="stage-name">Stage 1 綠野草原</span></div>
 
-    <div id="instructions">WASD 移動 | 空白鍵跳躍 | 先CTRL後W=蹲著走 | 走動中按CTRL=極速滑行</div>
+    <div id="instructions">
+        點擊畫面鎖定滑鼠控制視角 | WASD 移動 | 空白鍵跳躍<br>
+        <b>V 鍵切換第一/三人稱</b> | 先CTRL後W=蹲走 | 走動中按CTRL=極速滑行過窄門<br>
+        🏰 位於巨柱內部螺旋爬升 | 右側敞開無視野遮擋 | 🧨避開 TNT 礦車！
+    </div>
 
     <div id="game-over-modal">
         <h1 id="modal-title">墜落失足！</h1>
@@ -142,61 +173,143 @@
     <script>
         // 1. 關卡分區資料
         const STAGES = [
-            { id: 1, name: "Stage 1：綠野草原", color: 0x55aa33, sky: 0x7ec0ee },
-            { id: 2, name: "Stage 2：寒冰凍原", color: 0x88e0ef, sky: 0xa0c8f0 },
-            { id: 3, name: "Stage 3：地獄岩漿", color: 0xff4400, sky: 0x2a0808 },
-            { id: 4, name: "Stage 4：末日紫晶", color: 0xaa00ff, sky: 0x150525 },
-            { id: 5, name: "Stage 5：黃金頂峰", color: 0xffd700, sky: 0x332200 }
+            { id: 1, name: "Stage 1：綠野巨柱內部", color: 0x55aa33, wall: 0x2d5a1e, sky: 0x7ec0ee },
+            { id: 2, name: "Stage 2：寒冰凍柱內部", color: 0x00dfff, wall: 0x3a6b85, sky: 0xa0c8f0 },
+            { id: 3, name: "Stage 3：地獄熔岩柱內部", color: 0xff4400, wall: 0x3d0c0c, sky: 0x2a0808 },
+            { id: 4, name: "Stage 4：末日紫晶柱內部", color: 0xaa00ff, wall: 0x2b063d, sky: 0x150525 },
+            { id: 5, name: "Stage 5：黃金頂峰殿堂", color: 0xffd700, wall: 0x554400, sky: 0x332200 }
         ];
 
-        // 2. 初始化 Three.js 場景
         const container = document.getElementById('canvas-container');
         const heightDisplay = document.getElementById('height-val');
         const cpDisplay = document.getElementById('cp-val');
         const stageDisplay = document.getElementById('stage-name');
+        const viewDisplay = document.getElementById('view-val');
         const gameOverModal = document.getElementById('game-over-modal');
         const finalHeightDisplay = document.getElementById('final-height');
         const modalTitle = document.getElementById('modal-title');
+        const crosshair = document.getElementById('crosshair');
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(STAGES[0].sky);
-        scene.fog = new THREE.FogExp2(STAGES[0].sky, 0.008);
+        scene.fog = new THREE.FogExp2(STAGES[0].sky, 0.005);
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         container.appendChild(renderer.domElement);
 
         // 光源
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
         scene.add(ambientLight);
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-        dirLight.position.set(30, 80, 30);
+        dirLight.position.set(20, 100, 20);
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // 3. 生成巨型螺旋塔地圖
+        // 地圖建構與機關
         let platforms = [];
-        let checkpointPos = new THREE.Vector3(0, 2, 0);
+        let tntCarts = [];
+        let checkpointPos = new THREE.Vector3(0, 2, 12);
         let checkpointName = "起點";
-        const spiralRadius = 11;
-        const totalSteps = 65;
+        const innerRadius = 12; // 柱內徑
+        const totalSteps = 72;
 
-        function createPlatform(x, y, z, w, h, d, colorHex) {
+        // 🏰 建造空心巨柱內壁 (右側/外側開放)
+        function buildHollowTowerWalls() {
+            const pillarHeight = 180;
+            const wallSegments = 24;
+            const segAngle = (Math.PI * 2) / wallSegments;
+
+            for (let stageIdx = 0; stageIdx < 5; stageIdx++) {
+                const stage = STAGES[stageIdx];
+                const stageHeight = pillarHeight / 5;
+                const startY = stageIdx * stageHeight;
+
+                const wallGroup = new THREE.Group();
+
+                for (let i = 0; i < wallSegments; i++) {
+                    const a = i * segAngle;
+                    // 右外側角度鏤空
+                    if (Math.sin(a) > 0.3) continue; 
+
+                    const wallGeo = new THREE.BoxGeometry(3.5, stageHeight, 0.8);
+                    const wallMat = new THREE.MeshStandardMaterial({ 
+                        color: stage.wall, 
+                        roughness: 0.8 
+                    });
+                    const wallMesh = new THREE.Mesh(wallGeo, wallMat);
+
+                    const wx = Math.cos(a) * (innerRadius + 0.5);
+                    const wz = Math.sin(a) * (innerRadius + 0.5);
+
+                    wallMesh.position.set(wx, startY + stageHeight / 2, wz);
+                    wallMesh.rotation.y = -a + Math.PI / 2;
+                    wallMesh.receiveShadow = true;
+                    wallGroup.add(wallMesh);
+                }
+
+                scene.add(wallGroup);
+            }
+        }
+
+        function createPlatform(x, y, z, w, h, d, colorHex, type = 'normal') {
             const geo = new THREE.BoxGeometry(w, h, d);
-            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.7 });
+            let mat;
+            if (type === 'ice') {
+                mat = new THREE.MeshStandardMaterial({ color: 0x88e0ef, roughness: 0.1, metalness: 0.2 });
+            } else if (type === 'slime') {
+                mat = new THREE.MeshStandardMaterial({ color: 0x00ff44, roughness: 0.3, emissive: 0x003311 });
+            } else {
+                mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.7 });
+            }
+
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(x, y, z);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
-            mesh.userData = { width: w, height: h, depth: d, stageIdx: 0, isTop: false, isCP: false, stepNum: 0 };
+            mesh.userData = { width: w, height: h, depth: d, stageIdx: 0, isTop: false, isCP: false, stepNum: 0, type: type };
             return mesh;
         }
 
+        // 低天花板滑行窄門
+        function createSlideGate(x, y, z) {
+            const gateGroup = new THREE.Group();
+            const roofGeo = new THREE.BoxGeometry(2.5, 0.6, 2.5);
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.set(0, 1.25, 0);
+            gateGroup.add(roof);
+            gateGroup.position.set(x, y, z);
+            scene.add(gateGroup);
+        }
+
+        // TNT 礦車模型
+        function createTNTMinecart(x, y, z, stepIndex) {
+            const cartGroup = new THREE.Group();
+            const cartGeo = new THREE.BoxGeometry(1.2, 0.4, 1.2);
+            const cartMat = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.8 });
+            const cart = new THREE.Mesh(cartGeo, cartMat);
+            cartGroup.add(cart);
+
+            const tntGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+            const tntMat = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0x440000 });
+            const tnt = new THREE.Mesh(tntGeo, tntMat);
+            tnt.position.y = 0.6;
+            cartGroup.add(tnt);
+
+            cartGroup.position.set(x, y, z);
+            cartGroup.userData = { stepIndex: stepIndex };
+            scene.add(cartGroup);
+            tntCarts.push(cartGroup);
+        }
+
         function buildSpiralMap() {
-            const startPad = createPlatform(0, 0, 0, 8, 1, 8, STAGES[0].color);
+            buildHollowTowerWalls();
+
+            const startPad = createPlatform(0, 0, innerRadius, 6, 1, 6, STAGES[0].color);
             scene.add(startPad);
             platforms.push(startPad);
 
@@ -204,23 +317,32 @@
             let currentY = 2;
 
             for (let i = 1; i <= totalSteps; i++) {
-                const stageIdx = Math.min(4, Math.floor((i - 1) / 13));
+                const stageIdx = Math.min(4, Math.floor((i - 1) / 14));
                 const stage = STAGES[stageIdx];
 
-                angle += 0.45;
-                currentY += 2.2 + (Math.random() * 0.4);
+                angle += 0.4;
+                currentY += 2.1 + (Math.random() * 0.2);
 
-                const x = Math.cos(angle) * spiralRadius;
-                const z = Math.sin(angle) * spiralRadius;
+                const x = Math.sin(angle) * (innerRadius - 1.5);
+                const z = Math.cos(angle) * (innerRadius - 1.5);
 
                 const isTop = (i === totalSteps);
-                const isCP = (i % 13 === 0 && !isTop);
+                const isCP = (i % 14 === 0 && !isTop);
 
+                let type = 'normal';
                 let w = isTop ? 6 : (isCP ? 4 : 2.2);
                 let d = isTop ? 6 : (isCP ? 4 : 2.2);
-                let color = isTop ? 0xffd700 : (isCP ? 0xffffff : stage.color);
 
-                const block = createPlatform(x, currentY, z, w, 0.8, d, color);
+                if (stageIdx === 1 && i % 3 === 0) type = 'ice';
+                if (i % 8 === 0 && !isCP && !isTop) type = 'slime';
+                if (i % 7 === 0 && !isCP && !isTop) {
+                    w = 1.0;
+                    d = 1.0;
+                }
+
+                let color = isTop ? 0xffd700 : (isCP ? 0xffffff : stage.color);
+                const block = createPlatform(x, currentY, z, w, 0.8, d, color, type);
+                block.rotation.y = angle;
                 block.userData.stageIdx = stageIdx;
                 block.userData.isTop = isTop;
                 block.userData.isCP = isCP;
@@ -228,10 +350,18 @@
 
                 scene.add(block);
                 platforms.push(block);
+
+                if (i === 20 || i === 48) {
+                    createSlideGate(x, currentY + 0.4, z);
+                }
+
+                if (i >= 30 && i <= 42 && i % 4 === 0) {
+                    createTNTMinecart(x, currentY + 1.2, z, i);
+                }
             }
         }
 
-        // 4. 玩家與運動控制
+        // 玩家模型與視野變數
         const playerGroup = new THREE.Group();
         const playerGeo = new THREE.BoxGeometry(0.8, 1.8, 0.8);
         const playerMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x004455 });
@@ -241,12 +371,14 @@
         playerGroup.add(playerMesh);
         scene.add(playerGroup);
 
-        let playerPos = new THREE.Vector3(0, 2, 0);
+        let isFPV = true; // 預設：第一人稱視角 (First Person View)
+        let pitch = 0;     // 上下看的角度
+        let yaw = Math.PI; // 左右看的角度
+
+        let playerPos = new THREE.Vector3(0, 2, innerRadius);
         let playerVel = new THREE.Vector3(0, 0, 0);
         let isGrounded = false;
         let isGameOver = false;
-
-        // 狀態標籤：0: 正常, 1: 蹲著走, 2: 滑行
         let moveState = 0;
 
         const gravity = 0.018;
@@ -254,9 +386,27 @@
         const jumpForce = 0.42;
 
         const keys = {};
-        let isMovingBeforeCtrl = false; // 用於判斷按下 Ctrl 前是否已經在移動
+        let isMovingBeforeCtrl = false;
 
-        // 🛑 **重點修復：攔截 Ctrl + W 關閉網頁行為**
+        // Pointer Lock (滑鼠鎖定第一人稱控制)
+        container.addEventListener('click', () => {
+            if (!isGameOver) {
+                container.requestPointerLock();
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === container) {
+                const sensitivity = 0.0022;
+                yaw -= e.movementX * sensitivity;
+                pitch -= e.movementY * sensitivity;
+
+                // 限制上下仰角，避免翻轉
+                pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
+            }
+        });
+
+        // 🛑 按鍵處理 (含 V 鍵切換第一/三人稱, Ctrl 防關閉)
         window.addEventListener('keydown', (e) => {
             if (e.ctrlKey || e.code.includes('Control')) {
                 if (e.code === 'KeyW' || e.code === 'KeyR' || e.code === 'KeyS') {
@@ -265,11 +415,17 @@
             }
             if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
                 e.preventDefault();
-                // 紀錄按下 Ctrl 的瞬間，玩家是否已經在按移動鍵
                 const isCurrentlyMoving = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] ||
                                          keys['ArrowUp'] || keys['ArrowDown'] || keys['ArrowLeft'] || keys['ArrowRight'];
-                
                 isMovingBeforeCtrl = isCurrentlyMoving;
+            }
+
+            // 按 V 鍵切換視角
+            if (e.code === 'KeyV') {
+                isFPV = !isFPV;
+                playerMesh.visible = !isFPV; // 第一人稱時隱藏自己的身體，避免擋住畫面
+                crosshair.style.display = isFPV ? 'block' : 'none';
+                viewDisplay.textContent = isFPV ? "第一人稱 (按 V 切換)" : "第三人稱 (按 V 切換)";
             }
 
             keys[e.code] = true;
@@ -284,39 +440,14 @@
             e.returnValue = '';
         });
 
-        // 視角控制 (滑鼠拖曳)
-        let camAngleX = 0;
-        let camAngleY = 0.3;
-        let isMouseDown = false;
-        let prevMouseX = 0, prevMouseY = 0;
-
-        window.addEventListener('mousedown', (e) => {
-            if (e.target.tagName !== 'BUTTON') {
-                isMouseDown = true;
-                prevMouseX = e.clientX;
-                prevMouseY = e.clientY;
-            }
-        });
-        window.addEventListener('mouseup', () => isMouseDown = false);
-        window.addEventListener('mousemove', (e) => {
-            if (isMouseDown) {
-                const dx = e.clientX - prevMouseX;
-                const dy = e.clientY - prevMouseY;
-                camAngleX -= dx * 0.005;
-                camAngleY = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, camAngleY + dy * 0.005));
-                prevMouseX = e.clientX;
-                prevMouseY = e.clientY;
-            }
-        });
-
-        // 5. 物理與碰撞更新
+        // 物理與碰撞更新
         function updatePhysics() {
             if (isGameOver) return;
 
             const isCtrlPressed = keys['ControlLeft'] || keys['ControlRight'] || keys['KeyC'];
 
-            // 相對視角移動向量計算
-            const forward = new THREE.Vector3(-Math.sin(camAngleX), 0, -Math.cos(camAngleX)).normalize();
+            // 根據玩家朝向(yaw)計算前後左右方向 vectors
+            const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
             const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
             let moveDir = new THREE.Vector3(0, 0, 0);
@@ -327,30 +458,25 @@
 
             if (moveDir.length() > 0) moveDir.normalize();
 
-            // 判斷當前運動狀態
             if (isCtrlPressed) {
-                if (isMovingBeforeCtrl) {
-                    moveState = 2; // 先走動再按 Ctrl ➔ 滑行 (Slide)
-                } else {
-                    moveState = 1; // 先按 Ctrl 再按走動 ➔ 蹲著走 (Crouch Walk)
-                }
+                moveState = isMovingBeforeCtrl ? 2 : 1;
             } else {
-                moveState = 0; // 正常狀態
+                moveState = 0;
             }
 
             let currentSpeed = moveSpeed;
 
-            if (moveState === 1) { // 蹲著走：變矮 + 變慢（精準走位）
+            if (moveState === 1) { // 蹲走
                 playerMesh.scale.y = 0.5;
                 playerMesh.position.y = 0.45;
                 playerMat.color.setHex(0x00aaff);
                 currentSpeed = moveSpeed * 0.6; 
-            } else if (moveState === 2) { // 滑行：變矮 + 加速衝刺
+            } else if (moveState === 2) { // 滑行
                 playerMesh.scale.y = 0.4;
                 playerMesh.position.y = 0.36;
-                playerMat.color.setHex(0xffaa00); // 橘黃色滑行特效
-                currentSpeed = moveSpeed * 1.4; 
-            } else { // 正常狀態
+                playerMat.color.setHex(0xffaa00);
+                currentSpeed = moveSpeed * 1.45; 
+            } else {
                 playerMesh.scale.y = 1.0;
                 playerMesh.position.y = 0.9;
                 playerMat.color.setHex(0x00f0ff);
@@ -389,6 +515,14 @@
                         playerVel.y = 0;
                         isGrounded = true;
 
+                        if (p.userData.type === 'ice') {
+                            playerVel.x *= 1.25;
+                            playerVel.z *= 1.25;
+                        } else if (p.userData.type === 'slime') {
+                            playerVel.y = jumpForce * 1.45;
+                            isGrounded = false;
+                        }
+
                         const stage = STAGES[p.userData.stageIdx || 0];
                         stageDisplay.textContent = stage.name;
                         scene.background.setHex(stage.sky);
@@ -401,32 +535,63 @@
                         }
 
                         if (p.userData.isTop) {
-                            triggerEnd(true);
+                            triggerEnd(true, "🏆 攻頂成功！");
                             return;
                         }
                     }
                 }
             }
 
+            // TNT 礦車巡邏
+            tntCarts.forEach(cart => {
+                const time = Date.now() * 0.0015;
+                cart.position.x = Math.sin(time + cart.userData.stepIndex) * (innerRadius - 1.5);
+                cart.position.z = Math.cos(time + cart.userData.stepIndex) * (innerRadius - 1.5);
+
+                const dist = playerPos.distanceTo(cart.position);
+                if (dist < 1.6) {
+                    triggerEnd(false, "🧨 被 TNT 礦車炸飛了！");
+                }
+            });
+
             playerPos.set(nextX, nextY, nextZ);
             playerGroup.position.copy(playerPos);
+            playerGroup.rotation.y = yaw;
 
             if (playerPos.y < -15) {
-                triggerEnd(false);
+                triggerEnd(false, "墜落失足！");
             }
 
             heightDisplay.textContent = Math.max(0, Math.floor(playerPos.y));
         }
 
+        // 攝影機位置更新 (第一人稱 vs 第三人稱)
         function updateCamera() {
-            const dist = 10;
-            const isLow = (moveState > 0);
-            const cx = playerPos.x + dist * Math.sin(camAngleX) * Math.cos(camAngleY);
-            const cy = playerPos.y + (isLow ? 1.2 : 1.8) + dist * Math.sin(camAngleY);
-            const cz = playerPos.z + dist * Math.cos(camAngleX) * Math.cos(camAngleY);
+            let eyeHeight = 1.6; // 眼睛高度
+            if (moveState === 1) eyeHeight = 0.8; // 蹲下眼睛變低
+            if (moveState === 2) eyeHeight = 0.6; // 滑行眼睛更低
 
-            camera.position.set(cx, cy, cz);
-            camera.lookAt(playerPos.x, playerPos.y + (isLow ? 0.4 : 1.0), playerPos.z);
+            if (isFPV) {
+                // 🎥 **第一人稱視角**：鏡頭直接放在玩家眼睛位置
+                camera.position.set(playerPos.x, playerPos.y + eyeHeight, playerPos.z);
+
+                // 計算瞄準目標位置
+                const lookTarget = new THREE.Vector3(
+                    playerPos.x - Math.sin(yaw) * Math.cos(pitch),
+                    playerPos.y + eyeHeight + Math.sin(pitch),
+                    playerPos.z - Math.cos(yaw) * Math.cos(pitch)
+                );
+                camera.lookAt(lookTarget);
+            } else {
+                // 🎥 **第三人稱視角**：鏡頭跟隨在玩家身後
+                const dist = 7;
+                const cx = playerPos.x + dist * Math.sin(yaw) * Math.cos(pitch);
+                const cy = playerPos.y + eyeHeight + dist * Math.sin(pitch);
+                const cz = playerPos.z + dist * Math.cos(yaw) * Math.cos(pitch);
+
+                camera.position.set(cx, cy, cz);
+                camera.lookAt(playerPos.x, playerPos.y + eyeHeight, playerPos.z);
+            }
         }
 
         function animate() {
@@ -437,17 +602,12 @@
             renderer.render(scene, camera);
         }
 
-        function triggerEnd(isWin) {
+        function triggerEnd(isWin, msg) {
             isGameOver = true;
+            document.exitPointerLock();
             finalHeightDisplay.textContent = Math.max(0, Math.floor(playerPos.y));
-            
-            if (isWin) {
-                modalTitle.textContent = "🏆 登頂成功！";
-                modalTitle.style.color = "#ffd700";
-            } else {
-                modalTitle.textContent = "墜落失足！";
-                modalTitle.style.color = "#ff3b5c";
-            }
+            modalTitle.textContent = msg;
+            modalTitle.style.color = isWin ? "#ffd700" : "#ff3b5c";
             gameOverModal.style.display = 'block';
         }
 
@@ -457,11 +617,13 @@
             playerVel.set(0, 0, 0);
             moveState = 0;
             gameOverModal.style.display = 'none';
+            playerMesh.visible = !isFPV;
             animate();
         }
 
         // 初始化
         buildSpiralMap();
+        playerMesh.visible = false; // 預設第一人稱隱藏身體
         respawn();
 
         window.addEventListener('resize', () => {
