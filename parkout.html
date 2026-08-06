@@ -3,196 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft 巨型幾何螺旋塔 (第一人稱貼壁版)</title>
+    <title>Minecraft 巨型螺旋跑酷塔 (TNT 炸彈跳 & 實心巨柱版)</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { overflow: hidden; background-color: #0b1528; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; }
 
-        body {
-            overflow: hidden;
-            background-color: #0b1528;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        #canvas-container {
-            width: 100vw;
-            height: 100vh;
-        }
-
-        /* 準心 (第一人稱必備) */
+        /* 第一人稱準心 */
         #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 10px;
-            height: 10px;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 15;
+            position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 15;
         }
-        #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background: rgba(255, 255, 255, 0.8);
-        }
-        #crosshair::before {
-            top: 4px; left: 0; width: 10px; height: 2px;
-        }
-        #crosshair::after {
-            top: 0; left: 4px; width: 2px; height: 10px;
-        }
+        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.85); }
+        #crosshair::before { top: 4px; left: 0; width: 10px; height: 2px; }
+        #crosshair::after { top: 0; left: 4px; width: 2px; height: 10px; }
 
-        /* 頂部資訊列 */
+        /* UI 介面與血條 */
         #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #fff;
-            font-size: 16px;
-            font-weight: bold;
-            z-index: 10;
-            display: flex;
-            gap: 12px;
+            position: absolute; top: 20px; left: 20px; color: #fff; font-size: 15px;
+            font-weight: bold; z-index: 10; display: flex; flex-direction: column; gap: 8px;
         }
-
+        .ui-row { display: flex; gap: 12px; }
         .ui-card {
-            background: rgba(15, 23, 42, 0.85);
-            padding: 10px 18px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            backdrop-filter: blur(4px);
+            background: rgba(15, 23, 42, 0.85); padding: 10px 18px; border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.4); backdrop-filter: blur(4px);
         }
+        #health-bar-container {
+            width: 200px; height: 15px; background-color: #444; border-radius: 10px;
+            overflow: hidden; border: 2px solid #fff; margin-top: 5px;
+        }
+        #health-bar { width: 100%; height: 100%; background-color: #ff3b5c; transition: width 0.2s ease; }
 
         #stage-banner {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid #00f0ff;
-            color: #00f0ff;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: bold;
-            z-index: 10;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            position: absolute; top: 20px; right: 20px; background: rgba(15, 23, 42, 0.85);
+            border: 1px solid #00f0ff; color: #00f0ff; padding: 10px 20px; border-radius: 8px;
+            font-size: 18px; font-weight: bold; z-index: 10; box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
         }
-
         #instructions {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 13px;
-            background: rgba(0, 0, 0, 0.85);
-            padding: 8px 22px;
-            border-radius: 20px;
-            z-index: 10;
-            pointer-events: none;
-            border: 1px solid rgba(0, 240, 255, 0.3);
-            text-align: center;
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.9); font-size: 13px; background: rgba(0, 0, 0, 0.85);
+            padding: 8px 22px; border-radius: 20px; z-index: 10; pointer-events: none;
+            border: 1px solid rgba(0, 240, 255, 0.3); text-align: center;
         }
-
-        /* GAME OVER / 結算視窗 */
         #game-over-modal {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 360px;
-            background: #080d1a;
-            border: 2px solid #ff3b5c;
-            border-radius: 12px;
-            padding: 30px 20px;
-            text-align: center;
-            box-shadow: 0 0 30px rgba(255, 59, 92, 0.4);
-            z-index: 20;
-            color: #fff;
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 360px; background: #080d1a; border: 2px solid #ff3b5c; border-radius: 12px;
+            padding: 30px 20px; text-align: center; box-shadow: 0 0 30px rgba(255, 59, 92, 0.4); z-index: 20; color: #fff;
         }
-
-        #game-over-modal h1 {
-            color: #ff3b5c;
-            font-size: 32px;
-            margin-bottom: 10px;
-        }
-
         #restart-btn {
-            background-color: #00f0ff;
-            color: #000;
-            font-size: 16px;
-            font-weight: bold;
-            padding: 10px 28px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
-            transition: all 0.2s;
-            margin-top: 15px;
-        }
-
-        #restart-btn:hover {
-            background-color: #fff;
-            transform: scale(1.05);
+            background-color: #00f0ff; color: #000; font-size: 16px; font-weight: bold;
+            padding: 10px 28px; border: none; border-radius: 6px; cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); transition: all 0.2s; margin-top: 15px;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-
     <div id="crosshair"></div>
-
     <div id="ui">
-        <div class="ui-card">🏰 高度: <span id="height-val" style="color: #00f0ff;">0</span> m</div>
-        <div class="ui-card">🚩 檢查點: <span id="cp-val" style="color: #55ff55;">起點</span></div>
-        <div class="ui-card">🎥 視角: <span id="view-val" style="color: #ff00ff;">第一人稱 (按 V 切換)</span></div>
+        <div class="ui-row">
+            <div class="ui-card">🏰 高度: <span id="height-val" style="color: #00f0ff;">0</span> m</div>
+            <div class="ui-card">🚩 檢查點: <span id="cp-val" style="color: #55ff55;">起點</span></div>
+        </div>
+        <div class="ui-card">
+            <div>玩家生命</div>
+            <div id="health-bar-container"><div id="health-bar"></div></div>
+        </div>
     </div>
-
-    <div id="stage-banner">📍 區域：<span id="stage-name">Stage 1 綠野草原</span></div>
-
+    <div id="stage-banner">📍 區域：<span id="stage-name">Stage 1 綠野跑酷柱</span></div>
     <div id="instructions">
-        點擊畫面鎖定滑鼠控制視角 | WASD 移動 | 空白鍵跳躍<br>
-        <b>V 鍵切換第一/三人稱</b> | 先CTRL後W=蹲走 | 走動中按CTRL=極速滑行過窄門<br>
-        🏰 位於巨柱內部螺旋爬升 | 右側敞開無視野遮擋 | 🧨避開 TNT 礦車！
+        WASD 移動 | 空白鍵跳躍 | 先CTRL後W=蹲走 | 走動中按CTRL=極速滑行<br>
+        🧨 **被爆炸波及扣血，但可利用衝擊波飛行！** | 掉落外圈依舊會致死。
     </div>
-
     <div id="game-over-modal">
         <h1 id="modal-title">墜落失足！</h1>
         <p>最高到達高度: <span id="final-height">0</span> 米</p>
         <button id="restart-btn" onclick="respawn()">從檢查點重生</button>
     </div>
-
     <div id="canvas-container"></div>
-
     <script>
-        // 1. 關卡分區資料
         const STAGES = [
-            { id: 1, name: "Stage 1：綠野巨柱內部", color: 0x55aa33, wall: 0x2d5a1e, sky: 0x7ec0ee },
-            { id: 2, name: "Stage 2：寒冰凍柱內部", color: 0x00dfff, wall: 0x3a6b85, sky: 0xa0c8f0 },
-            { id: 3, name: "Stage 3：地獄熔岩柱內部", color: 0xff4400, wall: 0x3d0c0c, sky: 0x2a0808 },
-            { id: 4, name: "Stage 4：末日紫晶柱內部", color: 0xaa00ff, wall: 0x2b063d, sky: 0x150525 },
-            { id: 5, name: "Stage 5：黃金頂峰殿堂", color: 0xffd700, wall: 0x554400, sky: 0x332200 }
+            { id: 1, name: "Stage 1：綠野跑酷柱", color: 0x55aa33, pillar: 0x2d5a1e, sky: 0x7ec0ee },
+            { id: 2, name: "Stage 2：寒冰凍跑柱", color: 0x00dfff, pillar: 0x3a6b85, sky: 0xa0c8f0 },
+            { id: 3, name: "Stage 3：熔岩極限柱", color: 0xff4400, pillar: 0x3d0c0c, sky: 0x2a0808 },
+            { id: 4, name: "Stage 4：紫晶幻影柱", color: 0xaa00ff, pillar: 0x2b063d, sky: 0x150525 },
+            { id: 5, name: "Stage 5：黃金神殿頂峰", color: 0xffd700, pillar: 0x554400, sky: 0x332200 }
         ];
 
         const container = document.getElementById('canvas-container');
         const heightDisplay = document.getElementById('height-val');
         const cpDisplay = document.getElementById('cp-val');
         const stageDisplay = document.getElementById('stage-name');
-        const viewDisplay = document.getElementById('view-val');
         const gameOverModal = document.getElementById('game-over-modal');
         const finalHeightDisplay = document.getElementById('final-height');
         const modalTitle = document.getElementById('modal-title');
-        const crosshair = document.getElementById('crosshair');
+        const healthBar = document.getElementById('health-bar');
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(STAGES[0].sky);
-        scene.fog = new THREE.FogExp2(STAGES[0].sky, 0.005);
+        scene.fog = new THREE.FogExp2(STAGES[0].sky, 0.003);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -200,59 +109,60 @@
         renderer.shadowMap.enabled = true;
         container.appendChild(renderer.domElement);
 
-        // 光源
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
         scene.add(ambientLight);
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-        dirLight.position.set(20, 100, 20);
+        dirLight.position.set(40, 100, 40);
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // 地圖建構與機關
         let platforms = [];
         let tntCarts = [];
-        let checkpointPos = new THREE.Vector3(0, 2, 12);
+        let rTracks = [];
+        const pillarRadius = 8.0;
+        const spiralRadius = 9.8;
+        let checkpointPos = new THREE.Vector3(0, 2, spiralRadius);
         let checkpointName = "起點";
-        const innerRadius = 12; // 柱內徑
-        const totalSteps = 72;
+        const totalSteps = 70;
 
-        // 🏰 建造空心巨柱內壁 (右側/外側開放)
-        function buildHollowTowerWalls() {
-            const pillarHeight = 180;
-            const wallSegments = 24;
-            const segAngle = (Math.PI * 2) / wallSegments;
+        // 🏛️ 中央實心巨柱
+        function buildCenterSolidPillar() {
+            const totalHeight = 250;
+            const stageHeight = totalHeight / 5;
 
-            for (let stageIdx = 0; stageIdx < 5; stageIdx++) {
-                const stage = STAGES[stageIdx];
-                const stageHeight = pillarHeight / 5;
-                const startY = stageIdx * stageHeight;
-
-                const wallGroup = new THREE.Group();
-
-                for (let i = 0; i < wallSegments; i++) {
-                    const a = i * segAngle;
-                    // 右外側角度鏤空
-                    if (Math.sin(a) > 0.3) continue; 
-
-                    const wallGeo = new THREE.BoxGeometry(3.5, stageHeight, 0.8);
-                    const wallMat = new THREE.MeshStandardMaterial({ 
-                        color: stage.wall, 
-                        roughness: 0.8 
-                    });
-                    const wallMesh = new THREE.Mesh(wallGeo, wallMat);
-
-                    const wx = Math.cos(a) * (innerRadius + 0.5);
-                    const wz = Math.sin(a) * (innerRadius + 0.5);
-
-                    wallMesh.position.set(wx, startY + stageHeight / 2, wz);
-                    wallMesh.rotation.y = -a + Math.PI / 2;
-                    wallMesh.receiveShadow = true;
-                    wallGroup.add(wallMesh);
-                }
-
-                scene.add(wallGroup);
+            for (let i = 0; i < 5; i++) {
+                const stage = STAGES[i];
+                const geo = new THREE.CylinderGeometry(pillarRadius, pillarRadius, stageHeight, 32);
+                const mat = new THREE.MeshStandardMaterial({ color: stage.pillar, roughness: 0.8 });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(0, stageHeight * i + stageHeight / 2, 0);
+                mesh.receiveShadow = true;
+                scene.add(mesh);
             }
+        }
+
+        // 🛤️ 建立可見的紅石軌道
+        function createRailTrack(point, angle, type='curve') {
+            const trackGeo = new THREE.PlaneGeometry(1.4, 0.15); // 窄平面作為軌道枕木
+            const trackMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7 });
+            const mesh = new THREE.Mesh(trackGeo, trackMat);
+            mesh.position.set(point.x, point.y + 0.01, point.z);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.rotation.z = angle + Math.PI / 2;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            // 紅石火把特效 (可選)
+            if (Math.random() < 0.2) {
+                const torchGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.3);
+                const torchMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x440000 });
+                const torch = new THREE.Mesh(torchGeo, torchMat);
+                torch.position.set(0, 0.15, -0.3);
+                torch.rotation.x = Math.PI / 2; // 修正火把貼在軌道上
+                mesh.add(torch);
+            }
+            rTracks.push(mesh);
         }
 
         function createPlatform(x, y, z, w, h, d, colorHex, type = 'normal') {
@@ -274,363 +184,275 @@
             return mesh;
         }
 
-        // 低天花板滑行窄門
-        function createSlideGate(x, y, z) {
-            const gateGroup = new THREE.Group();
-            const roofGeo = new THREE.BoxGeometry(2.5, 0.6, 2.5);
-            const roofMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-            const roof = new THREE.Mesh(roofGeo, roofMat);
-            roof.position.set(0, 1.25, 0);
-            gateGroup.add(roof);
-            gateGroup.position.set(x, y, z);
-            scene.add(gateGroup);
-        }
-
-        // TNT 礦車模型
-        function createTNTMinecart(x, y, z, stepIndex) {
+        // 特別：從柱子進出的循環炸彈礦車
+        function createTNTMinecartLoop(stepIndex, color) {
             const cartGroup = new THREE.Group();
+            
+            // 底座
             const cartGeo = new THREE.BoxGeometry(1.2, 0.4, 1.2);
             const cartMat = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.8 });
             const cart = new THREE.Mesh(cartGeo, cartMat);
             cartGroup.add(cart);
 
+            // TNT 方塊
             const tntGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
             const tntMat = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0x440000 });
             const tnt = new THREE.Mesh(tntGeo, tntMat);
             tnt.position.y = 0.6;
             cartGroup.add(tnt);
 
-            cartGroup.position.set(x, y, z);
-            cartGroup.userData = { stepIndex: stepIndex };
             scene.add(cartGroup);
-            tntCarts.push(cartGroup);
+            tntCarts.push({
+                group: cartGroup,
+                baseY: 0,
+                baseAngle: 0,
+                time: stepIndex * 10,
+                speed: 0.015,
+                state: 'exiting', // exiting, running, entering, hiding
+                timer: 0
+            });
         }
 
         function buildSpiralMap() {
-            buildHollowTowerWalls();
+            buildCenterSolidPillar();
 
-            const startPad = createPlatform(0, 0, innerRadius, 6, 1, 6, STAGES[0].color);
+            const startPad = createPlatform(0, 0, spiralRadius, 6, 1, 6, STAGES[0].color);
             scene.add(startPad);
             platforms.push(startPad);
 
-            let angle = 0;
-            let currentY = 2;
+            let currentAngle = 0;
+            let currentY = 1.5;
+            let stepCounter = 1;
 
-            for (let i = 1; i <= totalSteps; i++) {
-                const stageIdx = Math.min(4, Math.floor((i - 1) / 14));
+            while (stepCounter <= 70) {
+                const stageIdx = Math.min(4, Math.floor((stepCounter - 1) / 14));
                 const stage = STAGES[stageIdx];
+                const isCP = (stepCounter % 14 === 0 && stepCounter < 70);
 
-                angle += 0.4;
-                currentY += 2.1 + (Math.random() * 0.2);
+                let patternType = Math.floor(Math.random() * 5);
+                if (isCP || stepCounter === 70) patternType = 0; 
 
-                const x = Math.sin(angle) * (innerRadius - 1.5);
-                const z = Math.cos(angle) * (innerRadius - 1.5);
+                let angleJump = 0.45; 
+                let heightJump = 1.1; 
+                let pWidth = 1.8, pDepth = 1.8;
+                let blockType = 'normal';
 
-                const isTop = (i === totalSteps);
-                const isCP = (i % 14 === 0 && !isTop);
-
-                let type = 'normal';
-                let w = isTop ? 6 : (isCP ? 4 : 2.2);
-                let d = isTop ? 6 : (isCP ? 4 : 2.2);
-
-                if (stageIdx === 1 && i % 3 === 0) type = 'ice';
-                if (i % 8 === 0 && !isCP && !isTop) type = 'slime';
-                if (i % 7 === 0 && !isCP && !isTop) {
-                    w = 1.0;
-                    d = 1.0;
+                // 各式跑酷機制
+                if (patternType === 1) { // 遠跳 gap
+                    angleJump = 0.72; heightJump = 0.6; pWidth = 1.2; pDepth = 1.2;
+                } else if (patternType === 2) { // 史萊姆高彈
+                    angleJump = 0.5; heightJump = 4.8; blockType = 'slime'; pWidth = 2.2; pDepth = 2.2;
+                } else if (patternType === 3) { // 冰塊滑跑
+                    angleJump = 0.52; heightJump = 0.8; blockType = 'ice'; pWidth = 1.6; pDepth = 1.6;
+                } else if (patternType === 4) { // 繞柱 90 度 wrap
+                    angleJump = 0.95; heightJump = 1.4; pWidth = 1.5; pDepth = 1.5;
                 }
 
-                let color = isTop ? 0xffd700 : (isCP ? 0xffffff : stage.color);
-                const block = createPlatform(x, currentY, z, w, 0.8, d, color, type);
-                block.rotation.y = angle;
-                block.userData.stageIdx = stageIdx;
-                block.userData.isTop = isTop;
+                currentAngle += angleJump;
+                currentY += heightJump;
+
+                const x = Math.sin(currentAngle) * spiralRadius;
+                const z = Math.cos(currentAngle) * spiralRadius;
+
+                let color = stepCounter === 70 ? 0xffd700 : (isCP ? 0xffffff : stage.color);
+                const block = createPlatform(x, currentY, z, pWidth, 0.8, pDepth, color, blockType);
+                block.rotation.y = currentAngle;
+                block.userData.stepNum = stepCounter;
                 block.userData.isCP = isCP;
-                block.userData.stepNum = i;
-
-                scene.add(block);
                 platforms.push(block);
+                scene.add(block);
 
-                if (i === 20 || i === 48) {
-                    createSlideGate(x, currentY + 0.4, z);
+                // 在部分區域生成紅石軌道與洞口，並放置 TNT 礦車循環
+                if (stepCounter >= 28 && stepCounter <= 45 && stepCounter % 4 === 0) {
+                    createTNTMinecartLoop(stepCounter, STAGES[2].color);
                 }
 
-                if (i >= 30 && i <= 42 && i % 4 === 0) {
-                    createTNTMinecart(x, currentY + 1.2, z, i);
-                }
+                stepCounter++;
             }
         }
 
-        // 玩家模型與視野變數
+        // 玩家血量與物理
         const playerGroup = new THREE.Group();
-        const playerGeo = new THREE.BoxGeometry(0.8, 1.8, 0.8);
-        const playerMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x004455 });
-        const playerMesh = new THREE.Mesh(playerGeo, playerMat);
-        playerMesh.position.y = 0.9;
-        playerMesh.castShadow = true;
-        playerGroup.add(playerMesh);
         scene.add(playerGroup);
 
-        let isFPV = true; // 預設：第一人稱視角 (First Person View)
-        let pitch = 0;     // 上下看的角度
-        let yaw = Math.PI; // 左右看的角度
-
-        let playerPos = new THREE.Vector3(0, 2, innerRadius);
+        let yaw = Math.PI, pitch = 0; 
+        let playerPos = new THREE.Vector3(0, 2, spiralRadius);
         let playerVel = new THREE.Vector3(0, 0, 0);
-        let isGrounded = false;
-        let isGameOver = false;
-        let moveState = 0;
+        let isGrounded = false, isGameOver = false;
+        let playerHealth = 100;
 
         const gravity = 0.018;
-        const moveSpeed = 0.16;
-        const jumpForce = 0.42;
+        const moveSpeed = 0.17;
+        const jumpForce = 0.43;
 
         const keys = {};
-        let isMovingBeforeCtrl = false;
 
-        // Pointer Lock (滑鼠鎖定第一人稱控制)
-        container.addEventListener('click', () => {
-            if (!isGameOver) {
-                container.requestPointerLock();
-            }
-        });
-
+        container.addEventListener('click', () => { if (!isGameOver) container.requestPointerLock(); });
         document.addEventListener('mousemove', (e) => {
             if (document.pointerLockElement === container) {
-                const sensitivity = 0.0022;
-                yaw -= e.movementX * sensitivity;
-                pitch -= e.movementY * sensitivity;
-
-                // 限制上下仰角，避免翻轉
+                const s = 0.0022; yaw -= e.movementX * s; pitch -= e.movementY * s;
                 pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
             }
         });
 
-        // 🛑 按鍵處理 (含 V 鍵切換第一/三人稱, Ctrl 防關閉)
         window.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.code.includes('Control')) {
-                if (e.code === 'KeyW' || e.code === 'KeyR' || e.code === 'KeyS') {
-                    e.preventDefault();
-                }
-            }
-            if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
-                e.preventDefault();
-                const isCurrentlyMoving = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] ||
-                                         keys['ArrowUp'] || keys['ArrowDown'] || keys['ArrowLeft'] || keys['ArrowRight'];
-                isMovingBeforeCtrl = isCurrentlyMoving;
-            }
-
-            // 按 V 鍵切換視角
-            if (e.code === 'KeyV') {
-                isFPV = !isFPV;
-                playerMesh.visible = !isFPV; // 第一人稱時隱藏自己的身體，避免擋住畫面
-                crosshair.style.display = isFPV ? 'block' : 'none';
-                viewDisplay.textContent = isFPV ? "第一人稱 (按 V 切換)" : "第三人稱 (按 V 切換)";
-            }
-
+            if (e.ctrlKey && (e.code === 'KeyW' || e.code === 'KeyW' || e.code === 'KeyR')) e.preventDefault();
             keys[e.code] = true;
         });
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+        window.addEventListener('beforeunload', (e) => { e.preventDefault(); e.returnValue = ''; });
 
-        window.addEventListener('keyup', (e) => {
-            keys[e.code] = false;
-        });
+        function triggerDamage(damageVal) {
+            playerHealth -= damageVal;
+            healthBar.style.width = playerHealth + '%';
+            if (playerHealth <= 0) triggerEnd(false, "🧨 被爆炸摧毀了！");
+        }
 
-        window.addEventListener('beforeunload', (e) => {
-            e.preventDefault();
-            e.returnValue = '';
-        });
+        // 爆炸衝擊波系統
+        function triggerExplosion(pos) {
+            createTNTExplosionEffect(pos); // 視覺特效
+            const dist = playerPos.distanceTo(pos);
+            const maxExplosionDist = 5;
 
-        // 物理與碰撞更新
+            if (dist < maxExplosionDist) {
+                // 扣血（越近越痛）
+                const damage = 100 * (1 - dist / maxExplosionDist);
+                triggerDamage(damage);
+
+                // 計算衝擊向量
+                const force = new THREE.Vector3().subVectors(playerPos, pos).normalize();
+                const forceMag = 1.3 * (1 - dist / maxExplosionDist); // 衝擊強度
+                
+                // 應用衝擊波飛行物理 (包括高、前後左右)
+                playerVel.add(force.multiplyScalar(forceMag));
+                playerVel.y += 0.2 * forceMag; // 爆炸向上彈飛
+                isGrounded = false;
+            }
+        }
+
+        // 簡單的爆炸粒子特效
+        function createTNTExplosionEffect(pos) {
+            const particleGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+            const particleMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            for (let i = 0; i < 20; i++) {
+                const p = new THREE.Mesh(particleGeo, particleMat);
+                p.position.set(pos.x + (Math.random()-0.5)*1, pos.y + (Math.random()-0.5)*1, pos.z + (Math.random()-0.5)*1);
+                p.userData.vel = new THREE.Vector3((Math.random()-0.5)*0.15, (Math.random()-0.5)*0.15, (Math.random()-0.5)*0.15);
+                p.userData.timer = 30;
+                scene.add(p);
+                platforms.push(p); // 利用 platforms 陣列臨時清理特效
+                p.userData.isEffect = true;
+            }
+        }
+
         function updatePhysics() {
             if (isGameOver) return;
 
-            const isCtrlPressed = keys['ControlLeft'] || keys['ControlRight'] || keys['KeyC'];
-
-            // 根據玩家朝向(yaw)計算前後左右方向 vectors
+            // FPV 朝向
             const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
             const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
             let moveDir = new THREE.Vector3(0, 0, 0);
-            if (keys['KeyW'] || keys['ArrowUp']) moveDir.add(forward);
-            if (keys['KeyS'] || keys['ArrowDown']) moveDir.sub(forward);
-            if (keys['KeyD'] || keys['ArrowRight']) moveDir.add(right);
-            if (keys['KeyA'] || keys['ArrowLeft']) moveDir.sub(right);
-
+            if (keys['KeyW']) moveDir.add(forward);
+            if (keys['KeyS']) moveDir.sub(forward);
+            if (keys['KeyD']) moveDir.add(right);
+            if (keys['KeyA']) moveDir.sub(right);
             if (moveDir.length() > 0) moveDir.normalize();
 
-            if (isCtrlPressed) {
-                moveState = isMovingBeforeCtrl ? 2 : 1;
-            } else {
-                moveState = 0;
-            }
+            // 應用速度
+            playerVel.x = moveDir.x * moveSpeed;
+            playerVel.z = moveDir.z * moveSpeed;
 
-            let currentSpeed = moveSpeed;
-
-            if (moveState === 1) { // 蹲走
-                playerMesh.scale.y = 0.5;
-                playerMesh.position.y = 0.45;
-                playerMat.color.setHex(0x00aaff);
-                currentSpeed = moveSpeed * 0.6; 
-            } else if (moveState === 2) { // 滑行
-                playerMesh.scale.y = 0.4;
-                playerMesh.position.y = 0.36;
-                playerMat.color.setHex(0xffaa00);
-                currentSpeed = moveSpeed * 1.45; 
-            } else {
-                playerMesh.scale.y = 1.0;
-                playerMesh.position.y = 0.9;
-                playerMat.color.setHex(0x00f0ff);
-            }
-
-            playerVel.x = moveDir.x * currentSpeed;
-            playerVel.z = moveDir.z * currentSpeed;
-
-            if (keys['Space'] && isGrounded) {
-                playerVel.y = jumpForce;
-                isGrounded = false;
-            }
-
+            if (keys['Space'] && isGrounded) { playerVel.y = jumpForce; isGrounded = false; }
             playerVel.y -= gravity;
 
             let nextX = playerPos.x + playerVel.x;
             let nextY = playerPos.y + playerVel.y;
             let nextZ = playerPos.z + playerVel.z;
 
-            // 碰撞檢測
+            // 實心柱體碰撞
+            const distToCenter = Math.sqrt(nextX * nextX + nextZ * nextZ);
+            if (distToCenter < pillarRadius + 0.4) {
+                const angle = Math.atan2(nextX, nextZ);
+                nextX = Math.sin(angle) * (pillarRadius + 0.4);
+                nextZ = Math.cos(angle) * (pillarRadius + 0.4);
+            }
+
+            // 平台與爆炸特效碰撞/清理
             isGrounded = false;
             const pw = 0.4;
+            for (let i = platforms.length - 1; i >= 0; i--) {
+                const p = platforms[i];
+                // 清除特效
+                if (p.userData.isEffect) {
+                    p.position.add(p.userData.vel);
+                    p.userData.timer--;
+                    if (p.userData.timer <= 0) { scene.remove(p); platforms.splice(i, 1); }
+                    continue;
+                }
 
-            for (let p of platforms) {
-                const pos = p.position;
-                const hw = p.userData.width / 2;
-                const hd = p.userData.depth / 2;
-                const hh = p.userData.height / 2;
-
-                if (
-                    nextX + pw > pos.x - hw && nextX - pw < pos.x + hw &&
-                    nextZ + pw > pos.z - hd && nextZ - pw < pos.z + hd
-                ) {
+                const pos = p.position; const hw = p.userData.width / 2; const hd = p.userData.depth / 2; const hh = p.userData.height / 2;
+                if (nextX + pw > pos.x - hw && nextX - pw < pos.x + hw && nextZ + pw > pos.z - hd && nextZ - pw < pos.z + hd) {
                     if (playerPos.y >= pos.y + hh && nextY <= pos.y + hh) {
-                        nextY = pos.y + hh;
-                        playerVel.y = 0;
-                        isGrounded = true;
-
-                        if (p.userData.type === 'ice') {
-                            playerVel.x *= 1.25;
-                            playerVel.z *= 1.25;
-                        } else if (p.userData.type === 'slime') {
-                            playerVel.y = jumpForce * 1.45;
-                            isGrounded = false;
-                        }
-
-                        const stage = STAGES[p.userData.stageIdx || 0];
-                        stageDisplay.textContent = stage.name;
-                        scene.background.setHex(stage.sky);
-                        scene.fog.color.setHex(stage.sky);
-
-                        if (p.userData.isCP && checkpointName !== `第 ${p.userData.stepNum} 階`) {
-                            checkpointPos.set(pos.x, pos.y + hh + 0.5, pos.z);
-                            checkpointName = `第 ${p.userData.stepNum} 階`;
-                            cpDisplay.textContent = checkpointName;
-                        }
-
-                        if (p.userData.isTop) {
-                            triggerEnd(true, "🏆 攻頂成功！");
-                            return;
-                        }
+                        nextY = pos.y + hh; playerVel.y = 0; isGrounded = true;
+                        // 特殊方塊
+                        if (p.userData.type === 'slime') { playerVel.y = jumpForce * 1.65; isGrounded = false; }
+                        else if (p.userData.type === 'ice') { playerVel.x *= 1.35; playerVel.z *= 1.35; }
+                        // 更新檢查點
+                        if (p.userData.isCP) checkpointPos.set(pos.x, pos.y + hh + 0.5, pos.z);
                     }
                 }
             }
 
-            // TNT 礦車巡邏
-            tntCarts.forEach(cart => {
-                const time = Date.now() * 0.0015;
-                cart.position.x = Math.sin(time + cart.userData.stepIndex) * (innerRadius - 1.5);
-                cart.position.z = Math.cos(time + cart.userData.stepIndex) * (innerRadius - 1.5);
+            // TNT 礦車循環物理與爆炸
+            tntCarts.forEach(c => {
+                c.time += c.speed;
+                const pathLength = totalSteps * 0.4; // TNT 循環弧長
+                const yPos = STAGES[2].pillar; // 地獄區高度
 
-                const dist = playerPos.distanceTo(cart.position);
-                if (dist < 1.6) {
-                    triggerEnd(false, "🧨 被 TNT 礦車炸飛了！");
+                // 礦車循環狀態機
+                if (c.state === 'running') {
+                    // 沿軌道循環追逐
+                    c.group.position.x = Math.sin(c.time) * spiralRadius;
+                    c.group.position.z = Math.cos(c.time) * spiralRadius;
+                    c.group.position.y = yPos + 0.6; // 高度
+
+                    // 自爆檢測 (撞到或定時爆炸)
+                    c.timer++;
+                    if (playerPos.distanceTo(c.group.position) < 1.6 || c.timer > 150) {
+                        triggerExplosion(c.group.position.clone()); // 爆炸
+                        c.state = 'entering'; // 爆炸後進入重新循環狀態
+                        c.timer = 0;
+                        c.group.position.y = -10; // 暫時移除畫面
+                    }
+                } else if (c.state === 'entering') {
+                    // 自爆或行駛完後駛回洞口
+                    c.group.position.y = -10; // 暫時移除
+                    c.state = 'hiding'; c.timer = 300; // 隱藏一小段時間後重生
+                } else if (c.state === 'hiding') {
+                    c.timer--;
+                    if (c.timer <= 0) c.state = 'running';
                 }
             });
 
             playerPos.set(nextX, nextY, nextZ);
             playerGroup.position.copy(playerPos);
-            playerGroup.rotation.y = yaw;
-
-            if (playerPos.y < -15) {
-                triggerEnd(false, "墜落失足！");
-            }
-
+            if (playerPos.y < -15) triggerEnd(false, "墜落失足！");
             heightDisplay.textContent = Math.max(0, Math.floor(playerPos.y));
         }
 
-        // 攝影機位置更新 (第一人稱 vs 第三人稱)
         function updateCamera() {
-            let eyeHeight = 1.6; // 眼睛高度
-            if (moveState === 1) eyeHeight = 0.8; // 蹲下眼睛變低
-            if (moveState === 2) eyeHeight = 0.6; // 滑行眼睛更低
-
-            if (isFPV) {
-                // 🎥 **第一人稱視角**：鏡頭直接放在玩家眼睛位置
-                camera.position.set(playerPos.x, playerPos.y + eyeHeight, playerPos.z);
-
-                // 計算瞄準目標位置
-                const lookTarget = new THREE.Vector3(
-                    playerPos.x - Math.sin(yaw) * Math.cos(pitch),
-                    playerPos.y + eyeHeight + Math.sin(pitch),
-                    playerPos.z - Math.cos(yaw) * Math.cos(pitch)
-                );
-                camera.lookAt(lookTarget);
-            } else {
-                // 🎥 **第三人稱視角**：鏡頭跟隨在玩家身後
-                const dist = 7;
-                const cx = playerPos.x + dist * Math.sin(yaw) * Math.cos(pitch);
-                const cy = playerPos.y + eyeHeight + dist * Math.sin(pitch);
-                const cz = playerPos.z + dist * Math.cos(yaw) * Math.cos(pitch);
-
-                camera.position.set(cx, cy, cz);
-                camera.lookAt(playerPos.x, playerPos.y + eyeHeight, playerPos.z);
-            }
+            camera.position.set(playerPos.x, playerPos.y + 1.6, playerPos.z);
+            const lookTarget = new THREE.Vector3(playerPos.x - Math.sin(yaw)*Math.cos(pitch), playerPos.y + 1.6 + Math.sin(pitch), playerPos.z - Math.cos(yaw)*Math.cos(pitch));
+            camera.lookAt(lookTarget);
         }
 
-        function animate() {
-            if (isGameOver) return;
-            requestAnimationFrame(animate);
-            updatePhysics();
-            updateCamera();
-            renderer.render(scene, camera);
-        }
+        function animate() { if (!isGameOver) { requestAnimationFrame(animate); updatePhysics(); updateCamera(); renderer.render(scene, camera); } }
+        function triggerEnd(isWin, msg) { isGameOver = true; document.exitPointerLock(); finalHeightDisplay.textContent = Math.max(0, Math.floor(playerPos.y)); modalTitle.textContent = msg; modalTitle.style.color = isWin ? "#ffd700" : "#ff3b5c"; gameOverModal.style.display = 'block'; }
+        function respawn() { isGameOver = false; playerPos.copy(checkpointPos); playerVel.set(0, 0, 0); playerHealth = 100; healthBar.style.width = '100%'; gameOverModal.style.display = 'none'; animate(); }
 
-        function triggerEnd(isWin, msg) {
-            isGameOver = true;
-            document.exitPointerLock();
-            finalHeightDisplay.textContent = Math.max(0, Math.floor(playerPos.y));
-            modalTitle.textContent = msg;
-            modalTitle.style.color = isWin ? "#ffd700" : "#ff3b5c";
-            gameOverModal.style.display = 'block';
-        }
-
-        function respawn() {
-            isGameOver = false;
-            playerPos.copy(checkpointPos);
-            playerVel.set(0, 0, 0);
-            moveState = 0;
-            gameOverModal.style.display = 'none';
-            playerMesh.visible = !isFPV;
-            animate();
-        }
-
-        // 初始化
-        buildSpiralMap();
-        playerMesh.visible = false; // 預設第一人稱隱藏身體
-        respawn();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        buildSpiralMap(); animate();
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     </script>
 </body>
 </html>
