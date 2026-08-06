@@ -3,104 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft 無柱·極限螺旋跑酷塔</title>
+    <title>Minecraft 巨型螺旋幾何跑酷塔 (蹲走與滑行機制增強版)</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { overflow: hidden; background-color: #111; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
-        #canvas-container { width: 100vw; height: 100vh; }
-
-        #ui {
-            position: absolute; top: 20px; left: 20px; color: #fff; font-size: 18px; font-weight: bold; z-index: 10;
-            display: flex; gap: 12px; flex-wrap: wrap;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
         }
-        .ui-box {
-            background: rgba(0, 0, 0, 0.8); padding: 8px 16px; border-radius: 8px; border: 2px solid #555;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5); text-shadow: 1px 1px 2px #000;
+
+        body {
+            overflow: hidden;
+            background-color: #0b1528;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 頂部資訊列 */
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 10;
+            display: flex;
+            gap: 12px;
+        }
+
+        .ui-card {
+            background: rgba(15, 23, 42, 0.85);
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            backdrop-filter: blur(4px);
         }
 
         #stage-banner {
-            position: absolute; top: 20px; right: 20px; background: rgba(20, 20, 30, 0.9); border: 2px solid #55ff55;
-            color: #55ff55; padding: 8px 20px; border-radius: 8px; font-size: 20px; font-weight: bold; z-index: 10;
-            box-shadow: 0 0 15px rgba(85, 255, 85, 0.4);
-        }
-
-        #checkpoint-msg {
-            display: none; position: absolute; top: 15%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(85, 255, 85, 0.9); color: #000; padding: 12px 25px; border-radius: 8px; font-size: 22px;
-            font-weight: bold; border: 2px solid #fff; z-index: 15; box-shadow: 0 0 20px rgba(85, 255, 85, 0.8);
-            animation: popIn 0.3s ease;
-        }
-        @keyframes popIn {
-            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid #00f0ff;
+            color: #00f0ff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
         }
 
         #instructions {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 14px;
-            background: rgba(0, 0, 0, 0.8); padding: 8px 18px; border-radius: 6px; border: 1px solid #777; z-index: 10; pointer-events: none;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 22px;
+            border-radius: 20px;
+            z-index: 10;
+            pointer-events: none;
+            border: 1px solid rgba(0, 240, 255, 0.3);
         }
 
-        #game-over {
-            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;
-            background: rgba(20, 20, 20, 0.95); padding: 35px 55px; border-radius: 12px; border: 3px solid #55ff55;
-            box-shadow: 0 0 30px rgba(85, 255, 85, 0.4); color: #fff; z-index: 20;
+        /* GAME OVER / 結算視窗 */
+        #game-over-modal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 360px;
+            background: #080d1a;
+            border: 2px solid #ff3b5c;
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 59, 92, 0.4);
+            z-index: 20;
+            color: #fff;
         }
-        #game-over h1 { font-size: 36px; color: #55ff55; margin-bottom: 15px; }
-        #reward-text { font-size: 20px; color: #ffff55; margin-bottom: 15px; font-weight: bold; }
-        #game-over p { font-size: 18px; margin-bottom: 25px; }
-        .btn {
-            padding: 12px 30px; font-size: 18px; font-weight: bold; background-color: #55ff55; color: #000; border: none;
-            border-radius: 6px; cursor: pointer; box-shadow: 0 0 15px #55ff55; transition: 0.2s;
+
+        #game-over-modal h1 {
+            color: #ff3b5c;
+            font-size: 32px;
+            margin-bottom: 10px;
         }
-        .btn:hover { background-color: #fff; transform: scale(1.05); }
+
+        #restart-btn {
+            background-color: #00f0ff;
+            color: #000;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 10px 28px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            transition: all 0.2s;
+            margin-top: 15px;
+        }
+
+        #restart-btn:hover {
+            background-color: #fff;
+            transform: scale(1.05);
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
     <div id="ui">
-        <div class="ui-box">🏰 跑酷塔: <span style="color: #ffff55;">MC 空中懸空螺旋塔</span></div>
-        <div class="ui-box">🚩 紀錄點: <span id="checkpoint-txt" style="color: #55ff55;">起點</span></div>
-        <div class="ui-box">📏 高度: <span id="score" style="color: #00fff5;">0</span> m</div>
+        <div class="ui-card">🏰 螺旋塔高度: <span id="height-val" style="color: #00f0ff;">0</span> m</div>
+        <div class="ui-card">🚩 檢查點: <span id="cp-val" style="color: #55ff55;">起點</span></div>
     </div>
 
-    <div id="stage-banner">📍 目前區域：<span id="stage-name">Stage 1 綠野大跳區</span></div>
-    <div id="checkpoint-msg">🚩 紀錄點已儲存！</div>
-    <div id="instructions">WASD 移動 | 空白鍵跳躍 | 滑鼠左鍵拖曳旋轉視角</div>
+    <div id="stage-banner">📍 區域：<span id="stage-name">Stage 1 綠野草原</span></div>
 
-    <div id="game-over">
-        <h1 id="over-title">挑戰結果</h1>
-        <div id="reward-text"></div>
-        <p>到達高度: <span id="final-score">0</span> 米</p>
-        <button id="action-btn" class="btn" onclick="handleButtonClick()">從紀錄點重生</button>
+    <div id="instructions">WASD 移動 | 空白鍵跳躍 | 先CTRL後W=蹲著走 | 走動中按CTRL=極速滑行</div>
+
+    <div id="game-over-modal">
+        <h1 id="modal-title">墜落失足！</h1>
+        <p>最高到達高度: <span id="final-height">0</span> 米</p>
+        <button id="restart-btn" onclick="respawn()">從檢查點重生</button>
     </div>
 
     <div id="canvas-container"></div>
 
     <script>
-        // --- 1. 5 大特化跑酷關卡數據 ---
+        // 1. 關卡分區資料
         const STAGES = [
-            { id: 1, name: "Stage 1：綠野大跳區 (極限距離跳)", sky: 0x7ec0ee, blockColor: 0x55aa33, fog: 0x7ec0ee, isIce: false },
-            { id: 2, name: "Stage 2：冰雪滑行區 (微滑物理機制)", sky: 0xb0e0e6, blockColor: 0xddffff, fog: 0xb0e0e6, isIce: true },
-            { id: 3, name: "Stage 3：地獄烈焰區 (動態移動平台)", sky: 0x330000, blockColor: 0xff3300, fog: 0x220000, isIce: false },
-            { id: 4, name: "Stage 4：末日紫晶區 (極窄柱與轉角跳)", sky: 0x1a0033, blockColor: 0xaa00ff, fog: 0x100020, isIce: false },
-            { id: 5, name: "Stage 5：黃金登頂區 (終極高空衝刺)", sky: 0x332600, blockColor: 0xffd700, fog: 0x221a00, isIce: false }
+            { id: 1, name: "Stage 1：綠野草原", color: 0x55aa33, sky: 0x7ec0ee },
+            { id: 2, name: "Stage 2：寒冰凍原", color: 0x88e0ef, sky: 0xa0c8f0 },
+            { id: 3, name: "Stage 3：地獄岩漿", color: 0xff4400, sky: 0x2a0808 },
+            { id: 4, name: "Stage 4：末日紫晶", color: 0xaa00ff, sky: 0x150525 },
+            { id: 5, name: "Stage 5：黃金頂峰", color: 0xffd700, sky: 0x332200 }
         ];
 
+        // 2. 初始化 Three.js 場景
         const container = document.getElementById('canvas-container');
-        const scoreDisplay = document.getElementById('score');
-        const checkpointTxt = document.getElementById('checkpoint-txt');
-        const checkpointMsg = document.getElementById('checkpoint-msg');
-        const stageNameDisplay = document.getElementById('stage-name');
-        const gameOverScreen = document.getElementById('game-over');
-        const finalScoreDisplay = document.getElementById('final-score');
-        const overTitle = document.getElementById('over-title');
-        const rewardText = document.getElementById('reward-text');
-        const actionBtn = document.getElementById('action-btn');
+        const heightDisplay = document.getElementById('height-val');
+        const cpDisplay = document.getElementById('cp-val');
+        const stageDisplay = document.getElementById('stage-name');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const finalHeightDisplay = document.getElementById('final-height');
+        const modalTitle = document.getElementById('modal-title');
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(STAGES[0].sky);
-        scene.fog = new THREE.FogExp2(STAGES[0].sky, 0.005);
+        scene.fog = new THREE.FogExp2(STAGES[0].sky, 0.008);
 
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -108,151 +168,155 @@
         renderer.shadowMap.enabled = true;
         container.appendChild(renderer.domElement);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        // 光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
         scene.add(ambientLight);
+
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-        dirLight.position.set(40, 80, 40);
+        dirLight.position.set(30, 80, 30);
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // --- 2. 幾何地圖與多元障礙設計 ---
+        // 3. 生成巨型螺旋塔地圖
         let platforms = [];
-        let lastCheckpointPos = new THREE.Vector3(0, 2, 0);
-        let lastCheckpointName = "起點";
-        let isWinState = false;
+        let checkpointPos = new THREE.Vector3(0, 2, 0);
+        let checkpointName = "起點";
+        const spiralRadius = 11;
+        const totalSteps = 65;
 
-        const towerRadius = 10;
-        const totalSteps = 60;
-
-        function createBlock(x, y, z, w, h, d, colorHex, isMoving = false) {
+        function createPlatform(x, y, z, w, h, d, colorHex) {
             const geo = new THREE.BoxGeometry(w, h, d);
-            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6 });
+            const mat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.7 });
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(x, y, z);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
-
-            mesh.userData = { 
-                width: w, height: h, depth: d, 
-                isTop: false, isCheckpoint: false, stageIdx: 0,
-                isMoving: isMoving, startX: x, moveRange: 3, moveSpeed: 0.02
-            };
+            mesh.userData = { width: w, height: h, depth: d, stageIdx: 0, isTop: false, isCP: false, stepNum: 0 };
             return mesh;
         }
 
-        function buildParkourTower() {
-            // 起始大平台
-            const baseBlock = createBlock(0, 0, 0, 8, 1, 8, STAGES[0].blockColor);
-            scene.add(baseBlock);
-            platforms.push(baseBlock);
+        function buildSpiralMap() {
+            const startPad = createPlatform(0, 0, 0, 8, 1, 8, STAGES[0].color);
+            scene.add(startPad);
+            platforms.push(startPad);
 
+            let angle = 0;
             let currentY = 2;
-            let currentAngle = 0;
 
             for (let i = 1; i <= totalSteps; i++) {
-                const stageIdx = Math.min(4, Math.floor((i - 1) / 12));
-                const currentStage = STAGES[stageIdx];
+                const stageIdx = Math.min(4, Math.floor((i - 1) / 13));
+                const stage = STAGES[stageIdx];
+
+                angle += 0.45;
+                currentY += 2.2 + (Math.random() * 0.4);
+
+                const x = Math.cos(angle) * spiralRadius;
+                const z = Math.sin(angle) * spiralRadius;
 
                 const isTop = (i === totalSteps);
-                const isCheckpoint = (i % 12 === 0 && !isTop);
-                const isMoving = (stageIdx === 2 && !isCheckpoint && i % 2 === 0);
+                const isCP = (i % 13 === 0 && !isTop);
 
-                currentAngle += 0.5 + (Math.random() * 0.3);
-                currentY += 2.2 + (Math.random() * 0.8);
+                let w = isTop ? 6 : (isCP ? 4 : 2.2);
+                let d = isTop ? 6 : (isCP ? 4 : 2.2);
+                let color = isTop ? 0xffd700 : (isCP ? 0xffffff : stage.color);
 
-                const x = Math.cos(currentAngle) * towerRadius;
-                const z = Math.sin(currentAngle) * towerRadius;
-
-                let w = 2.2, d = 2.2;
-                if (stageIdx === 3) { w = 1.2; d = 1.2; }
-                if (isCheckpoint) { w = 3.5; d = 3.5; }
-                if (isTop) { w = 6; d = 6; }
-
-                let colorHex = isTop ? 0xffd700 : (isCheckpoint ? 0xffffff : currentStage.blockColor);
-
-                const block = createBlock(x, currentY, z, w, 0.8, d, colorHex, isMoving);
-                block.userData.isTop = isTop;
-                block.userData.isCheckpoint = isCheckpoint;
-                block.userData.cpIndex = i;
+                const block = createPlatform(x, currentY, z, w, 0.8, d, color);
                 block.userData.stageIdx = stageIdx;
-
-                if (isCheckpoint) {
-                    const poleGeo = new THREE.BoxGeometry(0.3, 2, 0.3);
-                    const poleMat = new THREE.MeshStandardMaterial({ color: 0x00fff5 });
-                    const pole = new THREE.Mesh(poleGeo, poleMat);
-                    pole.position.set(0, 1.4, 0);
-                    block.add(pole);
-                }
+                block.userData.isTop = isTop;
+                block.userData.isCP = isCP;
+                block.userData.stepNum = i;
 
                 scene.add(block);
                 platforms.push(block);
             }
         }
 
-        // --- 3. 玩家操控與物理 ---
+        // 4. 玩家與運動控制
         const playerGroup = new THREE.Group();
         const playerGeo = new THREE.BoxGeometry(0.8, 1.8, 0.8);
-        const playerMat = new THREE.MeshStandardMaterial({ color: 0x00fff5, emissive: 0x004455 });
+        const playerMat = new THREE.MeshStandardMaterial({ color: 0x00f0ff, emissive: 0x004455 });
         const playerMesh = new THREE.Mesh(playerGeo, playerMat);
         playerMesh.position.y = 0.9;
         playerMesh.castShadow = true;
         playerGroup.add(playerMesh);
-
         scene.add(playerGroup);
 
         let playerPos = new THREE.Vector3(0, 2, 0);
         let playerVel = new THREE.Vector3(0, 0, 0);
         let isGrounded = false;
         let isGameOver = false;
-        let currentOnIce = false;
+
+        // 狀態標籤：0: 正常, 1: 蹲著走, 2: 滑行
+        let moveState = 0;
 
         const gravity = 0.018;
-        const moveSpeed = 0.17;
-        const jumpForce = 0.43;
+        const moveSpeed = 0.16;
+        const jumpForce = 0.42;
 
         const keys = {};
-        window.addEventListener('keydown', (e) => keys[e.code] = true);
-        window.addEventListener('keyup', (e) => keys[e.code] = false);
+        let isMovingBeforeCtrl = false; // 用於判斷按下 Ctrl 前是否已經在移動
 
-        let cameraAngleX = 0, cameraAngleY = 0.3;
-        let isMouseDown = false, prevMouseX = 0, prevMouseY = 0;
+        // 🛑 **重點修復：攔截 Ctrl + W 關閉網頁行為**
+        window.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.code.includes('Control')) {
+                if (e.code === 'KeyW' || e.code === 'KeyR' || e.code === 'KeyS') {
+                    e.preventDefault();
+                }
+            }
+            if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
+                e.preventDefault();
+                // 紀錄按下 Ctrl 的瞬間，玩家是否已經在按移動鍵
+                const isCurrentlyMoving = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] ||
+                                         keys['ArrowUp'] || keys['ArrowDown'] || keys['ArrowLeft'] || keys['ArrowRight'];
+                
+                isMovingBeforeCtrl = isCurrentlyMoving;
+            }
+
+            keys[e.code] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        });
+
+        // 視角控制 (滑鼠拖曳)
+        let camAngleX = 0;
+        let camAngleY = 0.3;
+        let isMouseDown = false;
+        let prevMouseX = 0, prevMouseY = 0;
 
         window.addEventListener('mousedown', (e) => {
             if (e.target.tagName !== 'BUTTON') {
-                isMouseDown = true; prevMouseX = e.clientX; prevMouseY = e.clientY;
+                isMouseDown = true;
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
             }
         });
         window.addEventListener('mouseup', () => isMouseDown = false);
         window.addEventListener('mousemove', (e) => {
             if (isMouseDown) {
-                const deltaX = e.clientX - prevMouseX;
-                const deltaY = e.clientY - prevMouseY;
-                cameraAngleX -= deltaX * 0.005;
-                cameraAngleY = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, cameraAngleY + deltaY * 0.005));
-                prevMouseX = e.clientX; prevMouseY = e.clientY;
+                const dx = e.clientX - prevMouseX;
+                const dy = e.clientY - prevMouseY;
+                camAngleX -= dx * 0.005;
+                camAngleY = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, camAngleY + dy * 0.005));
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
             }
         });
 
-        function triggerCheckpointMsg(text) {
-            checkpointTxt.textContent = text;
-            checkpointMsg.style.display = 'block';
-            setTimeout(() => { checkpointMsg.style.display = 'none'; }, 1800);
-        }
-
-        // --- 4. 運動邏輯更新 ---
-        let globalTime = 0;
-
+        // 5. 物理與碰撞更新
         function updatePhysics() {
             if (isGameOver) return;
-            globalTime += 0.03;
 
-            platforms.forEach(p => {
-                if (p.userData.isMoving) {
-                    p.position.x = p.userData.startX + Math.sin(globalTime) * p.userData.moveRange;
-                }
-            });
+            const isCtrlPressed = keys['ControlLeft'] || keys['ControlRight'] || keys['KeyC'];
 
-            const forward = new THREE.Vector3(-Math.sin(cameraAngleX), 0, -Math.cos(cameraAngleX)).normalize();
+            // 相對視角移動向量計算
+            const forward = new THREE.Vector3(-Math.sin(camAngleX), 0, -Math.cos(camAngleX)).normalize();
             const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
             let moveDir = new THREE.Vector3(0, 0, 0);
@@ -263,15 +327,39 @@
 
             if (moveDir.length() > 0) moveDir.normalize();
 
-            if (currentOnIce) {
-                playerVel.x = playerVel.x * 0.95 + moveDir.x * moveSpeed * 0.1;
-                playerVel.z = playerVel.z * 0.95 + moveDir.z * moveSpeed * 0.1;
+            // 判斷當前運動狀態
+            if (isCtrlPressed) {
+                if (isMovingBeforeCtrl) {
+                    moveState = 2; // 先走動再按 Ctrl ➔ 滑行 (Slide)
+                } else {
+                    moveState = 1; // 先按 Ctrl 再按走動 ➔ 蹲著走 (Crouch Walk)
+                }
             } else {
-                playerVel.x = moveDir.x * moveSpeed;
-                playerVel.z = moveDir.z * moveSpeed;
+                moveState = 0; // 正常狀態
             }
 
-            if ((keys['Space']) && isGrounded) {
+            let currentSpeed = moveSpeed;
+
+            if (moveState === 1) { // 蹲著走：變矮 + 變慢（精準走位）
+                playerMesh.scale.y = 0.5;
+                playerMesh.position.y = 0.45;
+                playerMat.color.setHex(0x00aaff);
+                currentSpeed = moveSpeed * 0.6; 
+            } else if (moveState === 2) { // 滑行：變矮 + 加速衝刺
+                playerMesh.scale.y = 0.4;
+                playerMesh.position.y = 0.36;
+                playerMat.color.setHex(0xffaa00); // 橘黃色滑行特效
+                currentSpeed = moveSpeed * 1.4; 
+            } else { // 正常狀態
+                playerMesh.scale.y = 1.0;
+                playerMesh.position.y = 0.9;
+                playerMat.color.setHex(0x00f0ff);
+            }
+
+            playerVel.x = moveDir.x * currentSpeed;
+            playerVel.z = moveDir.z * currentSpeed;
+
+            if (keys['Space'] && isGrounded) {
                 playerVel.y = jumpForce;
                 isGrounded = false;
             }
@@ -282,47 +370,38 @@
             let nextY = playerPos.y + playerVel.y;
             let nextZ = playerPos.z + playerVel.z;
 
+            // 碰撞檢測
             isGrounded = false;
-            currentOnIce = false;
-            const playerHalfW = 0.4;
+            const pw = 0.4;
 
             for (let p of platforms) {
-                const pBox = p.position;
-                const pw = p.userData.width / 2;
-                const pd = p.userData.depth / 2;
-                const ph = p.userData.height / 2;
+                const pos = p.position;
+                const hw = p.userData.width / 2;
+                const hd = p.userData.depth / 2;
+                const hh = p.userData.height / 2;
 
                 if (
-                    nextX + playerHalfW > pBox.x - pw &&
-                    nextX - playerHalfW < pBox.x + pw &&
-                    nextZ + playerHalfW > pBox.z - pd &&
-                    nextZ - playerHalfW < pBox.z + pd
+                    nextX + pw > pos.x - hw && nextX - pw < pos.x + hw &&
+                    nextZ + pw > pos.z - hd && nextZ - pw < pos.z + hd
                 ) {
-                    if (playerPos.y >= pBox.y + ph && nextY <= pBox.y + ph) {
-                        nextY = pBox.y + ph;
+                    if (playerPos.y >= pos.y + hh && nextY <= pos.y + hh) {
+                        nextY = pos.y + hh;
                         playerVel.y = 0;
                         isGrounded = true;
 
-                        const stageIdx = p.userData.stageIdx || 0;
-                        currentOnIce = STAGES[stageIdx].isIce;
+                        const stage = STAGES[p.userData.stageIdx || 0];
+                        stageDisplay.textContent = stage.name;
+                        scene.background.setHex(stage.sky);
+                        scene.fog.color.setHex(stage.sky);
 
-                        if (p.userData.isMoving) {
-                            nextX += (Math.cos(globalTime) * p.userData.moveRange * 0.03);
-                        }
-
-                        const currentStage = STAGES[stageIdx];
-                        stageNameDisplay.textContent = currentStage.name;
-                        scene.background.setHex(currentStage.sky);
-                        scene.fog.color.setHex(currentStage.fog);
-
-                        if (p.userData.isCheckpoint && lastCheckpointName !== `${p.userData.cpIndex} 關`) {
-                            lastCheckpointPos.set(pBox.x, pBox.y + ph + 0.5, pBox.z);
-                            lastCheckpointName = `${p.userData.cpIndex} 關 (${currentStage.name})`;
-                            triggerCheckpointMsg(`🚩 抵達 ${currentStage.name} 紀錄點！`);
+                        if (p.userData.isCP && checkpointName !== `第 ${p.userData.stepNum} 階`) {
+                            checkpointPos.set(pos.x, pos.y + hh + 0.5, pos.z);
+                            checkpointName = `第 ${p.userData.stepNum} 階`;
+                            cpDisplay.textContent = checkpointName;
                         }
 
                         if (p.userData.isTop) {
-                            endGame(true);
+                            triggerEnd(true);
                             return;
                         }
                     }
@@ -332,19 +411,22 @@
             playerPos.set(nextX, nextY, nextZ);
             playerGroup.position.copy(playerPos);
 
-            if (playerPos.y < -10) endGame(false);
+            if (playerPos.y < -15) {
+                triggerEnd(false);
+            }
 
-            scoreDisplay.textContent = Math.max(0, Math.floor(playerPos.y));
+            heightDisplay.textContent = Math.max(0, Math.floor(playerPos.y));
         }
 
         function updateCamera() {
-            const camDistance = 10;
-            const camX = playerPos.x + camDistance * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
-            const camY = playerPos.y + 1.8 + camDistance * Math.sin(cameraAngleY);
-            const camZ = playerPos.z + camDistance * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
+            const dist = 10;
+            const isLow = (moveState > 0);
+            const cx = playerPos.x + dist * Math.sin(camAngleX) * Math.cos(camAngleY);
+            const cy = playerPos.y + (isLow ? 1.2 : 1.8) + dist * Math.sin(camAngleY);
+            const cz = playerPos.z + dist * Math.cos(camAngleX) * Math.cos(camAngleY);
 
-            camera.position.set(camX, camY, camZ);
-            camera.lookAt(playerPos.x, playerPos.y + 1, playerPos.z);
+            camera.position.set(cx, cy, cz);
+            camera.lookAt(playerPos.x, playerPos.y + (isLow ? 0.4 : 1.0), playerPos.z);
         }
 
         function animate() {
@@ -355,44 +437,32 @@
             renderer.render(scene, camera);
         }
 
-        // --- 5. 重生與流程 ---
-        function endGame(isWin) {
-            isGameOver = true; isWinState = isWin;
-
+        function triggerEnd(isWin) {
+            isGameOver = true;
+            finalHeightDisplay.textContent = Math.max(0, Math.floor(playerPos.y));
+            
             if (isWin) {
-                overTitle.textContent = "🏆 成功登頂極限螺旋塔！";
-                rewardText.textContent = "太強了！你完美過關了所有跑酷障礙！";
-                actionBtn.textContent = "再次挑戰";
+                modalTitle.textContent = "🏆 登頂成功！";
+                modalTitle.style.color = "#ffd700";
             } else {
-                overTitle.textContent = "💥 掉落失足！";
-                rewardText.textContent = `重生於紀錄點 [ ${lastCheckpointName} ]`;
-                actionBtn.textContent = "從紀錄點重生";
+                modalTitle.textContent = "墜落失足！";
+                modalTitle.style.color = "#ff3b5c";
             }
-
-            finalScoreDisplay.textContent = Math.max(0, Math.floor(playerPos.y));
-            gameOverScreen.style.display = 'block';
+            gameOverModal.style.display = 'block';
         }
 
-        function handleButtonClick() {
-            if (isWinState) {
-                lastCheckpointPos.set(0, 2, 0);
-                lastCheckpointName = "起點";
-                checkpointTxt.textContent = "起點";
-            }
-            resetGame();
-        }
-
-        function resetGame() {
+        function respawn() {
             isGameOver = false;
-            playerPos.copy(lastCheckpointPos);
+            playerPos.copy(checkpointPos);
             playerVel.set(0, 0, 0);
-            cameraAngleX = 0; cameraAngleY = 0.3;
-            gameOverScreen.style.display = 'none';
+            moveState = 0;
+            gameOverModal.style.display = 'none';
             animate();
         }
 
-        buildParkourTower();
-        resetGame();
+        // 初始化
+        buildSpiralMap();
+        respawn();
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
