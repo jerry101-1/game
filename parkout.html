@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>3D 多主題章節跑酷</title>
+    <title>3D 6大主題章節 Minecraft 跑酷</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body { overflow: hidden; background-color: #111; font-family: sans-serif; }
@@ -17,6 +17,9 @@
 
         #ui { position: absolute; top: 20px; left: 20px; color: #fff; z-index: 10; display: flex; flex-direction: column; gap: 8px; }
         .ui-card { background: rgba(0,0,0,0.8); padding: 10px 18px; border-radius: 8px; border: 2px solid #555; font-weight: bold; }
+        #health-bar-container { width: 140px; height: 10px; background: #333; border-radius: 5px; border: 1px solid #fff; margin-top: 4px; overflow: hidden; }
+        #health-bar { width: 100%; height: 100%; background: #ff334b; }
+
         #instructions {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
             color: #fff; background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 20px;
@@ -28,19 +31,24 @@
 <body>
     <div id="crosshair"></div>
     <div id="ui">
-        <div class="ui-card">🚩 當前關卡: <span id="stage-name" style="color:#ffaa00;">第 1 章：森林懸空島</span></div>
+        <div class="ui-card">🚩 關卡: <span id="stage-name" style="color:#ffaa00;">載入中...</span></div>
         <div class="ui-card">🏰 高度: <span id="height-val" style="color:#00ffff;">0</span> m</div>
+        <div class="ui-card">
+            <div>❤️ 生命值</div>
+            <div id="health-bar-container"><div id="health-bar"></div></div>
+        </div>
     </div>
-    <div id="instructions">點擊畫面鎖定視角 | WASD 移動 | 空白鍵跳躍<br>🟨 抵達黃色終點門即可前往下一關！</div>
+    <div id="instructions">點擊鎖定視角 | WASD 移動 | 空白鍵跳躍<br>🟨 抵達黃色終點門切換下一關！</div>
     <div id="canvas-container"></div>
 
     <script>
         const container = document.getElementById('canvas-container');
         const heightDisplay = document.getElementById('height-val');
         const stageNameDisplay = document.getElementById('stage-name');
+        const healthBar = document.getElementById('health-bar');
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x7ec0ee);
+        scene.fog = new THREE.FogExp2(0x7ec0ee, 0.005);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -55,7 +63,6 @@
         sunLight.castShadow = true;
         scene.add(sunLight);
 
-        // 方塊材質生成
         function createPixelTexture(colorHex) {
             const canvas = document.createElement('canvas');
             canvas.width = 16; canvas.height = 16;
@@ -73,13 +80,16 @@
         const grassTex = createPixelTexture('#55aa33');
         const netherTex = createPixelTexture('#661111');
         const endTex = createPixelTexture('#335566');
-        const portalTex = createPixelTexture('#ffcc00');
+        const iceTex = createPixelTexture('#88e0ef');
+        const tntTex = createPixelTexture('#ff3300');
+        const rainbowTex = createPixelTexture('#ffaa00');
+        const portalTex = createPixelTexture('#ffff00');
 
         let platforms = [];
         let currentStage = 0;
+        let playerHealth = 100;
 
-        // 方塊生成函數
-        function createBlock(x, y, z, w, h, d, texture, isPortal = false) {
+        function createBlock(x, y, z, w, h, d, texture, type = 'normal') {
             const geo = new THREE.BoxGeometry(w, h, d);
             const mat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.6 });
             const mesh = new THREE.Mesh(geo, mat);
@@ -90,14 +100,14 @@
             const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
             mesh.add(line);
 
-            mesh.userData = { width: w, height: h, depth: d, isPortal: isPortal };
+            mesh.userData = { width: w, height: h, depth: d, type: type };
             return mesh;
         }
 
-        // 🗺️ 多主題關卡設計數據（非圓形繞圈！）
+        // 🗺️ 6 大特色關卡地圖數據
         const stages = [
             {
-                name: "第 1 章：懸空群島 (Z軸推進)",
+                name: "1. 森林懸空島 (Z軸推進)",
                 skyColor: 0x7ec0ee,
                 startPos: new THREE.Vector3(0, 2, 0),
                 blocks: [
@@ -105,11 +115,11 @@
                     { x: 0, y: 1, z: -5, w: 2, h: 0.8, d: 2, tex: grassTex },
                     { x: 3, y: 2, z: -9, w: 2, h: 0.8, d: 2, tex: grassTex },
                     { x: -2, y: 3.5, z: -13, w: 2, h: 0.8, d: 2, tex: grassTex },
-                    { x: 0, y: 5, z: -18, w: 3, h: 1, d: 3, tex: portalTex, portal: true } // 終點傳送門
+                    { x: 0, y: 5, z: -18, w: 3, h: 1, d: 3, tex: portalTex, type: 'portal' }
                 ]
             },
             {
-                name: "第 2 章：地獄岩漿溝渠 (Z字型跳躍)",
+                name: "2. 地獄岩漿溝渠 (左右 Z 字折返)",
                 skyColor: 0x220505,
                 startPos: new THREE.Vector3(0, 2, 0),
                 blocks: [
@@ -117,43 +127,91 @@
                     { x: 4, y: 1.5, z: -3, w: 1.8, h: 0.8, d: 1.8, tex: netherTex },
                     { x: -4, y: 3, z: -6, w: 1.8, h: 0.8, d: 1.8, tex: netherTex },
                     { x: 4, y: 4.5, z: -9, w: 1.8, h: 0.8, d: 1.8, tex: netherTex },
-                    { x: 0, y: 6, z: -14, w: 3, h: 1, d: 3, tex: portalTex, portal: true }
+                    { x: 0, y: 6, z: -14, w: 3, h: 1, d: 3, tex: portalTex, type: 'portal' }
                 ]
             },
             {
-                name: "第 3 章：終界立體神殿 (高低落差升降)",
+                name: "3. 冰霜陡峭天梯 (加速滑行跳躍)",
+                skyColor: 0x99ddff,
+                startPos: new THREE.Vector3(0, 2, 0),
+                blocks: [
+                    { x: 0, y: 0, z: 0, w: 4, h: 1, d: 4, tex: iceTex, type: 'ice' },
+                    { x: 0, y: 1.5, z: -5, w: 2, h: 0.8, d: 4, tex: iceTex, type: 'ice' },
+                    { x: 0, y: 3.5, z: -12, w: 2, h: 0.8, d: 4, tex: iceTex, type: 'ice' },
+                    { x: 0, y: 5.5, z: -19, w: 2, h: 0.8, d: 4, tex: iceTex, type: 'ice' },
+                    { x: 0, y: 7.5, z: -25, w: 3, h: 1, d: 3, tex: portalTex, type: 'portal' }
+                ]
+            },
+            {
+                name: "4. TNT 爆破飛躍 (踩踏引爆彈飛)",
+                skyColor: 0x331100,
+                startPos: new THREE.Vector3(0, 2, 0),
+                blocks: [
+                    { x: 0, y: 0, z: 0, w: 4, h: 1, d: 4, tex: grassTex },
+                    { x: 0, y: 1, z: -5, w: 2, h: 0.8, d: 2, tex: tntTex, type: 'tnt' },
+                    { x: 0, y: 8, z: -10, w: 2, h: 0.8, d: 2, tex: tntTex, type: 'tnt' },
+                    { x: 0, y: 15, z: -15, w: 3, h: 1, d: 3, tex: portalTex, type: 'portal' }
+                ]
+            },
+            {
+                name: "5. 終界升降神殿 (垂直立體爬升)",
                 skyColor: 0x0a0518,
                 startPos: new THREE.Vector3(0, 2, 0),
                 blocks: [
                     { x: 0, y: 0, z: 0, w: 4, h: 1, d: 4, tex: endTex },
-                    { x: 0, y: 3, z: -4, w: 2, h: 0.8, d: 2, tex: endTex },
-                    { x: 0, y: 6, z: 0, w: 2, h: 0.8, d: 2, tex: endTex },
-                    { x: 0, y: 9, z: -4, w: 2, h: 0.8, d: 2, tex: endTex },
-                    { x: 0, y: 12, z: -9, w: 4, h: 1, d: 4, tex: portalTex, portal: true }
+                    { x: 0, y: 3, z: -4, w: 1.5, h: 0.8, d: 1.5, tex: endTex },
+                    { x: 0, y: 6, z: 0, w: 1.5, h: 0.8, d: 1.5, tex: endTex },
+                    { x: 0, y: 9, z: -4, w: 1.5, h: 0.8, d: 1.5, tex: endTex },
+                    { x: 0, y: 12, z: -9, w: 3, h: 1, d: 3, tex: portalTex, type: 'portal' }
+                ]
+            },
+            {
+                name: "6. 彩虹微型極限之巔 (微型方塊連跳)",
+                skyColor: 0xffe6f2,
+                startPos: new THREE.Vector3(0, 2, 0),
+                blocks: [
+                    { x: 0, y: 0, z: 0, w: 4, h: 1, d: 4, tex: rainbowTex },
+                    { x: 0, y: 1, z: -4, w: 1.2, h: 0.8, d: 1.2, tex: rainbowTex },
+                    { x: 2, y: 2, z: -7, w: 1.2, h: 0.8, d: 1.2, tex: rainbowTex },
+                    { x: -2, y: 3, z: -10, w: 1.2, h: 0.8, d: 1.2, tex: rainbowTex },
+                    { x: 0, y: 4, z: -13, w: 1.2, h: 0.8, d: 1.2, tex: rainbowTex },
+                    { x: 0, y: 5.5, z: -17, w: 4, h: 1, d: 4, tex: portalTex, type: 'portal' }
                 ]
             }
         ];
 
         function loadStage(index) {
-            // 清除上一關平台
             platforms.forEach(p => scene.remove(p));
             platforms = [];
 
             const stageData = stages[index];
             scene.background = new THREE.Color(stageData.skyColor);
+            scene.fog.color.setHex(stageData.skyColor);
             stageNameDisplay.textContent = stageData.name;
 
             stageData.blocks.forEach(b => {
-                const block = createBlock(b.x, b.y, b.z, b.w, b.h, b.d, b.tex, b.portal || false);
+                const block = createBlock(b.x, b.y, b.z, b.w, b.h, b.d, b.tex, b.type || 'normal');
                 platforms.push(block);
                 scene.add(block);
             });
 
             playerPos.copy(stageData.startPos);
             playerVel.set(0, 0, 0);
+            playerHealth = 100;
+            healthBar.style.width = '100%';
         }
 
-        // 玩家控制器與物理
+        function explodeTNT(tntPos) {
+            playerHealth -= 30;
+            healthBar.style.width = Math.max(0, playerHealth) + '%';
+            const force = new THREE.Vector3().subVectors(playerPos, tntPos).normalize();
+            playerVel.x += force.x * 0.4;
+            playerVel.z += force.z * 0.4;
+            playerVel.y = 0.65; // 引爆高彈
+            isGrounded = false;
+            if (playerHealth <= 0) loadStage(currentStage);
+        }
+
         let yaw = Math.PI, pitch = 0;
         let playerPos = new THREE.Vector3(0, 2, 0);
         let playerVel = new THREE.Vector3();
@@ -199,20 +257,23 @@
 
                 if (nextX + 0.4 > pos.x - hw && nextX - 0.4 < pos.x + hw && nextZ + 0.4 > pos.z - hd && nextZ - 0.4 < pos.z + hd) {
                     if (playerPos.y >= pos.y + hh && nextY <= pos.y + hh) {
-                        nextY = pos.y + hh; playerVel.y = 0; isGrounded = true;
-
-                        // 踩到終點傳送方塊：切換關卡
-                        if (p.userData.isPortal) {
-                            currentStage = (currentStage + 1) % stages.length;
-                            loadStage(currentStage);
-                            return;
+                        if (p.userData.type === 'tnt') {
+                            explodeTNT(pos);
+                        } else {
+                            nextY = pos.y + hh; playerVel.y = 0; isGrounded = true;
+                            if (p.userData.type === 'ice') { playerVel.x *= 1.5; playerVel.z *= 1.5; }
+                            if (p.userData.type === 'portal') {
+                                currentStage = (currentStage + 1) % stages.length;
+                                loadStage(currentStage);
+                                return;
+                            }
                         }
                     }
                 }
             }
 
             playerPos.set(nextX, nextY, nextZ);
-            if (playerPos.y < -15) loadStage(currentStage); // 掉落重生
+            if (playerPos.y < -15) loadStage(currentStage);
             heightDisplay.textContent = Math.max(0, Math.floor(playerPos.y));
         }
 
