@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>殭屍生存 - 完整版</title>
+    <title>殭屍生存 - 載具 + 防具稀有度</title>
     <style>
+        /* ===== 樣式 (與之前相同) ===== */
         * {
             margin: 0;
             padding: 0;
@@ -15,9 +16,8 @@
             background: #000;
             font-family: 'Segoe UI', Arial, sans-serif;
             user-select: none;
+            cursor: default;
         }
-
-        /* ===== 主 UI ===== */
         #ui {
             position: absolute;
             top: 0;
@@ -26,10 +26,8 @@
             height: 100%;
             pointer-events: none;
             z-index: 10;
-            font-family: 'Segoe UI', Arial, sans-serif;
         }
 
-        /* 頂部狀態列 */
         #topBar {
             display: flex;
             justify-content: space-between;
@@ -41,11 +39,12 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+            min-width: 180px;
         }
         .bar-container {
             width: 200px;
             height: 14px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
             border-radius: 10px;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -64,15 +63,18 @@
         }
         .bar-label {
             color: #fff;
-            font-size: 11px;
+            font-size: 9px;
             font-weight: bold;
             text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
             position: absolute;
             right: 6px;
             top: 50%;
             transform: translateY(-50%);
-            font-size: 9px;
             opacity: 0.8;
+        }
+        .armor-rarity {
+            font-size: 10px;
+            margin-left: 4px;
         }
         .stat-text {
             color: #fff;
@@ -95,8 +97,11 @@
         #waveDisplay {
             color: #44ddff;
         }
+        #vehicleStatus {
+            color: #88ddff;
+            font-size: 12px;
+        }
 
-        /* 十字準星 */
         #crosshair {
             position: absolute;
             top: 50%;
@@ -119,7 +124,6 @@
             border-radius: 50%;
         }
 
-        /* 底部武器欄 */
         #bottomBar {
             position: absolute;
             bottom: 25px;
@@ -171,7 +175,6 @@
             }
         }
 
-        /* 武器快捷列 */
         #weaponSlots {
             position: absolute;
             bottom: 78px;
@@ -209,7 +212,6 @@
             margin-right: 4px;
         }
 
-        /* 拾取提示 */
         #pickupHint {
             position: absolute;
             bottom: 180px;
@@ -230,7 +232,6 @@
             opacity: 1;
         }
 
-        /* 操作提示 */
         #controls {
             position: absolute;
             bottom: 80px;
@@ -244,7 +245,6 @@
             line-height: 1.6;
         }
 
-        /* 空投提示 */
         #airdropIndicator {
             position: absolute;
             top: 50%;
@@ -262,7 +262,6 @@
             opacity: 1;
         }
 
-        /* 背包 (Tab) */
         #inventory {
             position: absolute;
             top: 50%;
@@ -348,7 +347,6 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
-        /* 小地圖 */
         #minimap {
             position: absolute;
             bottom: 90px;
@@ -368,7 +366,25 @@
             border-radius: 50%;
         }
 
-        /* 遊戲結束 */
+        #vehicleHUD {
+            position: absolute;
+            bottom: 100px;
+            right: 180px;
+            color: #88ddff;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(136, 221, 255, 0.15);
+            backdrop-filter: blur(5px);
+            display: none;
+            pointer-events: none;
+            font-family: 'Courier New', monospace;
+        }
+        #vehicleHUD.show {
+            display: block;
+        }
+
         #gameover {
             position: absolute;
             top: 0;
@@ -411,7 +427,6 @@
             transform: scale(1.05);
         }
 
-        /* 傷害數字 */
         .damage-popup {
             position: absolute;
             pointer-events: none;
@@ -437,7 +452,6 @@
             }
         }
 
-        /* 受傷閃爍 */
         .hurt-flash {
             position: absolute;
             top: 0;
@@ -454,7 +468,34 @@
             opacity: 1;
         }
 
-        /* 滾動條美化 */
+        /* 鎖定提示 */
+        #lockHint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 24px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px 40px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            z-index: 30;
+            pointer-events: none;
+            transition: opacity 0.5s;
+            text-align: center;
+            line-height: 1.8;
+        }
+        #lockHint .icon {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        #lockHint.hidden {
+            opacity: 0;
+        }
+
         #inventory::-webkit-scrollbar {
             width: 4px;
         }
@@ -497,6 +538,15 @@
                 min-width: 280px;
                 padding: 16px;
             }
+            #vehicleHUD {
+                right: 100px;
+                font-size: 11px;
+                padding: 4px 10px;
+            }
+            #lockHint {
+                font-size: 16px;
+                padding: 14px 24px;
+            }
         }
     </style>
 </head>
@@ -504,7 +554,6 @@
 
     <!-- ===== UI ===== -->
     <div id="ui">
-        <!-- 頂部 -->
         <div id="topBar">
             <div id="healthArmor">
                 <div class="bar-container">
@@ -513,53 +562,48 @@
                 </div>
                 <div class="bar-container">
                     <div class="bar-fill armor" id="armorBar" style="width:0%"></div>
-                    <span class="bar-label" id="armorLabel">0</span>
+                    <span class="bar-label" id="armorLabel">0 <span class="armor-rarity" id="armorRarityLabel"></span></span>
                 </div>
             </div>
             <div id="rightStats">
                 <span class="stat-text" id="killDisplay">💀 0</span>
                 <span class="stat-text" id="waveDisplay">🌊 第 1 波</span>
                 <span class="stat-text" id="zombieCount" style="color:#ff6644;font-size:12px;">🧟 0</span>
+                <span class="stat-text" id="vehicleStatus" style="color:#88ddff;font-size:11px;"></span>
             </div>
         </div>
 
-        <!-- 十字準星 -->
         <div id="crosshair">✚<div class="dot"></div></div>
-
-        <!-- 武器快捷列 -->
         <div id="weaponSlots"></div>
 
-        <!-- 底部武器欄 -->
         <div id="bottomBar">
             <span id="weaponName">🔫 手槍 <span id="weaponRarity"></span></span>
             <span id="ammoDisplay">12 <span class="max">/ 12</span></span>
             <span id="reloadHint" style="display:none;">🔄 換彈中</span>
         </div>
 
-        <!-- 拾取提示 -->
         <div id="pickupHint">📦 按 E 拾取</div>
-
-        <!-- 操作提示 -->
-        <div id="controls">🖱️ 點擊鎖定 · WASD移動 · 1-5切換武器 · R換彈 · E拾取 · Tab背包</div>
-
-        <!-- 空投 -->
+        <div id="controls">🖱️ 點擊鎖定 · WASD移動 · 1-5切換武器 · R換彈 · E拾取 · Tab背包 · F進入/離開載具</div>
         <div id="airdropIndicator">📦 空投來了!</div>
-
-        <!-- 受傷閃爍 -->
         <div class="hurt-flash" id="hurtFlash"></div>
 
-        <!-- 小地圖 -->
         <div id="minimap"><canvas id="minimapCanvas" width="140" height="140"></canvas></div>
+        <div id="vehicleHUD">🚗 載具血量: <span id="vehicleHealth">100</span>%</div>
+
+        <!-- 鎖定提示 -->
+        <div id="lockHint">
+            <span class="icon">🎯</span>
+            點擊畫面開始<br>
+            <span style="font-size:14px;color:rgba(255,255,255,0.3);">滑鼠鎖定後即可遊玩</span>
+        </div>
     </div>
 
-    <!-- 背包 -->
     <div id="inventory">
         <h2>🎒 背包</h2>
         <div id="invItems"></div>
         <button id="invClose">關閉 (Tab)</button>
     </div>
 
-    <!-- 遊戲結束 -->
     <div id="gameover">
         <h1>💀 你死了</h1>
         <p>擊殺數: <span id="finalKills">0</span></p>
@@ -578,11 +622,105 @@
     </script>
 
     <script type="module">
+        // ============================================================
+        //  防護程式碼 (放在最前面)
+        // ============================================================
+
+        // 防護 1: 禁用右鍵選單
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // 防護 2: 阻擋快捷鍵 (F12, Ctrl+Shift+I/J/C, Ctrl+U, Cmd+Option+I/J)
+        document.addEventListener('keydown', e => {
+            if (e.key === 'F12' || e.keyCode === 123) { e.preventDefault();
+                e.stopPropagation(); return false; }
+            if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K'].includes(e.key.toUpperCase())) { e.preventDefault();
+                e.stopPropagation(); return false; }
+            if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'U') { e.preventDefault();
+                e.stopPropagation(); return false; }
+            if (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) { e.preventDefault();
+                e.stopPropagation(); return false; }
+            // 阻擋 Ctrl+Shift+R (硬刷新)
+            if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'R') { e.preventDefault();
+                e.stopPropagation(); return false; }
+            // 阻擋 Ctrl+R (刷新)
+            if (e.ctrlKey && e.key.toUpperCase() === 'R') { e.preventDefault();
+                e.stopPropagation(); return false; }
+        });
+
+        // 防護 3: 無限 debugger 陷阱
+        (function() {
+            setInterval(() => {
+                try {
+                    (function() { return false; })['constructor']('debugger')();
+                } catch (e) {}
+            }, 500);
+        })();
+
+        // 防護 4: 監聽使用者動作以刷新閒置計時器 (防止自動鎖定)
+        let idleTimer = null;
+
+        function resetIdleTimer() {
+            // 什麼都不做，只是佔位
+        }
+        ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => {
+            document.addEventListener(evt, resetIdleTimer);
+        });
+
+        // ============================================================
+        //  導入 Three.js
+        // ============================================================
         import * as THREE from 'three';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+        // ============================================================
+        //  0. 滑鼠鎖定修復
+        // ============================================================
+        let audioCtx = null;
+        let isLocked = false;
+        let isPointerLocked = false;
+        const lockHint = document.getElementById('lockHint');
+
+        function initAudio() {
+            if (!audioCtx) {
+                try {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {}
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // 點擊畫面：初始化音頻 + 鎖定滑鼠
+        document.addEventListener('click', () => {
+            initAudio();
+            if (!isLocked && !isDead && !inventoryOpen) {
+                renderer.domElement.requestPointerLock();
+            }
+            if (isLocked && !isDead && !inventoryOpen) {
+                shoot();
+            }
+        });
+
+        // PointerLock 狀態監聽
+        document.addEventListener('pointerlockchange', () => {
+            const isNowLocked = document.pointerLockElement === renderer.domElement;
+            isLocked = isNowLocked;
+            isPointerLocked = isNowLocked;
+
+            if (isNowLocked) {
+                lockHint.classList.add('hidden');
+                document.body.style.cursor = 'none';
+            } else {
+                if (!isDead) {
+                    lockHint.classList.remove('hidden');
+                }
+                document.body.style.cursor = 'default';
+            }
+        });
 
         // ============================================================
         //  1. 場景
@@ -636,7 +774,7 @@
         scene.add(fillLight);
 
         // ============================================================
-        //  3. 地面 (大尺寸)
+        //  3. 地面
         // ============================================================
         function createGroundTexture() {
             const canvas = document.createElement('canvas');
@@ -652,7 +790,6 @@
                 ctx.fillStyle = `rgb(${g},${g},${g+10})`;
                 ctx.fillRect(x, y, 1 + Math.random() * 2, 1 + Math.random() * 2);
             }
-            // 道路標線
             ctx.strokeStyle = 'rgba(80,80,90,0.15)';
             ctx.lineWidth = 2;
             for (let i = 0; i < 20; i++) {
@@ -683,7 +820,7 @@
         scene.add(ground);
 
         // ============================================================
-        //  4. 建築物 (可進入)
+        //  4. 建築物
         // ============================================================
         const buildings = [];
 
@@ -696,14 +833,12 @@
             wall.receiveShadow = true;
             g.add(wall);
 
-            // 屋頂
             const roofMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
             const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.1, d + 0.3), roofMat);
             roof.position.y = h + 0.05;
             roof.castShadow = true;
             g.add(roof);
 
-            // 窗戶 (發光)
             const winMat = new THREE.MeshStandardMaterial({
                 color: 0x88ccff,
                 emissive: 0x88ccff,
@@ -723,13 +858,11 @@
                 }
             }
 
-            // 門 (可進入標記)
             if (hasDoor) {
                 const doorMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.9 });
                 const door = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.2), doorMat);
                 door.position.set(0, 0.6, d / 2 + 0.01);
                 g.add(door);
-                // 門框發光
                 const glow = new THREE.PointLight(0xff8844, 0.15, 2);
                 glow.position.set(0, 0.6, d / 2 + 0.5);
                 g.add(glow);
@@ -738,14 +871,13 @@
             g.position.set(x, 0, z);
             scene.add(g);
 
-            // 儲存建築物碰撞資料 (可進入)
             buildings.push({
                 mesh: g,
-                x: x,
-                z: z,
-                w: w,
-                d: d,
-                h: h,
+                x,
+                z,
+                w,
+                d,
+                h,
                 minX: x - w / 2,
                 maxX: x + w / 2,
                 minZ: z - d / 2,
@@ -755,24 +887,18 @@
             return g;
         }
 
-        // 城鎮佈局
         createBuilding(-12, -8, 5, 6, 3.5, 0x556677);
         createBuilding(-12, 0, 5, 6, 3.5, 0x667788);
         createBuilding(-12, 8, 5, 6, 3.5, 0x556677);
-
         createBuilding(0, -12, 7, 5, 4.0, 0x445566);
         createBuilding(0, 0, 8, 6, 4.5, 0x556677);
         createBuilding(0, 10, 7, 5, 4.0, 0x445566);
-
         createBuilding(12, -8, 5, 6, 3.5, 0x667788);
         createBuilding(12, 0, 5, 6, 3.5, 0x556677);
         createBuilding(12, 8, 5, 6, 3.5, 0x667788);
-
-        // 倉庫 (大建築)
         createBuilding(-6, -15, 8, 5, 5.0, 0x3a4a5a);
         createBuilding(6, 14, 8, 5, 5.0, 0x3a4a5a);
 
-        // 裝飾路燈
         function createStreetLight(x, z) {
             const g = new THREE.Group();
             const poleMat = new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.4, metalness: 0.7 });
@@ -799,56 +925,183 @@
             }
         }
 
-        // 廢棄車輛
-        function createCar(x, z, rot = 0) {
-            const g = new THREE.Group();
-            const colors = [0x6a2a2a, 0x2a4a6a, 0x4a4a2a, 0x2a2a2a];
-            const bodyMat = new THREE.MeshStandardMaterial({ color: colors[Math.floor(Math.random() * colors.length)],
-                roughness: 0.7, metalness: 0.3 });
-            const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.3, 0.9), bodyMat);
-            body.position.y = 0.25;
-            body.castShadow = true;
-            body.receiveShadow = true;
-            g.add(body);
-            const darkMat = new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.9 });
-            const roof = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.7), darkMat);
-            roof.position.set(-0.1, 0.5, 0);
-            roof.castShadow = true;
-            g.add(roof);
-            const wMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1 });
-            for (let wx of [-0.6, 0.6]) {
-                for (let wz of [-0.4, 0.4]) {
-                    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.05, 8), wMat);
-                    w.rotation.x = Math.PI / 2;
-                    w.position.set(wx, 0.05, wz);
-                    g.add(w);
-                }
-            }
-            g.position.set(x, 0, z);
-            g.rotation.y = rot;
-            scene.add(g);
+        // ============================================================
+        //  5. 防具稀有度系統
+        // ============================================================
+        const ARMOR_RARITIES = {
+            common: { label: '普通', color: '#888888', stars: '⭐', dmgReduction: 0.05, maxDurability: 60 },
+            uncommon: { label: '稀有', color: '#44dd44', stars: '⭐⭐', dmgReduction: 0.10, maxDurability: 80 },
+            rare: { label: '精良', color: '#4488ff', stars: '⭐⭐⭐', dmgReduction: 0.15, maxDurability: 100 },
+            epic: { label: '史詩', color: '#cc44ff', stars: '⭐⭐⭐⭐', dmgReduction: 0.22, maxDurability: 130 },
+            legendary: { label: '傳說', color: '#ff8800', stars: '⭐⭐⭐⭐⭐', dmgReduction: 0.30, maxDurability: 160 },
+        };
+
+        function randomArmorRarity() {
+            const r = Math.random();
+            if (r < 0.40) return 'common';
+            if (r < 0.65) return 'uncommon';
+            if (r < 0.85) return 'rare';
+            if (r < 0.95) return 'epic';
+            return 'legendary';
         }
-        for (let i = 0; i < 30; i++) {
-            const x = (Math.random() - 0.5) * 50;
-            const z = (Math.random() - 0.5) * 50;
-            if (Math.abs(x) < 4 && Math.abs(z) < 4) continue;
-            createCar(x, z, Math.random() * Math.PI * 2);
+
+        let playerArmor = {
+            helmet: { equipped: true, rarity: 'common', durability: 60, maxDurability: 60 },
+            vest: { equipped: true, rarity: 'common', durability: 60, maxDurability: 60 },
+        };
+
+        function initArmor() {
+            const hRarity = randomArmorRarity();
+            const vRarity = randomArmorRarity();
+            playerArmor.helmet.rarity = hRarity;
+            playerArmor.helmet.maxDurability = ARMOR_RARITIES[hRarity].maxDurability;
+            playerArmor.helmet.durability = ARMOR_RARITIES[hRarity].maxDurability;
+            playerArmor.vest.rarity = vRarity;
+            playerArmor.vest.maxDurability = ARMOR_RARITIES[vRarity].maxDurability;
+            playerArmor.vest.durability = ARMOR_RARITIES[vRarity].maxDurability;
+        }
+        initArmor();
+
+        function getArmorReduction() {
+            let total = 0;
+            if (playerArmor.helmet.equipped && playerArmor.helmet.durability > 0) {
+                total += ARMOR_RARITIES[playerArmor.helmet.rarity].dmgReduction;
+            }
+            if (playerArmor.vest.equipped && playerArmor.vest.durability > 0) {
+                total += ARMOR_RARITIES[playerArmor.vest.rarity].dmgReduction;
+            }
+            return Math.min(total, 0.6);
+        }
+
+        function applyDamageToArmor(damage) {
+            let remaining = damage;
+            if (playerArmor.vest.equipped && playerArmor.vest.durability > 0) {
+                const absorbed = Math.min(remaining * 0.6, playerArmor.vest.durability);
+                playerArmor.vest.durability -= absorbed;
+                remaining -= absorbed;
+                if (playerArmor.vest.durability < 0) playerArmor.vest.durability = 0;
+            }
+            if (playerArmor.helmet.equipped && playerArmor.helmet.durability > 0 && remaining > 0) {
+                const absorbed2 = Math.min(remaining * 0.3, playerArmor.helmet.durability);
+                playerArmor.helmet.durability -= absorbed2;
+                remaining -= absorbed2;
+                if (playerArmor.helmet.durability < 0) playerArmor.helmet.durability = 0;
+            }
+            return Math.max(0, remaining);
+        }
+
+        function getArmorRarityLabel() {
+            const h = playerArmor.helmet;
+            const v = playerArmor.vest;
+            const hStars = ARMOR_RARITIES[h.rarity]?.stars || '⭐';
+            const vStars = ARMOR_RARITIES[v.rarity]?.stars || '⭐';
+            return `${hStars}${vStars}`;
         }
 
         // ============================================================
-        //  5. 音效系統 (Web Audio 合成)
+        //  6. 武器系統
         // ============================================================
-        let audioCtx = null;
+        const RARITIES = {
+            common: { label: '普通', color: '#888888', stars: '⭐', dmgMult: 1.0, ammoMult: 1.0, fireRateMult: 1.0 },
+            uncommon: { label: '稀有', color: '#44dd44', stars: '⭐⭐', dmgMult: 1.2, ammoMult: 1.2, fireRateMult: 0.9 },
+            rare: { label: '精良', color: '#4488ff', stars: '⭐⭐⭐', dmgMult: 1.5, ammoMult: 1.4, fireRateMult: 0.8 },
+            epic: { label: '史詩', color: '#cc44ff', stars: '⭐⭐⭐⭐', dmgMult: 2.0, ammoMult: 1.6, fireRateMult: 0.7 },
+            legendary: { label: '傳說', color: '#ff8800', stars: '⭐⭐⭐⭐⭐', dmgMult: 2.8, ammoMult: 2.0,
+            fireRateMult: 0.55 },
+        };
 
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new(window.AudioContext || window.webkitAudioContext)();
-            }
+        const WEAPON_DEFS = {
+            pistol: { id: 'pistol', name: '手槍', baseDamage: 20, baseMagSize: 12, baseFireRate: 250, reloadTime: 1000,
+                spread: 0.025, auto: false, icon: '🔫', pelletCount: 1 },
+            rifle: { id: 'rifle', name: '步槍', baseDamage: 28, baseMagSize: 30, baseFireRate: 120, reloadTime: 1500,
+                spread: 0.015, auto: true, icon: '🔫', pelletCount: 1 },
+            shotgun: { id: 'shotgun', name: '散彈槍', baseDamage: 12, baseMagSize: 6, baseFireRate: 400, reloadTime: 2000,
+                spread: 0.12, auto: false, icon: '💥', pelletCount: 8 },
+            sniper: { id: 'sniper', name: '狙擊槍', baseDamage: 90, baseMagSize: 5, baseFireRate: 600, reloadTime: 2200,
+                spread: 0.002, auto: false, icon: '🎯', pelletCount: 1 },
+            lmg: { id: 'lmg', name: '機槍', baseDamage: 16, baseMagSize: 80, baseFireRate: 80, reloadTime: 2500,
+                spread: 0.04, auto: true, icon: '🔥', pelletCount: 1 },
+        };
+
+        const WEAPON_IDS = ['pistol', 'rifle', 'shotgun', 'sniper', 'lmg'];
+
+        function randomRarity() {
+            const r = Math.random();
+            if (r < 0.45) return 'common';
+            if (r < 0.70) return 'uncommon';
+            if (r < 0.88) return 'rare';
+            if (r < 0.96) return 'epic';
+            return 'legendary';
         }
 
-        function playShootSound(volume = 0.3) {
+        let playerWeapons = [];
+        let currentWeaponIndex = 0;
+        let isReloading = false;
+        let lastFireTime = 0;
+
+        function initWeapons() {
+            playerWeapons = [];
+            const pR = 'common';
+            const pDef = WEAPON_DEFS.pistol;
+            const rR = randomRarity();
+            const rDef = WEAPON_DEFS.rifle;
+
+            const pr = RARITIES[pR];
+            playerWeapons.push({
+                id: 'pistol',
+                def: pDef,
+                rarity: pR,
+                damage: Math.round(pDef.baseDamage * pr.dmgMult),
+                magSize: Math.round(pDef.baseMagSize * pr.ammoMult),
+                fireRate: Math.round(pDef.baseFireRate * pr.fireRateMult),
+                ammo: Math.round(pDef.baseMagSize * pr.ammoMult),
+                reserve: Math.round(pDef.baseMagSize * pr.ammoMult * 5),
+                reloadTime: pDef.reloadTime,
+                spread: pDef.spread,
+                auto: pDef.auto,
+                icon: pDef.icon,
+                pelletCount: pDef.pelletCount || 1,
+                name: pDef.name,
+                rarityLabel: pr.label,
+                rarityColor: pr.color,
+                stars: pr.stars,
+            });
+
+            const rr = RARITIES[rR];
+            playerWeapons.push({
+                id: 'rifle',
+                def: rDef,
+                rarity: rR,
+                damage: Math.round(rDef.baseDamage * rr.dmgMult),
+                magSize: Math.round(rDef.baseMagSize * rr.ammoMult),
+                fireRate: Math.round(rDef.baseFireRate * rr.fireRateMult),
+                ammo: Math.round(rDef.baseMagSize * rr.ammoMult),
+                reserve: Math.round(rDef.baseMagSize * rr.ammoMult * 4),
+                reloadTime: rDef.reloadTime,
+                spread: rDef.spread,
+                auto: rDef.auto,
+                icon: rDef.icon,
+                pelletCount: rDef.pelletCount || 1,
+                name: rDef.name,
+                rarityLabel: rr.label,
+                rarityColor: rr.color,
+                stars: rr.stars,
+            });
+            currentWeaponIndex = 0;
+            isReloading = false;
+        }
+        initWeapons();
+
+        function getCurrentWeapon() {
+            return playerWeapons[currentWeaponIndex] || null;
+        }
+
+        // ============================================================
+        //  7. 音效
+        // ============================================================
+        function playShootSound(volume = 0.25) {
             try {
-                initAudio();
+                if (!audioCtx) return;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
@@ -860,7 +1113,6 @@
                 gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
                 osc.start(audioCtx.currentTime);
                 osc.stop(audioCtx.currentTime + 0.05);
-                // 噪音層
                 const bufferSize = audioCtx.sampleRate * 0.03;
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
                 const data = buffer.getChannelData(0);
@@ -872,7 +1124,7 @@
                 noise.buffer = buffer;
                 noise.connect(ng);
                 ng.connect(audioCtx.destination);
-                ng.gain.setValueAtTime(volume * 0.6, audioCtx.currentTime);
+                ng.gain.setValueAtTime(volume * 0.5, audioCtx.currentTime);
                 ng.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
                 noise.start(audioCtx.currentTime);
             } catch (e) {}
@@ -880,7 +1132,7 @@
 
         function playReloadSound() {
             try {
-                initAudio();
+                if (!audioCtx) return;
                 for (let i = 0; i < 3; i++) {
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
@@ -898,7 +1150,7 @@
 
         function playPickupSound() {
             try {
-                initAudio();
+                if (!audioCtx) return;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
@@ -915,7 +1167,7 @@
 
         function playHurtSound() {
             try {
-                initAudio();
+                if (!audioCtx) return;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
@@ -932,7 +1184,7 @@
 
         function playZombieDeathSound() {
             try {
-                initAudio();
+                if (!audioCtx) return;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
@@ -947,233 +1199,337 @@
             } catch (e) {}
         }
 
-        function playAirdropSound() {
+        function playExplosionSound() {
             try {
-                initAudio();
+                if (!audioCtx) return;
+                const bufferSize = audioCtx.sampleRate * 0.3;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / bufferSize * 3);
+                }
+                const noise = audioCtx.createBufferSource();
+                const gain = audioCtx.createGain();
+                noise.buffer = buffer;
+                noise.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                noise.start(audioCtx.currentTime);
+            } catch (e) {}
+        }
+
+        function playVehicleSound() {
+            try {
+                if (!audioCtx) return;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.5);
-                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
                 osc.start(audioCtx.currentTime);
-                osc.stop(audioCtx.currentTime + 0.5);
+                osc.stop(audioCtx.currentTime + 0.3);
             } catch (e) {}
         }
 
         // ============================================================
-        //  6. 武器系統 (含稀有度)
+        //  8. 載具系統
         // ============================================================
-        const RARITIES = {
-            common: { label: '普通', color: '#888888', stars: '⭐', dmgMult: 1.0, ammoMult: 1.0, fireRateMult: 1.0 },
-            uncommon: { label: '稀有', color: '#44dd44', stars: '⭐⭐', dmgMult: 1.2, ammoMult: 1.2, fireRateMult: 0.9 },
-            rare: { label: '精良', color: '#4488ff', stars: '⭐⭐⭐', dmgMult: 1.5, ammoMult: 1.4, fireRateMult: 0.8 },
-            epic: { label: '史詩', color: '#cc44ff', stars: '⭐⭐⭐⭐', dmgMult: 2.0, ammoMult: 1.6, fireRateMult: 0.7 },
-            legendary: { label: '傳說', color: '#ff8800', stars: '⭐⭐⭐⭐⭐', dmgMult: 2.8, ammoMult: 2.0,
-            fireRateMult: 0.55 },
+        let vehicles = [];
+        let currentVehicle = null;
+        let isInVehicle = false;
+
+        const VEHICLE_RARITIES = {
+            common: { label: '普通', color: '#888888', stars: '⭐', hpMult: 1.0, speedMult: 1.0, dmgMult: 1.0 },
+            uncommon: { label: '稀有', color: '#44dd44', stars: '⭐⭐', hpMult: 1.3, speedMult: 1.2, dmgMult: 1.2 },
+            rare: { label: '精良', color: '#4488ff', stars: '⭐⭐⭐', hpMult: 1.7, speedMult: 1.4, dmgMult: 1.5 },
+            epic: { label: '史詩', color: '#cc44ff', stars: '⭐⭐⭐⭐', hpMult: 2.2, speedMult: 1.7, dmgMult: 2.0 },
+            legendary: { label: '傳說', color: '#ff8800', stars: '⭐⭐⭐⭐⭐', hpMult: 3.0, speedMult: 2.0, dmgMult: 2.8 },
         };
 
-        const WEAPON_DEFS = {
-            pistol: {
-                id: 'pistol',
-                name: '手槍',
-                baseDamage: 20,
-                baseMagSize: 12,
-                baseFireRate: 250,
-                reloadTime: 1000,
-                spread: 0.025,
-                auto: false,
-                icon: '🔫',
-                pelletCount: 1,
-            },
-            rifle: {
-                id: 'rifle',
-                name: '步槍',
-                baseDamage: 28,
-                baseMagSize: 30,
-                baseFireRate: 120,
-                reloadTime: 1500,
-                spread: 0.015,
-                auto: true,
-                icon: '🔫',
-                pelletCount: 1,
-            },
-            shotgun: {
-                id: 'shotgun',
-                name: '散彈槍',
-                baseDamage: 12,
-                baseMagSize: 6,
-                baseFireRate: 400,
-                reloadTime: 2000,
-                spread: 0.12,
-                auto: false,
-                icon: '💥',
-                pelletCount: 8,
-            },
-            sniper: {
-                id: 'sniper',
-                name: '狙擊槍',
-                baseDamage: 90,
-                baseMagSize: 5,
-                baseFireRate: 600,
-                reloadTime: 2200,
-                spread: 0.002,
-                auto: false,
-                icon: '🎯',
-                pelletCount: 1,
-            },
-            lmg: {
-                id: 'lmg',
-                name: '機槍',
-                baseDamage: 16,
-                baseMagSize: 80,
-                baseFireRate: 80,
-                reloadTime: 2500,
-                spread: 0.04,
-                auto: true,
-                icon: '🔥',
-                pelletCount: 1,
-            },
-        };
-
-        const WEAPON_IDS = ['pistol', 'rifle', 'shotgun', 'sniper', 'lmg'];
-
-        // 生成隨機稀有度 (越高級越難出)
-        function randomRarity() {
+        function randomVehicleRarity() {
             const r = Math.random();
-            if (r < 0.45) return 'common';
-            if (r < 0.70) return 'uncommon';
-            if (r < 0.88) return 'rare';
-            if (r < 0.96) return 'epic';
+            if (r < 0.35) return 'common';
+            if (r < 0.60) return 'uncommon';
+            if (r < 0.80) return 'rare';
+            if (r < 0.93) return 'epic';
             return 'legendary';
         }
 
-        // 玩家的武器
-        let playerWeapons = [];
-        let currentWeaponIndex = 0;
-        let isReloading = false;
-        let lastFireTime = 0;
+        function createVehicle(x, z, rot = 0) {
+            const rarity = randomVehicleRarity();
+            const rInfo = VEHICLE_RARITIES[rarity];
+            const maxHp = 80 * rInfo.hpMult;
 
-        // 初始給一把普通手槍和步槍
-        function initWeapons() {
-            playerWeapons = [];
-            // 手槍 - 普通
-            const pistolRarity = 'common';
-            const pDef = WEAPON_DEFS.pistol;
-            const pR = RARITIES[pistolRarity];
-            playerWeapons.push({
-                id: 'pistol',
-                def: pDef,
-                rarity: pistolRarity,
-                damage: Math.round(pDef.baseDamage * pR.dmgMult),
-                magSize: Math.round(pDef.baseMagSize * pR.ammoMult),
-                fireRate: Math.round(pDef.baseFireRate * pR.fireRateMult),
-                ammo: Math.round(pDef.baseMagSize * pR.ammoMult),
-                reserve: Math.round(pDef.baseMagSize * pR.ammoMult * 5),
-                reloadTime: pDef.reloadTime,
-                spread: pDef.spread,
-                auto: pDef.auto,
-                icon: pDef.icon,
-                pelletCount: pDef.pelletCount || 1,
-                name: pDef.name,
-                rarityLabel: pR.label,
-                rarityColor: pR.color,
-                stars: pR.stars,
+            const group = new THREE.Group();
+
+            const colorMap = {
+                common: 0x6a6a6a,
+                uncommon: 0x44aa44,
+                rare: 0x4488ff,
+                epic: 0xcc44ff,
+                legendary: 0xff8800,
+            };
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: colorMap[rarity] || 0x6a6a6a,
+                roughness: 0.4,
+                metalness: 0.6,
+                emissive: colorMap[rarity] || 0x6a6a6a,
+                emissiveIntensity: 0.05,
             });
-            // 步槍 - 稀有
-            const rifleRarity = randomRarity();
-            const rDef = WEAPON_DEFS.rifle;
-            const rR = RARITIES[rifleRarity];
-            playerWeapons.push({
-                id: 'rifle',
-                def: rDef,
-                rarity: rifleRarity,
-                damage: Math.round(rDef.baseDamage * rR.dmgMult),
-                magSize: Math.round(rDef.baseMagSize * rR.ammoMult),
-                fireRate: Math.round(rDef.baseFireRate * rR.fireRateMult),
-                ammo: Math.round(rDef.baseMagSize * rR.ammoMult),
-                reserve: Math.round(rDef.baseMagSize * rR.ammoMult * 4),
-                reloadTime: rDef.reloadTime,
-                spread: rDef.spread,
-                auto: rDef.auto,
-                icon: rDef.icon,
-                pelletCount: rDef.pelletCount || 1,
-                name: rDef.name,
-                rarityLabel: rR.label,
-                rarityColor: rR.color,
-                stars: rR.stars,
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 1.0), bodyMat);
+            body.position.y = 0.3;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            group.add(body);
+
+            const cabinMat = new THREE.MeshStandardMaterial({
+                color: 0x334466,
+                roughness: 0.3,
+                metalness: 0.1,
+                transparent: true,
+                opacity: 0.6,
             });
-            currentWeaponIndex = 0;
-            isReloading = false;
-        }
-        initWeapons();
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.35, 0.9), cabinMat);
+            cabin.position.set(-0.1, 0.65, 0);
+            cabin.castShadow = true;
+            group.add(cabin);
 
-        function getCurrentWeapon() {
-            return playerWeapons[currentWeaponIndex] || null;
-        }
-
-        // ============================================================
-        //  7. 防具系統
-        // ============================================================
-        let armor = {
-            helmet: { equipped: true, maxDurability: 100, durability: 80 },
-            vest: { equipped: true, maxDurability: 100, durability: 60 },
-        };
-        let playerHealth = 100;
-        const maxHealth = 100;
-
-        function getDamageReduction() {
-            let reduction = 0;
-            if (armor.helmet.equipped && armor.helmet.durability > 0) reduction += 0.15;
-            if (armor.vest.equipped && armor.vest.durability > 0) reduction += 0.25;
-            return Math.min(reduction, 0.7);
-        }
-
-        function applyDamageToArmor(damage) {
-            let remaining = damage;
-            if (armor.vest.equipped && armor.vest.durability > 0) {
-                const absorbed = Math.min(remaining * 0.6, armor.vest.durability);
-                armor.vest.durability -= absorbed;
-                remaining -= absorbed;
-                if (armor.vest.durability < 0) armor.vest.durability = 0;
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1 });
+            for (let wx of [-0.7, 0.7]) {
+                for (let wz of [-0.5, 0.5]) {
+                    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.06, 8), wheelMat);
+                    wheel.rotation.x = Math.PI / 2;
+                    wheel.position.set(wx, 0.06, wz);
+                    group.add(wheel);
+                }
             }
-            if (armor.helmet.equipped && armor.helmet.durability > 0 && remaining > 0) {
-                const absorbed2 = Math.min(remaining * 0.3, armor.helmet.durability);
-                armor.helmet.durability -= absorbed2;
-                remaining -= absorbed2;
-                if (armor.helmet.durability < 0) armor.helmet.durability = 0;
+
+            const lightMat = new THREE.MeshStandardMaterial({
+                color: 0xffff88,
+                emissive: 0xffff88,
+                emissiveIntensity: 0.3,
+            });
+            const headlight = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), lightMat);
+            headlight.position.set(0.9, 0.25, -0.35);
+            group.add(headlight);
+            const headlight2 = headlight.clone();
+            headlight2.position.z = 0.35;
+            group.add(headlight2);
+
+            const glowMat = new THREE.MeshStandardMaterial({
+                color: colorMap[rarity] || 0x6a6a6a,
+                emissive: colorMap[rarity] || 0x6a6a6a,
+                emissiveIntensity: 0.1,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide,
+            });
+            const glowRing = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.2, 16), glowMat);
+            glowRing.rotation.x = -Math.PI / 2;
+            glowRing.position.y = 0.01;
+            group.add(glowRing);
+
+            group.position.set(x, 0, z);
+            group.rotation.y = rot;
+            scene.add(group);
+
+            const vehicleData = {
+                mesh: group,
+                rarity: rarity,
+                maxHp: maxHp,
+                hp: maxHp,
+                speed: 8 * rInfo.speedMult,
+                turretDmg: 15 * rInfo.dmgMult,
+                turretCooldown: 0,
+                occupied: false,
+                id: Math.random(),
+            };
+
+            vehicles.push(vehicleData);
+            return vehicleData;
+        }
+
+        function spawnInitialVehicles() {
+            const positions = [
+                [-8, -6, 0.5],
+                [8, -5, -0.8],
+                [-6, 9, 1.2],
+                [7, 7, -0.5],
+                [0, -10, 0],
+                [-10, 4, 2.0],
+                [10, 5, -1.5],
+            ];
+            for (const [x, z, rot] of positions) {
+                if (Math.random() < 0.7) {
+                    createVehicle(x, z, rot);
+                }
             }
-            return Math.max(0, remaining);
+        }
+        spawnInitialVehicles();
+
+        function vehicleShoot() {
+            if (!isInVehicle || !currentVehicle) return;
+            const v = currentVehicle;
+            const now = performance.now();
+            if (now - v.turretCooldown < 150) return;
+            v.turretCooldown = now;
+
+            const origin = v.mesh.position.clone();
+            origin.y = 0.8;
+            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            dir.y = 0;
+            dir.normalize();
+
+            let hitZombie = null;
+            let hitDist = Infinity;
+            for (const z of zombies) {
+                const zPos = z.mesh.position.clone();
+                zPos.y = 0.8;
+                const toZ = zPos.clone().sub(origin);
+                const proj = toZ.dot(dir);
+                if (proj < 0 || proj > 50) continue;
+                const closest = origin.clone().add(dir.clone().multiplyScalar(proj));
+                const dist = closest.distanceTo(zPos);
+                if (dist < 1.0 && proj < hitDist) {
+                    hitDist = proj;
+                    hitZombie = z;
+                }
+            }
+
+            if (hitZombie) {
+                const dmg = v.turretDmg;
+                hitZombie.health -= dmg;
+                hitZombie.hitFlash = 0.15;
+                emitParticles(hitZombie.mesh.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 20, [1, 0.5, 0.1]);
+                showDamagePopup(hitZombie.mesh.position.clone().add(new THREE.Vector3(0, 0.8, 0)), dmg, false);
+
+                if (hitZombie.health <= 0) {
+                    killZombie(hitZombie);
+                    killCount++;
+                    if (Math.random() < hitZombie.def.dropRate) {
+                        const dp = hitZombie.mesh.position.clone();
+                        dp.y = 0.15;
+                        spawnDrop(dp);
+                    }
+                    setTimeout(() => {
+                        if (zombies.length < 20 + wave * 2) spawnZombie();
+                    }, 500 + Math.random() * 1500);
+                    updateUI();
+                }
+            }
+
+            playShootSound(0.15);
+            emitParticles(origin.clone().add(dir.clone().multiplyScalar(1.5)), 10, [1, 0.8, 0.2]);
+        }
+
+        function enterVehicle() {
+            if (isInVehicle) {
+                leaveVehicle();
+                return;
+            }
+
+            let nearest = null;
+            let nearDist = 3.0;
+            for (const v of vehicles) {
+                if (v.occupied) continue;
+                const dist = camera.position.distanceTo(v.mesh.position);
+                if (dist < nearDist) {
+                    nearDist = dist;
+                    nearest = v;
+                }
+            }
+
+            if (nearest) {
+                isInVehicle = true;
+                currentVehicle = nearest;
+                nearest.occupied = true;
+                camera.position.set(nearest.mesh.position.x, 0.8, nearest.mesh.position.z);
+                camera.rotation.order = 'YXZ';
+                document.getElementById('vehicleHUD').classList.add('show');
+                document.getElementById('vehicleStatus').textContent = '🚗 駕駛中';
+                playVehicleSound();
+                updateUI();
+                showPickupHint('🚗 已進入載具! 按 F 離開 | E 機槍射擊');
+            } else {
+                showPickupHint('❌ 附近沒有可用的載具');
+            }
+        }
+
+        function leaveVehicle() {
+            if (!isInVehicle || !currentVehicle) return;
+            isInVehicle = false;
+            currentVehicle.occupied = false;
+            const pos = currentVehicle.mesh.position.clone();
+            pos.x += 1.5;
+            pos.z += 1.5;
+            camera.position.set(pos.x, 1.8, pos.z);
+            currentVehicle = null;
+            document.getElementById('vehicleHUD').classList.remove('show');
+            document.getElementById('vehicleStatus').textContent = '';
+            updateUI();
+            showPickupHint('🚶 已離開載具');
+        }
+
+        function moveVehicle(delta) {
+            if (!isInVehicle || !currentVehicle) return;
+            const v = currentVehicle;
+            const speed = v.speed;
+
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            forward.y = 0;
+            right.y = 0;
+            forward.normalize();
+            right.normalize();
+
+            const move = new THREE.Vector3();
+            if (keys.w) move.add(forward);
+            if (keys.s) move.sub(forward);
+            if (keys.a) move.sub(right);
+            if (keys.d) move.add(right);
+
+            if (move.length() > 0) {
+                move.normalize().multiplyScalar(speed * delta);
+                const newX = v.mesh.position.x + move.x;
+                const newZ = v.mesh.position.z + move.z;
+                const dist = Math.sqrt(newX * newX + newZ * newZ);
+                if (dist < 55) {
+                    v.mesh.position.x = newX;
+                    v.mesh.position.z = newZ;
+                    camera.position.x = v.mesh.position.x;
+                    camera.position.z = v.mesh.position.z;
+                    camera.position.y = 0.8;
+                    v.mesh.rotation.y = Math.atan2(move.x, move.z);
+                }
+            }
         }
 
         // ============================================================
-        //  8. 背包系統 (醫療品)
+        //  9. 背包 & 醫療品
         // ============================================================
-        const inventory = {
-            items: [],
-            maxSize: 20,
-        };
-
-        // 醫療品定義
+        const inventory = { items: [] };
         const MEDICAL_ITEMS = {
-            bandage: { name: '繃帶', heal: 20, armorRepair: 0, color: '#ff8844', icon: '🩹', rarity: 'common' },
-            medkit: { name: '醫療包', heal: 50, armorRepair: 0, color: '#ff4444', icon: '💊', rarity: 'uncommon' },
-            medbox: { name: '醫療箱', heal: 100, armorRepair: 0, color: '#ff2222', icon: '🏥', rarity: 'rare' },
-            armorPlate: { name: '護甲板', heal: 0, armorRepair: 40, color: '#4488ff', icon: '🛡️', rarity: 'uncommon' },
-            armorKit: { name: '護甲工具箱', heal: 0, armorRepair: 80, color: '#66ccff', icon: '🔧', rarity: 'rare' },
+            bandage: { name: '繃帶', heal: 20, armorRepair: 0, color: '#ff8844', icon: '🩹' },
+            medkit: { name: '醫療包', heal: 50, armorRepair: 0, color: '#ff4444', icon: '💊' },
+            medbox: { name: '醫療箱', heal: 100, armorRepair: 0, color: '#ff2222', icon: '🏥' },
+            armorPlate: { name: '護甲板', heal: 0, armorRepair: 40, color: '#4488ff', icon: '🛡️' },
+            armorKit: { name: '護甲工具箱', heal: 0, armorRepair: 80, color: '#66ccff', icon: '🔧' },
         };
 
         // ============================================================
-        //  9. 掉落系統
+        //  10. 掉落系統
         // ============================================================
         let dropItems = [];
         let nearDrop = null;
+        const pickupRange = 2.5;
 
         function spawnDrop(position, forcedType = null) {
-            const types = ['ammo', 'health', 'weapon', 'armor', 'medical'];
+            const types = ['ammo', 'health', 'weapon', 'armor'];
             let type = forcedType || types[Math.floor(Math.random() * types.length)];
 
             const item = {
@@ -1184,15 +1540,28 @@
                 alive: true,
                 data: null,
                 bobOffset: Math.random() * 100,
+                pickupText: '',
             };
 
             const group = new THREE.Group();
 
             if (type === 'health') {
-                // 醫療包
+                const medTypes = ['bandage', 'medkit', 'medbox'];
+                const weights = [45, 35, 20];
+                let r = Math.random() * 100;
+                let picked = 'bandage';
+                for (let i = 0; i < weights.length; i++) {
+                    r -= weights[i];
+                    if (r <= 0) { picked = medTypes[i]; break; }
+                }
+                const info = MEDICAL_ITEMS[picked];
                 const box = new THREE.Mesh(
                     new THREE.BoxGeometry(0.2, 0.2, 0.1),
-                    new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff2222, emissiveIntensity: 0.15 })
+                    new THREE.MeshStandardMaterial({
+                        color: new THREE.Color(info.color),
+                        emissive: new THREE.Color(info.color),
+                        emissiveIntensity: 0.15,
+                    })
                 );
                 group.add(box);
                 const ch = new THREE.Mesh(
@@ -1207,19 +1576,7 @@
                 );
                 cv.position.z = 0.06;
                 group.add(cv);
-                // 隨機醫療品
-                const medTypes = ['bandage', 'medkit', 'medbox'];
-                const weights = [50, 35, 15];
-                let r = Math.random() * 100;
-                let picked = 'bandage';
-                for (let i = 0; i < weights.length; i++) {
-                    r -= weights[i];
-                    if (r <= 0) { picked = medTypes[i]; break; }
-                }
                 item.data = { type: 'medical', itemId: picked };
-                // 顏色標記
-                const info = MEDICAL_ITEMS[picked];
-                box.material.color.setHex(parseInt(info.color.slice(1), 16));
                 item.pickupText = `${info.icon} ${info.name}`;
             } else if (type === 'ammo') {
                 const box = new THREE.Mesh(
@@ -1251,43 +1608,37 @@
                 );
                 sphere.castShadow = true;
                 group.add(sphere);
-                // 選一個隨機武器
                 const wId = WEAPON_IDS[Math.floor(Math.random() * WEAPON_IDS.length)];
                 const rarity = randomRarity();
                 item.data = { type: 'weapon', weaponId: wId, rarity: rarity };
                 const rInfo = RARITIES[rarity];
-                // 改變顏色
                 sphere.material.color.setHex(parseInt(rInfo.color.slice(1), 16));
                 sphere.material.emissive.setHex(parseInt(rInfo.color.slice(1), 16));
                 item.pickupText = `🔫 ${WEAPON_DEFS[wId].name} (${rInfo.label})`;
             } else if (type === 'armor') {
-                // 護甲板
+                const rarity = randomArmorRarity();
+                const rInfo = ARMOR_RARITIES[rarity];
                 const plate = new THREE.Mesh(
                     new THREE.BoxGeometry(0.2, 0.25, 0.05),
-                    new THREE.MeshStandardMaterial({ color: 0x4488ff, roughness: 0.3, metalness: 0.6, emissive: 0x4488ff,
-                        emissiveIntensity: 0.1 })
+                    new THREE.MeshStandardMaterial({
+                        color: new THREE.Color(rInfo.color),
+                        roughness: 0.3,
+                        metalness: 0.6,
+                        emissive: new THREE.Color(rInfo.color),
+                        emissiveIntensity: 0.1,
+                    })
                 );
                 plate.castShadow = true;
                 group.add(plate);
                 const isKit = Math.random() < 0.3;
-                item.data = { type: 'armor', isKit: isKit, amount: isKit ? 80 : 40 };
-                item.pickupText = isKit ? '🔧 護甲工具箱 (+80)' : '🛡️ 護甲板 (+40)';
+                const amount = isKit ? 60 : 30;
+                item.data = { type: 'armor', rarity: rarity, isKit: isKit, amount: amount };
+                item.pickupText = isKit ? `🔧 護甲工具箱 (${rInfo.stars} ${rInfo.label})` :
+                    `🛡️ 護甲板 (${rInfo.stars} ${rInfo.label})`;
                 if (isKit) {
                     plate.material.color.setHex(0x66ccff);
                     plate.material.emissive.setHex(0x66ccff);
                 }
-            } else {
-                // 預設
-                type = 'ammo';
-                const box = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.25, 0.15, 0.2),
-                    new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.6, metalness: 0.3 })
-                );
-                group.add(box);
-                const wId = WEAPON_IDS[Math.floor(Math.random() * WEAPON_IDS.length)];
-                const amount = 10 + Math.floor(Math.random() * 25);
-                item.data = { type: 'ammo', weaponId: wId, amount: amount };
-                item.pickupText = `📦 ${amount} 發彈藥`;
             }
 
             group.position.copy(position);
@@ -1295,8 +1646,7 @@
             scene.add(group);
             item.mesh = group;
 
-            // 發光光環
-            const glow = new THREE.PointLight(0x44ff88, 0.25, 1.5);
+            const glow = new THREE.PointLight(0x44ff88, 0.2, 1.5);
             glow.position.copy(position);
             glow.position.y = 0.3;
             scene.add(glow);
@@ -1307,58 +1657,26 @@
         }
 
         // ============================================================
-        //  10. 殭屍系統 (多種類型)
+        //  11. 殭屍系統
         // ============================================================
         const ZOMBIE_TYPES = {
-            normal: {
-                name: '普通',
-                color: 0x7a8a7a,
-                speed: 0.4,
-                health: 3,
-                damage: 8,
-                size: 1.0,
-                score: 10,
-                dropRate: 0.5,
-            },
-            runner: {
-                name: '跑者',
-                color: 0x8a6a4a,
-                speed: 0.9,
-                health: 2,
-                damage: 6,
-                size: 0.9,
-                score: 15,
-                dropRate: 0.4,
-            },
-            fat: {
-                name: '胖子',
-                color: 0x5a7a4a,
-                speed: 0.2,
-                health: 8,
-                damage: 20,
-                size: 1.4,
-                score: 25,
-                dropRate: 0.7,
-                explosive: true,
-            },
-            tank: {
-                name: '坦克',
-                color: 0x4a4a5a,
-                speed: 0.25,
-                health: 20,
-                damage: 15,
-                size: 1.6,
-                score: 40,
-                dropRate: 0.9,
-                armored: true,
-            },
+            normal: { name: '普通', color: 0x7a8a7a, speed: 0.4, health: 3, damage: 8, size: 1.0, score: 10,
+            dropRate: 0.5 },
+            runner: { name: '跑者', color: 0x8a6a4a, speed: 0.9, health: 2, damage: 6, size: 0.9, score: 15,
+            dropRate: 0.4 },
+            fat: { name: '胖子', color: 0x5a7a4a, speed: 0.2, health: 8, damage: 20, size: 1.4, score: 25, dropRate: 0.7,
+                explosive: true },
+            tank: { name: '坦克', color: 0x4a4a5a, speed: 0.25, health: 20, damage: 15, size: 1.6, score: 40,
+            dropRate: 0.9, armored: true },
         };
 
         let zombies = [];
         let killCount = 0;
         let wave = 1;
+        let playerHealth = 100;
+        const maxHealth = 100;
         let isDead = false;
-        let zombieSpawnTimer = 0;
+        let inventoryOpen = false;
 
         function createZombie(posX, posZ, type = null) {
             if (!type) {
@@ -1369,13 +1687,12 @@
             }
             const def = ZOMBIE_TYPES[type];
             const group = new THREE.Group();
-
             const scale = def.size;
+
             const skinMat = new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.7, metalness: 0 });
             const clothMat = new THREE.MeshStandardMaterial({ color: 0x3a3a2a, roughness: 0.9 });
             const pantsMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.9 });
 
-            // 身體
             const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * scale, 0.45 * scale, 0.9 * scale, 10),
             clothMat);
             torso.position.y = 0.85 * scale;
@@ -1383,14 +1700,12 @@
             torso.receiveShadow = true;
             group.add(torso);
 
-            // 頭
             const head = new THREE.Mesh(new THREE.SphereGeometry(0.28 * scale, 12, 12), skinMat);
             head.position.y = 1.45 * scale;
             head.scale.set(1, 0.9, 0.95);
             head.castShadow = true;
             group.add(head);
 
-            // 眼睛
             const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff2200, emissiveIntensity: 0.3 });
             const eL = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 8, 8), eyeMat);
             eL.position.set(-0.14 * scale, 1.5 * scale, 0.26 * scale);
@@ -1399,7 +1714,6 @@
             eR.position.set(0.14 * scale, 1.5 * scale, 0.26 * scale);
             group.add(eR);
 
-            // 手臂
             const armMat = new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.8 });
             const aL = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * scale, 0.07 * scale, 0.7 * scale, 6), armMat);
             aL.position.set(-0.42 * scale, 1.0 * scale, 0);
@@ -1414,7 +1728,6 @@
             aR.castShadow = true;
             group.add(aR);
 
-            // 腿
             const legMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.9 });
             const lL = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * scale, 0.1 * scale, 0.6 * scale, 6), legMat);
             lL.position.set(-0.15 * scale, 0.25 * scale, 0);
@@ -1425,7 +1738,6 @@
             lR.castShadow = true;
             group.add(lR);
 
-            // 坦克有護甲標記
             if (def.armored) {
                 const armorMat = new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.3, metalness: 0.7 });
                 const plate = new THREE.Mesh(new THREE.BoxGeometry(0.5 * scale, 0.3 * scale, 0.05 * scale), armorMat);
@@ -1436,7 +1748,6 @@
                 group.add(plate2);
             }
 
-            // 胖子有爆炸標記
             if (def.explosive) {
                 const glowMat = new THREE.MeshStandardMaterial({
                     color: 0xff4400,
@@ -1479,29 +1790,71 @@
             const radius = 6 + Math.random() * 14;
             const x = camera.position.x + Math.cos(angle) * radius;
             const z = camera.position.z + Math.sin(angle) * radius;
-            // 檢查是否在建築物內
             let inside = false;
             for (const b of buildings) {
-                if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) {
-                    inside = true;
-                    break;
-                }
+                if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) { inside = true; break; }
             }
-            if (inside) {
-                // 重新生成
-                spawnZombie();
-                return;
-            }
+            if (inside) { spawnZombie(); return; }
             createZombie(x, z);
         }
 
-        // 初始殭屍
-        for (let i = 0; i < 8; i++) spawnZombie();
+        function killZombie(z) {
+            playZombieDeathSound();
+            if (z.explosive) {
+                const pos = z.mesh.position.clone();
+                pos.y = 0.5;
+                emitParticles(pos, 80, [1, 0.4, 0], 2.5);
+                emitParticles(pos, 40, [1, 0.8, 0.2], 1.5);
+                emitParticles(pos, 30, [0.8, 0.2, 0.1], 1.0);
+                playExplosionSound();
+                const boomPos = z.mesh.position;
+                for (const other of zombies) {
+                    if (other === z) continue;
+                    const dist = boomPos.distanceTo(other.mesh.position);
+                    if (dist < 3.5) {
+                        other.health -= 15;
+                        other.hitFlash = 0.2;
+                        if (other.health <= 0) {
+                            killZombie(other);
+                            killCount++;
+                            if (Math.random() < other.def.dropRate) {
+                                const dp = other.mesh.position.clone();
+                                dp.y = 0.15;
+                                spawnDrop(dp);
+                            }
+                        }
+                    }
+                }
+                for (const v of vehicles) {
+                    const dist = boomPos.distanceTo(v.mesh.position);
+                    if (dist < 3) {
+                        v.hp -= 30;
+                        emitParticles(v.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0)), 20, [1, 0.5, 0.1]);
+                        if (v.hp <= 0) {
+                            emitParticles(v.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0)), 60, [1, 0.3, 0],
+                            2);
+                            playExplosionSound();
+                            scene.remove(v.mesh);
+                            const idx = vehicles.indexOf(v);
+                            if (idx > -1) vehicles.splice(idx, 1);
+                            if (currentVehicle === v) {
+                                leaveVehicle();
+                            }
+                        }
+                    }
+                }
+            }
+
+            emitParticles(z.mesh.position.clone().add(new THREE.Vector3(0, 0.6, 0)), 40, [0.6, 0.2, 0.1]);
+            scene.remove(z.mesh);
+            const idx = zombies.indexOf(z);
+            if (idx > -1) zombies.splice(idx, 1);
+        }
 
         // ============================================================
-        //  11. 粒子系統
+        //  12. 粒子系統
         // ============================================================
-        const particleCount = 600;
+        const particleCount = 800;
         const pGeo = new THREE.BufferGeometry();
         const pPos = new Float32Array(particleCount * 3);
         const pCol = new Float32Array(particleCount * 3);
@@ -1511,7 +1864,7 @@
             pCol[i * 3] = 1;
             pCol[i * 3 + 1] = 0.3;
             pCol[i * 3 + 2] = 0.1;
-            pSize[i] = 0.05 + Math.random() * 0.12;
+            pSize[i] = 0.05 + Math.random() * 0.15;
         }
         pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
         pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
@@ -1522,7 +1875,7 @@
             vertexColors: true,
             blending: THREE.AdditiveBlending,
             transparent: true,
-            opacity: 0.8,
+            opacity: 0.9,
             depthWrite: false,
         });
         const particleSystem = new THREE.Points(pGeo, pMat);
@@ -1539,21 +1892,21 @@
                     pos[i * 3] = origin.x + (Math.random() - 0.5) * 0.5;
                     pos[i * 3 + 1] = origin.y + (Math.random() - 0.5) * 0.5;
                     pos[i * 3 + 2] = origin.z + (Math.random() - 0.5) * 0.5;
-                    const speed = (0.5 + Math.random() * 2.5) * speedMult;
+                    const speed = (0.3 + Math.random() * 3.0) * speedMult;
                     const dir = new THREE.Vector3(
                         (Math.random() - 0.5) * 2,
-                        Math.random() * 2.5,
+                        Math.random() * 3,
                         (Math.random() - 0.5) * 2
                     ).normalize().multiplyScalar(speed);
                     particleList.push({
                         idx: i,
                         vel: dir,
-                        life: 0.3 + Math.random() * 0.8,
-                        maxLife: 0.3 + Math.random() * 0.8,
+                        life: 0.3 + Math.random() * 1.0,
+                        maxLife: 0.3 + Math.random() * 1.0,
                     });
                     col[i * 3] = color[0];
-                    col[i * 3 + 1] = color[1] * (0.4 + Math.random() * 0.6);
-                    col[i * 3 + 2] = color[2] * (0.3 + Math.random() * 0.4);
+                    col[i * 3 + 1] = color[1] * (0.3 + Math.random() * 0.7);
+                    col[i * 3 + 2] = color[2] * (0.2 + Math.random() * 0.5);
                     emitted++;
                 }
             }
@@ -1562,12 +1915,13 @@
         }
 
         // ============================================================
-        //  12. UI 更新
+        //  13. UI 更新
         // ============================================================
         const healthBar = document.getElementById('healthBar');
         const healthLabel = document.getElementById('healthLabel');
         const armorBar = document.getElementById('armorBar');
         const armorLabel = document.getElementById('armorLabel');
+        const armorRarityLabel = document.getElementById('armorRarityLabel');
         const killDisplay = document.getElementById('killDisplay');
         const waveDisplay = document.getElementById('waveDisplay');
         const zombieCountEl = document.getElementById('zombieCount');
@@ -1581,43 +1935,48 @@
         const airdropIndicator = document.getElementById('airdropIndicator');
         const inventoryEl = document.getElementById('inventory');
         const invItemsEl = document.getElementById('invItems');
-
-        let inventoryOpen = false;
+        const vehicleHealthEl = document.getElementById('vehicleHealth');
 
         function updateUI() {
-            // 血量
             const hpPct = Math.max(0, (playerHealth / maxHealth) * 100);
             healthBar.style.width = hpPct + '%';
             healthLabel.textContent = Math.round(playerHealth);
 
-            // 護甲
-            const totalArmor = armor.helmet.durability + armor.vest.durability;
-            const maxArmor = armor.helmet.maxDurability + armor.vest.maxDurability;
+            const totalArmor = playerArmor.helmet.durability + playerArmor.vest.durability;
+            const maxArmor = playerArmor.helmet.maxDurability + playerArmor.vest.maxDurability;
             const armorPct = Math.max(0, (totalArmor / maxArmor) * 100);
             armorBar.style.width = armorPct + '%';
             armorLabel.textContent = Math.round(totalArmor);
+            armorRarityLabel.textContent = getArmorRarityLabel();
 
             killDisplay.textContent = `💀 ${killCount}`;
             waveDisplay.textContent = `🌊 第 ${wave} 波`;
             zombieCountEl.textContent = `🧟 ${zombies.length}`;
 
-            // 武器
             const w = getCurrentWeapon();
             if (w) {
-                weaponNameEl.innerHTML = `${w.icon} ${w.name} <span id="weaponRarity" style="color:${w.rarityColor}">${w.stars} ${w.rarityLabel}</span>`;
+                weaponNameEl.innerHTML =
+                    `${w.icon} ${w.name} <span id="weaponRarity" style="color:${w.rarityColor}">${w.stars} ${w.rarityLabel}</span>`;
                 ammoDisplayEl.innerHTML = `${w.ammo} <span class="max">/ ${w.magSize}</span>`;
                 reloadHintEl.style.display = isReloading ? 'inline' : 'none';
             }
 
-            // 武器快捷列
-            weaponSlotsEl.innerHTML = playerWeapons.map((w, i) => `
-                    <div class="slot ${i === currentWeaponIndex ? 'active' : ''}">
+            weaponSlotsEl.innerHTML = playerWeapons.map((w, i) =>
+                `<div class="slot ${i === currentWeaponIndex ? 'active' : ''}">
                         <span class="rarity-dot" style="background:${w.rarityColor}"></span>
                         ${w.icon} ${i+1}
-                    </div>
-                `).join('');
+                    </div>`
+            ).join('');
 
-            // 背包 UI
+            if (isInVehicle && currentVehicle) {
+                const v = currentVehicle;
+                const hpPct2 = Math.max(0, (v.hp / v.maxHp) * 100);
+                vehicleHealthEl.textContent = Math.round(hpPct2);
+                document.getElementById('vehicleHUD').classList.add('show');
+            } else {
+                document.getElementById('vehicleHUD').classList.remove('show');
+            }
+
             renderInventory();
         }
 
@@ -1627,15 +1986,14 @@
                 invItemsEl.innerHTML = '<div class="inv-empty">🔄 背包是空的</div>';
                 return;
             }
-            invItemsEl.innerHTML = inventory.items.map((item, idx) => `
-                    <div class="inv-item">
+            invItemsEl.innerHTML = inventory.items.map((item, idx) =>
+                `<div class="inv-item">
                         <span class="name">${item.icon} ${item.name}</span>
                         <span class="qty">×${item.qty || 1}</span>
                         <button class="use-btn" data-idx="${idx}">使用</button>
-                    </div>
-                `).join('');
+                    </div>`
+            ).join('');
 
-            // 綁定使用按鈕
             invItemsEl.querySelectorAll('.use-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const idx = parseInt(btn.dataset.idx);
@@ -1645,7 +2003,7 @@
         }
 
         // ============================================================
-        //  13. 醫療品使用
+        //  14. 醫療品使用
         // ============================================================
         function useMedicalItem(idx) {
             const item = inventory.items[idx];
@@ -1660,27 +2018,24 @@
                 playPickupSound();
             }
             if (info.armorRepair > 0) {
-                // 修復護甲
                 let repaired = 0;
                 const remaining = info.armorRepair;
-                // 優先修復背心
-                const vestNeed = armor.vest.maxDurability - armor.vest.durability;
+                const vestNeed = playerArmor.vest.maxDurability - playerArmor.vest.durability;
                 if (vestNeed > 0) {
                     const fix = Math.min(remaining, vestNeed);
-                    armor.vest.durability += fix;
+                    playerArmor.vest.durability += fix;
                     repaired += fix;
                 }
-                const helmetNeed = armor.helmet.maxDurability - armor.helmet.durability;
+                const helmetNeed = playerArmor.helmet.maxDurability - playerArmor.helmet.durability;
                 if (repaired < remaining && helmetNeed > 0) {
                     const fix = Math.min(remaining - repaired, helmetNeed);
-                    armor.helmet.durability += fix;
+                    playerArmor.helmet.durability += fix;
                     repaired += fix;
                 }
                 showPickupHint(`🛡️ +${repaired} 護甲 (${item.name})`);
                 playPickupSound();
             }
 
-            // 減少數量或移除
             item.qty = (item.qty || 1) - 1;
             if (item.qty <= 0) {
                 inventory.items.splice(idx, 1);
@@ -1690,7 +2045,7 @@
         }
 
         // ============================================================
-        //  14. 拾取系統
+        //  15. 拾取系統
         // ============================================================
         function pickupItem() {
             if (!nearDrop || !nearDrop.alive) return;
@@ -1725,11 +2080,9 @@
                 if (def) {
                     const existing = playerWeapons.find(w => w.id === wId);
                     if (existing) {
-                        // 升級稀有度 (如果更高)
-                        const currentRarityRank = Object.keys(RARITIES).indexOf(existing.rarity);
-                        const newRarityRank = Object.keys(RARITIES).indexOf(rarity);
-                        if (newRarityRank > currentRarityRank) {
-                            // 升級!
+                        const currentRank = Object.keys(RARITIES).indexOf(existing.rarity);
+                        const newRank = Object.keys(RARITIES).indexOf(rarity);
+                        if (newRank > currentRank) {
                             existing.rarity = rarity;
                             existing.damage = Math.round(def.baseDamage * r.dmgMult);
                             existing.magSize = Math.round(def.baseMagSize * r.ammoMult);
@@ -1742,7 +2095,6 @@
                             showPickupHint(`⬆️ ${def.name} 升級為 ${r.label}!`);
                             playPickupSound();
                         } else {
-                            // 轉為彈藥
                             const amt = Math.round(def.baseMagSize * r.ammoMult * 2);
                             existing.reserve += amt;
                             showPickupHint(`📦 +${amt} ${def.name}彈藥`);
@@ -1775,28 +2127,61 @@
                     }
                 }
             } else if (item.type === 'armor' || data?.type === 'armor') {
+                const rarity = data.rarity || 'common';
                 const amount = data.amount || 40;
-                const isKit = data.isKit || false;
-                // 修復護甲
-                let repaired = 0;
-                const remaining = amount;
-                const vestNeed = armor.vest.maxDurability - armor.vest.durability;
-                if (vestNeed > 0) {
-                    const fix = Math.min(remaining, vestNeed);
-                    armor.vest.durability += fix;
-                    repaired += fix;
+                const rInfo = ARMOR_RARITIES[rarity];
+                const hRank = Object.keys(ARMOR_RARITIES).indexOf(playerArmor.helmet.rarity);
+                const vRank = Object.keys(ARMOR_RARITIES).indexOf(playerArmor.vest.rarity);
+                const newRank = Object.keys(ARMOR_RARITIES).indexOf(rarity);
+
+                if (newRank > hRank || newRank > vRank) {
+                    if (hRank <= vRank && newRank > hRank) {
+                        playerArmor.helmet.rarity = rarity;
+                        playerArmor.helmet.maxDurability = rInfo.maxDurability;
+                        playerArmor.helmet.durability = Math.min(playerArmor.helmet.durability + amount, rInfo
+                        .maxDurability);
+                        showPickupHint(`⬆️ 頭盔升級為 ${rInfo.stars} ${rInfo.label}!`);
+                    } else if (newRank > vRank) {
+                        playerArmor.vest.rarity = rarity;
+                        playerArmor.vest.maxDurability = rInfo.maxDurability;
+                        playerArmor.vest.durability = Math.min(playerArmor.vest.durability + amount, rInfo
+                        .maxDurability);
+                        showPickupHint(`⬆️ 背心升級為 ${rInfo.stars} ${rInfo.label}!`);
+                    } else {
+                        let repaired = 0;
+                        const vestNeed = playerArmor.vest.maxDurability - playerArmor.vest.durability;
+                        if (vestNeed > 0) {
+                            const fix = Math.min(amount, vestNeed);
+                            playerArmor.vest.durability += fix;
+                            repaired += fix;
+                        }
+                        const helmetNeed = playerArmor.helmet.maxDurability - playerArmor.helmet.durability;
+                        if (repaired < amount && helmetNeed > 0) {
+                            const fix = Math.min(amount - repaired, helmetNeed);
+                            playerArmor.helmet.durability += fix;
+                            repaired += fix;
+                        }
+                        showPickupHint(`🛡️ +${repaired} 護甲`);
+                    }
+                } else {
+                    let repaired = 0;
+                    const vestNeed = playerArmor.vest.maxDurability - playerArmor.vest.durability;
+                    if (vestNeed > 0) {
+                        const fix = Math.min(amount, vestNeed);
+                        playerArmor.vest.durability += fix;
+                        repaired += fix;
+                    }
+                    const helmetNeed = playerArmor.helmet.maxDurability - playerArmor.helmet.durability;
+                    if (repaired < amount && helmetNeed > 0) {
+                        const fix = Math.min(amount - repaired, helmetNeed);
+                        playerArmor.helmet.durability += fix;
+                        repaired += fix;
+                    }
+                    showPickupHint(`🛡️ +${repaired} 護甲`);
                 }
-                const helmetNeed = armor.helmet.maxDurability - armor.helmet.durability;
-                if (repaired < remaining && helmetNeed > 0) {
-                    const fix = Math.min(remaining - repaired, helmetNeed);
-                    armor.helmet.durability += fix;
-                    repaired += fix;
-                }
-                showPickupHint(`🛡️ +${repaired} 護甲`);
                 playPickupSound();
             }
 
-            // 移除掉落物
             scene.remove(item.mesh);
             if (item.glow) scene.remove(item.glow);
             item.alive = false;
@@ -1819,12 +2204,16 @@
         }
 
         // ============================================================
-        //  15. 射擊系統
+        //  16. 射擊系統
         // ============================================================
         const raycaster = new THREE.Raycaster();
 
         function shoot() {
             if (isDead) return;
+            if (isInVehicle) {
+                vehicleShoot();
+                return;
+            }
             if (isReloading) return;
             const w = getCurrentWeapon();
             if (!w) return;
@@ -1863,60 +2252,32 @@
                     if (target) {
                         const z = target.zombie;
                         let damage = w.damage;
-                        // 爆頭加成 (頭部)
                         if (hit.object.position.y > 1.2 * z.def.size) {
                             damage *= 2.0;
                             showDamagePopup(hit.point, damage, true);
                         } else {
                             showDamagePopup(hit.point, damage, false);
                         }
-                        // 護甲減傷 (殭屍)
-                        if (z.armored) {
-                            damage *= 0.6;
-                        }
+                        if (z.armored) damage *= 0.6;
                         z.health -= damage;
                         z.hitFlash = 0.15;
                         emitParticles(hit.point, 12, [1, 0.4, 0.1]);
 
                         if (z.health <= 0) {
-                            // 爆炸效果 (胖子)
-                            if (z.explosive) {
-                                emitParticles(z.mesh.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 80, [1, 0.5, 0],
-                                    2);
-                                // 範圍傷害
-                                const boomPos = z.mesh.position;
-                                for (const other of zombies) {
-                                    if (other === z) continue;
-                                    const dist = boomPos.distanceTo(other.mesh.position);
-                                    if (dist < 3) {
-                                        other.health -= 15;
-                                        other.hitFlash = 0.2;
-                                        if (other.health <= 0) {
-                                            // 連鎖死亡
-                                            killZombie(other);
-                                        }
-                                    }
-                                }
-                            }
                             killZombie(z);
                             killCount++;
-                            updateUI();
-
-                            // 掉落
                             if (Math.random() < z.def.dropRate) {
-                                const dropPos = z.mesh.position.clone();
-                                dropPos.y = 0.15;
-                                spawnDrop(dropPos);
+                                const dp = z.mesh.position.clone();
+                                dp.y = 0.15;
+                                spawnDrop(dp);
                             }
-
-                            // 生成新殭屍
                             setTimeout(() => {
                                 if (zombies.length < 20 + wave * 2) spawnZombie();
                             }, 500 + Math.random() * 1500);
+                            updateUI();
                         }
                     }
                 } else {
-                    // 打地板
                     const far = new THREE.Vector3(0, 0, -40);
                     far.applyQuaternion(camera.quaternion);
                     far.add(camera.position);
@@ -1924,7 +2285,6 @@
                 }
             }
 
-            // 槍口閃光
             document.body.style.backgroundColor = 'rgba(255,255,200,0.04)';
             setTimeout(() => document.body.style.backgroundColor = '', 30);
 
@@ -1934,20 +2294,10 @@
             updateUI();
         }
 
-        function killZombie(z) {
-            playZombieDeathSound();
-            emitParticles(z.mesh.position.clone().add(new THREE.Vector3(0, 0.6, 0)), 40, [0.6, 0.2, 0.1]);
-            scene.remove(z.mesh);
-            const idx = zombies.indexOf(z);
-            if (idx > -1) zombies.splice(idx, 1);
-        }
-
-        // 傷害數字
         function showDamagePopup(position, damage, crit = false) {
             const el = document.createElement('div');
             el.className = 'damage-popup' + (crit ? ' crit' : '');
             el.textContent = crit ? `💥 ${damage}` : `-${damage}`;
-            // 轉換 3D 位置到螢幕
             const vec = position.clone().add(new THREE.Vector3(0, 0.5, 0));
             vec.project(camera);
             const x = (vec.x * 0.5 + 0.5) * window.innerWidth;
@@ -1959,7 +2309,7 @@
         }
 
         // ============================================================
-        //  16. 換彈
+        //  17. 換彈
         // ============================================================
         function reloadWeapon() {
             if (isReloading) return;
@@ -1985,7 +2335,7 @@
         }
 
         // ============================================================
-        //  17. 空投系統
+        //  18. 空投系統
         // ============================================================
         let airdropActive = false;
         let airdropTimer = 25;
@@ -1994,7 +2344,6 @@
             if (airdropActive) return;
             airdropActive = true;
             airdropIndicator.classList.add('show');
-            playAirdropSound();
 
             const angle = Math.random() * Math.PI * 2;
             const dist = 8 + Math.random() * 12;
@@ -2013,7 +2362,6 @@
             box.castShadow = true;
             box.receiveShadow = true;
             group.add(box);
-            // 降落傘
             const paraMat = new THREE.MeshStandardMaterial({
                 color: 0x88ccff,
                 roughness: 0.8,
@@ -2025,7 +2373,6 @@
             para.position.y = 1.4;
             para.rotation.x = Math.PI / 2;
             group.add(para);
-            // 繩索
             const ropeMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
             for (let i = 0; i < 4; i++) {
                 const a = (i / 4) * Math.PI * 2;
@@ -2045,42 +2392,35 @@
             let speed = 2.5;
             scene.add(group);
 
-            // 內容物
             const contents = {
                 weapons: [],
                 ammo: [],
                 medical: [],
-                armor: 0,
+                armor: [],
             };
 
-            // 1~2 把武器 (高機率稀有以上)
             const count = 1 + Math.floor(Math.random() * 2);
             for (let i = 0; i < count; i++) {
                 const wId = WEAPON_IDS[Math.floor(Math.random() * WEAPON_IDS.length)];
                 let rarity = randomRarity();
-                // 空投武器至少稀有
-                const rarities = ['uncommon', 'rare', 'epic', 'legendary'];
                 if (Math.random() < 0.5) {
+                    const rarities = ['uncommon', 'rare', 'epic', 'legendary'];
                     rarity = rarities[Math.floor(Math.random() * rarities.length)];
                 }
                 contents.weapons.push({ weaponId: wId, rarity: rarity });
             }
-
-            // 大量彈藥
             for (let i = 0; i < 3 + Math.floor(Math.random() * 4); i++) {
                 const wId = WEAPON_IDS[Math.floor(Math.random() * WEAPON_IDS.length)];
                 contents.ammo.push({ weaponId: wId, amount: 20 + Math.floor(Math.random() * 30) });
             }
-
-            // 醫療品
             const medTypes = ['bandage', 'medkit', 'medbox'];
             for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) {
                 contents.medical.push(medTypes[Math.floor(Math.random() * medTypes.length)]);
             }
-
-            // 護甲
-            if (Math.random() < 0.6) {
-                contents.armor = Math.random() < 0.3 ? 80 : 40;
+            for (let i = 0; i < 1 + Math.floor(Math.random() * 2); i++) {
+                const rarity = randomArmorRarity();
+                const isKit = Math.random() < 0.3;
+                contents.armor.push({ rarity: rarity, isKit: isKit });
             }
 
             function dropAnimate() {
@@ -2096,7 +2436,6 @@
                     const pos = group.position.clone();
                     pos.y = 0.15;
 
-                    // 生成內容
                     for (const w of contents.weapons) {
                         const dp = pos.clone();
                         dp.x += (Math.random() - 0.5) * 0.8;
@@ -2190,7 +2529,7 @@
                         dropItems.push(item);
                     }
 
-                    if (contents.armor > 0) {
+                    for (const armorData of contents.armor) {
                         const dp = pos.clone();
                         dp.x += (Math.random() - 0.5) * 0.8;
                         dp.z += (Math.random() - 0.5) * 0.8;
@@ -2211,54 +2550,23 @@
         }
 
         // ============================================================
-        //  18. 建築物碰撞 (簡單)
-        // ============================================================
-        function isInsideBuilding(x, z) {
-            for (const b of buildings) {
-                if (x > b.minX + 0.3 && x < b.maxX - 0.3 && z > b.minZ + 0.3 && z < b.maxZ - 0.3) {
-                    return b;
-                }
-            }
-            return null;
-        }
-
-        // ============================================================
         //  19. 控制
         // ============================================================
-        let isLocked = false;
-
-        document.addEventListener('click', () => {
-            if (!isLocked && !isDead && !inventoryOpen) {
-                renderer.domElement.requestPointerLock();
-            }
-            if (isLocked && !isDead && !inventoryOpen) {
-                shoot();
-                initAudio();
-            }
-        });
-
-        document.addEventListener('pointerlockchange', () => {
-            isLocked = document.pointerLockElement === renderer.domElement;
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isLocked || isDead || inventoryOpen) return;
-            camera.rotation.order = 'YXZ';
-            camera.rotation.y -= (e.movementX || 0) * 0.002;
-            camera.rotation.x -= (e.movementY || 0) * 0.002;
-            camera.rotation.x = Math.max(-0.6, Math.min(0.8, camera.rotation.x));
-        });
-
         const keys = { w: false, a: false, s: false, d: false, shift: false };
 
         document.addEventListener('keydown', (e) => {
+            if (isDead) return;
+            // 防護快捷鍵 (已經在外面處理，但這裡再攔截一次)
+            if (e.key === 'F12' || e.keyCode === 123) { e.preventDefault(); return; }
+            if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K'].includes(e.key.toUpperCase())) { e.preventDefault(); return; }
+            if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'U') { e.preventDefault(); return; }
+
             if (e.code === 'KeyW') keys.w = true;
             if (e.code === 'KeyA') keys.a = true;
             if (e.code === 'KeyS') keys.s = true;
             if (e.code === 'KeyD') keys.d = true;
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = true;
 
-            // 武器切換
             if (e.key >= '1' && e.key <= '5') {
                 const idx = parseInt(e.key) - 1;
                 if (idx < playerWeapons.length) {
@@ -2268,9 +2576,16 @@
                 }
             }
             if (e.key === 'r' || e.key === 'R') reloadWeapon();
-            if (e.key === 'e' || e.key === 'E') pickupItem();
-
-            // 背包
+            if (e.key === 'e' || e.key === 'E') {
+                if (isInVehicle) {
+                    vehicleShoot();
+                } else {
+                    pickupItem();
+                }
+            }
+            if (e.key === 'f' || e.key === 'F') {
+                enterVehicle();
+            }
             if (e.key === 'Tab') {
                 e.preventDefault();
                 toggleInventory();
@@ -2285,9 +2600,8 @@
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
         });
 
-        // 滾輪切換
         document.addEventListener('wheel', (e) => {
-            if (!isLocked || isDead || inventoryOpen) return;
+            if (!isLocked || isDead || inventoryOpen || isInVehicle) return;
             e.preventDefault();
             const dir = e.deltaY > 0 ? 1 : -1;
             let newIdx = currentWeaponIndex + dir;
@@ -2298,24 +2612,31 @@
             updateUI();
         }, { passive: false });
 
-        // 背包切換
         function toggleInventory() {
             inventoryOpen = !inventoryOpen;
             inventoryEl.style.display = inventoryOpen ? 'block' : 'none';
             if (inventoryOpen) {
-                document.exitPointerLock();
+                if (isLocked) document.exitPointerLock();
                 renderInventory();
             } else {
                 renderer.domElement.requestPointerLock();
             }
         }
-
         document.getElementById('invClose').addEventListener('click', toggleInventory);
 
-        // 移動
+        // ============================================================
+        //  20. 移動
+        // ============================================================
         function movePlayer(delta) {
-            if (!isLocked || isDead || inventoryOpen) return;
-            const speed = keys.shift ? 6.0 : 4.0;
+            if (isDead || inventoryOpen) return;
+
+            if (isInVehicle) {
+                moveVehicle(delta);
+                return;
+            }
+
+            if (!isLocked) return;
+            const speed = keys.shift ? 5.0 : 3.5;
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
             forward.y = 0;
@@ -2328,31 +2649,22 @@
             if (keys.s) move.sub(forward);
             if (keys.a) move.sub(right);
             if (keys.d) move.add(right);
+
             if (move.length() > 0) {
                 move.normalize().multiplyScalar(speed * delta);
                 const newX = camera.position.x + move.x;
                 const newZ = camera.position.z + move.z;
-
-                // 建築物碰撞
-                const building = isInsideBuilding(newX, newZ);
-                if (building) {
-                    // 可以進入建築物
+                const dist = Math.sqrt(newX * newX + newZ * newZ);
+                if (dist < 55) {
                     camera.position.x = newX;
                     camera.position.z = newZ;
-                } else {
-                    // 外圍限制
-                    const dist = Math.sqrt(newX * newX + newZ * newZ);
-                    if (dist < 55) {
-                        camera.position.x = newX;
-                        camera.position.z = newZ;
-                    }
                 }
                 camera.position.y = 1.8;
             }
         }
 
         // ============================================================
-        //  20. 小地圖
+        //  21. 小地圖
         // ============================================================
         const minimapCanvas = document.getElementById('minimapCanvas');
         const minimapCtx = minimapCanvas.getContext('2d');
@@ -2362,8 +2674,6 @@
             const w = 140,
                 h = 140;
             ctx.clearRect(0, 0, w, h);
-
-            // 背景
             const grad = ctx.createRadialGradient(70, 70, 0, 70, 70, 70);
             grad.addColorStop(0, 'rgba(20,30,50,0.9)');
             grad.addColorStop(1, 'rgba(0,0,0,0.9)');
@@ -2378,19 +2688,28 @@
             const px = camera.position.x,
                 pz = camera.position.z;
 
-            // 建築物
             for (const b of buildings) {
                 const x = cx + (b.x - px) * scale;
                 const y = cy + (b.z - pz) * scale;
                 if (x < -10 || x > 150 || y < -10 || y > 150) continue;
-                ctx.fillStyle = 'rgba(80,100,140,0.5)';
+                ctx.fillStyle = 'rgba(80,100,140,0.4)';
                 ctx.fillRect(x - b.w * scale / 2, y - b.d * scale / 2, b.w * scale, b.d * scale);
-                ctx.strokeStyle = 'rgba(150,180,220,0.2)';
+                ctx.strokeStyle = 'rgba(150,180,220,0.15)';
                 ctx.lineWidth = 0.5;
                 ctx.strokeRect(x - b.w * scale / 2, y - b.d * scale / 2, b.w * scale, b.d * scale);
             }
 
-            // 殭屍
+            for (const v of vehicles) {
+                const x = cx + (v.mesh.position.x - px) * scale;
+                const y = cy + (v.mesh.position.z - pz) * scale;
+                if (x < 0 || x > 140 || y < 0 || y > 140) continue;
+                const rInfo = VEHICLE_RARITIES[v.rarity];
+                ctx.fillStyle = rInfo.color;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
             for (const z of zombies) {
                 const x = cx + (z.mesh.position.x - px) * scale;
                 const y = cy + (z.mesh.position.z - pz) * scale;
@@ -2402,7 +2721,6 @@
                 ctx.fill();
             }
 
-            // 掉落物
             for (const d of dropItems) {
                 if (!d.alive) continue;
                 const x = cx + (d.position.x - px) * scale;
@@ -2414,7 +2732,6 @@
                 ctx.fill();
             }
 
-            // 玩家
             ctx.shadowColor = 'rgba(0,255,100,0.3)';
             ctx.shadowBlur = 10;
             ctx.fillStyle = '#44ff88';
@@ -2422,7 +2739,6 @@
             ctx.arc(cx, cy, 4, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
-            // 方向
             const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
             ctx.strokeStyle = 'rgba(68,255,136,0.3)';
             ctx.lineWidth = 2;
@@ -2431,7 +2747,6 @@
             ctx.lineTo(cx + dir.x * 12, cy + dir.z * 12);
             ctx.stroke();
 
-            // 邊框
             ctx.strokeStyle = 'rgba(255,255,255,0.05)';
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -2440,14 +2755,13 @@
         }
 
         // ============================================================
-        //  21. 遊戲狀態
+        //  22. 遊戲狀態
         // ============================================================
         const gameoverDiv = document.getElementById('gameover');
         const finalKills = document.getElementById('finalKills');
         const finalWave = document.getElementById('finalWave');
 
         document.getElementById('restartBtn').addEventListener('click', () => {
-            // 重置所有
             zombies.forEach(z => scene.remove(z.mesh));
             zombies = [];
             dropItems.forEach(d => { scene.remove(d.mesh); if (d.glow) scene.remove(d.glow); });
@@ -2459,11 +2773,19 @@
             isDead = false;
             airdropActive = false;
             airdropTimer = 25;
-            armor.helmet.durability = 80;
-            armor.vest.durability = 60;
+            isInVehicle = false;
+            currentVehicle = null;
+            document.getElementById('vehicleHUD').classList.remove('show');
+            document.getElementById('vehicleStatus').textContent = '';
             gameoverDiv.style.display = 'none';
             camera.position.set(0, 1.8, 0);
+            lockHint.classList.remove('hidden');
 
+            vehicles.forEach(v => scene.remove(v.mesh));
+            vehicles = [];
+            spawnInitialVehicles();
+
+            initArmor();
             initWeapons();
             for (let i = 0; i < 8; i++) spawnZombie();
             updateUI();
@@ -2471,7 +2793,7 @@
         });
 
         // ============================================================
-        //  22. 動畫循環
+        //  23. 動畫循環
         // ============================================================
         const clock = new THREE.Clock();
         let waveCheckTimer = 0;
@@ -2483,20 +2805,21 @@
             if (!isDead) {
                 movePlayer(delta);
 
-                // 空投計時
                 airdropTimer -= delta;
                 if (airdropTimer <= 0) {
                     spawnAirdrop();
                     airdropTimer = 30 + Math.random() * 25;
                 }
 
-                // 殭屍 AI
                 for (let i = zombies.length - 1; i >= 0; i--) {
                     const z = zombies[i];
                     if (!z) continue;
 
                     const dir = new THREE.Vector3();
-                    dir.subVectors(camera.position, z.mesh.position);
+                    const targetPos = isInVehicle && currentVehicle ?
+                        currentVehicle.mesh.position.clone() :
+                        camera.position.clone();
+                    dir.subVectors(targetPos, z.mesh.position);
                     dir.y = 0;
                     const dist = dir.length();
 
@@ -2505,39 +2828,59 @@
                         const spd = z.speed * (z.type === 'runner' ? 1.5 : 1);
                         z.mesh.position.x += dir.x * spd * delta;
                         z.mesh.position.z += dir.z * spd * delta;
-                        z.mesh.lookAt(camera.position.x, z.mesh.position.y, camera.position.z);
+                        z.mesh.lookAt(targetPos.x, z.mesh.position.y, targetPos.z);
                     }
 
-                    // 攻擊
-                    if (dist < 1.4) {
+                    let attackTarget = camera.position;
+                    let targetIsVehicle = false;
+                    if (isInVehicle && currentVehicle) {
+                        attackTarget = currentVehicle.mesh.position.clone();
+                        targetIsVehicle = true;
+                    }
+
+                    const attackDist = attackTarget.distanceTo(z.mesh.position);
+                    if (attackDist < 1.4) {
                         if (z.attackCooldown <= 0) {
                             let dmg = z.damage;
-                            // 護甲減傷
-                            const reduction = getDamageReduction();
-                            dmg = dmg * (1 - reduction);
-                            // 護甲吸收
-                            dmg = applyDamageToArmor(dmg);
-                            playerHealth -= dmg;
-                            z.attackCooldown = 1.0 + (z.type === 'runner' ? 0.3 : 0);
-                            playHurtSound();
-                            hurtFlash.classList.add('show');
-                            setTimeout(() => hurtFlash.classList.remove('show'), 200);
-
-                            if (playerHealth <= 0) {
-                                playerHealth = 0;
-                                isDead = true;
-                                finalKills.textContent = killCount;
-                                finalWave.textContent = wave;
-                                gameoverDiv.style.display = 'flex';
-                                document.exitPointerLock();
-                                updateUI();
+                            if (targetIsVehicle && currentVehicle) {
+                                currentVehicle.hp -= dmg * 0.5;
+                                emitParticles(currentVehicle.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0)),
+                                    15, [1, 0.5, 0.1]);
+                                if (currentVehicle.hp <= 0) {
+                                    emitParticles(currentVehicle.mesh.position.clone().add(new THREE.Vector3(0, 0.5,
+                                        0)), 60, [1, 0.3, 0], 2);
+                                    playExplosionSound();
+                                    const vIdx = vehicles.indexOf(currentVehicle);
+                                    if (vIdx > -1) {
+                                        scene.remove(currentVehicle.mesh);
+                                        vehicles.splice(vIdx, 1);
+                                    }
+                                    leaveVehicle();
+                                }
+                            } else {
+                                const reduction = getArmorReduction();
+                                dmg = dmg * (1 - reduction);
+                                dmg = applyDamageToArmor(dmg);
+                                playerHealth -= dmg;
+                                playHurtSound();
+                                hurtFlash.classList.add('show');
+                                setTimeout(() => hurtFlash.classList.remove('show'), 200);
+                                if (playerHealth <= 0) {
+                                    playerHealth = 0;
+                                    isDead = true;
+                                    finalKills.textContent = killCount;
+                                    finalWave.textContent = wave;
+                                    gameoverDiv.style.display = 'flex';
+                                    if (isLocked) document.exitPointerLock();
+                                    updateUI();
+                                }
                             }
+                            z.attackCooldown = 1.0 + (z.type === 'runner' ? 0.3 : 0);
                             updateUI();
                         }
                     }
                     if (z.attackCooldown > 0) z.attackCooldown -= delta;
 
-                    // 閃爍
                     if (z.hitFlash > 0) {
                         z.hitFlash -= delta;
                         z.mesh.children.forEach(child => {
@@ -2555,7 +2898,6 @@
                         });
                     }
 
-                    // 走路擺動
                     z.mesh.children.forEach((child, idx) => {
                         if (idx === 0 || idx === 1) return;
                         if (child.isMesh && child.geometry.type === 'CylinderGeometry') {
@@ -2574,7 +2916,6 @@
                     });
                 }
 
-                // 波數檢查
                 waveCheckTimer += delta;
                 if (zombies.length === 0 && waveCheckTimer > 2) {
                     wave++;
@@ -2586,7 +2927,6 @@
                     updateUI();
                 }
 
-                // 拾取檢測
                 let found = null;
                 for (const item of dropItems) {
                     if (!item.alive) continue;
@@ -2606,7 +2946,6 @@
                     }
                 }
 
-                // 更新粒子
                 const pos = particleSystem.geometry.attributes.position.array;
                 const col = particleSystem.geometry.attributes.color.array;
                 for (let i = particleList.length - 1; i >= 0; i--) {
@@ -2620,7 +2959,6 @@
                         pos[p.idx * 3 + 1] += p.vel.y * delta;
                         pos[p.idx * 3 + 2] += p.vel.z * delta;
                         p.vel.y -= 2.5 * delta;
-                        const alpha = p.life / p.maxLife;
                         col[p.idx * 3 + 1] *= 0.995;
                         col[p.idx * 3 + 2] *= 0.995;
                     }
@@ -2628,7 +2966,6 @@
                 particleSystem.geometry.attributes.position.needsUpdate = true;
                 particleSystem.geometry.attributes.color.needsUpdate = true;
 
-                // 掉落物浮動
                 for (const d of dropItems) {
                     if (!d.alive) continue;
                     d.mesh.position.y = 0.15 + Math.sin(time * 1.5 + d.bobOffset) * 0.05;
@@ -2647,7 +2984,7 @@
         }
 
         // ============================================================
-        //  23. 視窗調整
+        //  24. 視窗調整
         // ============================================================
         window.addEventListener('resize', () => {
             const w = window.innerWidth,
@@ -2664,10 +3001,11 @@
         updateUI();
         animate();
         console.log('🧟 殭屍生存完整版已啟動!');
-        console.log('📖 操作: WASD移動 | 滑鼠瞄準射擊 | 1-5切換武器 | R換彈 | E拾取 | Tab背包');
-        console.log('⭐ 武器稀有度: 普通 ⭐ → 傳說 ⭐⭐⭐⭐⭐');
-        console.log('🛡️ 護甲可修復，醫療品可存入背包');
-        console.log('📦 空投每 25-50 秒一次');
+        console.log('📖 操作: 點擊鎖定 | WASD移動 | 滑鼠瞄準射擊 | 1-5切換武器 | R換彈 | E拾取/載具射擊 | F進入/離開載具 | Tab背包');
+        console.log('⭐ 防具也有稀有度! 載具也有稀有度!');
+        console.log('💥 胖子爆炸有華麗粒子效果!');
+        console.log('🚗 載具可駕駛，有血量，可被殭屍攻擊!');
+        console.log('🔒 防護已啟用: 禁用右鍵/F12/開發者工具');
     </script>
 </body>
 </html>
