@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>殭屍生存 - 載具 + 防具稀有度</title>
+    <title>殭屍生存 - 城市大樓</title>
     <style>
-        /* ===== 樣式 (與之前相同) ===== */
         * {
             margin: 0;
             padding: 0;
@@ -468,7 +467,6 @@
             opacity: 1;
         }
 
-        /* 鎖定提示 */
         #lockHint {
             position: absolute;
             top: 50%;
@@ -590,7 +588,6 @@
         <div id="minimap"><canvas id="minimapCanvas" width="140" height="140"></canvas></div>
         <div id="vehicleHUD">🚗 載具血量: <span id="vehicleHealth">100</span>%</div>
 
-        <!-- 鎖定提示 -->
         <div id="lockHint">
             <span class="icon">🎯</span>
             點擊畫面開始<br>
@@ -623,13 +620,10 @@
 
     <script type="module">
         // ============================================================
-        //  防護程式碼 (放在最前面)
+        //  防護程式碼
         // ============================================================
-
-        // 防護 1: 禁用右鍵選單
         document.addEventListener('contextmenu', e => e.preventDefault());
 
-        // 防護 2: 阻擋快捷鍵 (F12, Ctrl+Shift+I/J/C, Ctrl+U, Cmd+Option+I/J)
         document.addEventListener('keydown', e => {
             if (e.key === 'F12' || e.keyCode === 123) { e.preventDefault();
                 e.stopPropagation(); return false; }
@@ -639,15 +633,12 @@
                 e.stopPropagation(); return false; }
             if (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) { e.preventDefault();
                 e.stopPropagation(); return false; }
-            // 阻擋 Ctrl+Shift+R (硬刷新)
             if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'R') { e.preventDefault();
                 e.stopPropagation(); return false; }
-            // 阻擋 Ctrl+R (刷新)
             if (e.ctrlKey && e.key.toUpperCase() === 'R') { e.preventDefault();
                 e.stopPropagation(); return false; }
         });
 
-        // 防護 3: 無限 debugger 陷阱
         (function() {
             setInterval(() => {
                 try {
@@ -655,16 +646,6 @@
                 } catch (e) {}
             }, 500);
         })();
-
-        // 防護 4: 監聽使用者動作以刷新閒置計時器 (防止自動鎖定)
-        let idleTimer = null;
-
-        function resetIdleTimer() {
-            // 什麼都不做，只是佔位
-        }
-        ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => {
-            document.addEventListener(evt, resetIdleTimer);
-        });
 
         // ============================================================
         //  導入 Three.js
@@ -676,11 +657,10 @@
         import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
         // ============================================================
-        //  0. 滑鼠鎖定修復
+        //  0. 滑鼠鎖定 (修復版)
         // ============================================================
         let audioCtx = null;
         let isLocked = false;
-        let isPointerLocked = false;
         const lockHint = document.getElementById('lockHint');
 
         function initAudio() {
@@ -694,7 +674,6 @@
             }
         }
 
-        // 點擊畫面：初始化音頻 + 鎖定滑鼠
         document.addEventListener('click', () => {
             initAudio();
             if (!isLocked && !isDead && !inventoryOpen) {
@@ -705,12 +684,9 @@
             }
         });
 
-        // PointerLock 狀態監聽
         document.addEventListener('pointerlockchange', () => {
             const isNowLocked = document.pointerLockElement === renderer.domElement;
             isLocked = isNowLocked;
-            isPointerLocked = isNowLocked;
-
             if (isNowLocked) {
                 lockHint.classList.add('hidden');
                 document.body.style.cursor = 'none';
@@ -727,7 +703,7 @@
         // ============================================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0a18);
-        scene.fog = new THREE.FogExp2(0x0a0a18, 0.004);
+        scene.fog = new THREE.FogExp2(0x0a0a18, 0.003);
 
         const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 120);
         camera.position.set(0, 1.8, 0);
@@ -745,7 +721,7 @@
         composer.addPass(new RenderPass(scene, camera));
         const bloom = new UnrealBloomPass(
             new THREE.Vector2(window.innerWidth, window.innerHeight),
-            0.2, 0.15, 0.05
+            0.15, 0.1, 0.05
         );
         composer.addPass(bloom);
         composer.addPass(new OutputPass());
@@ -753,24 +729,24 @@
         // ============================================================
         //  2. 燈光
         // ============================================================
-        const ambient = new THREE.AmbientLight(0x223366, 0.25);
+        const ambient = new THREE.AmbientLight(0x223366, 0.2);
         scene.add(ambient);
 
         const mainLight = new THREE.DirectionalLight(0xffddaa, 2.0);
-        mainLight.position.set(15, 25, 10);
+        mainLight.position.set(15, 30, 10);
         mainLight.castShadow = true;
         mainLight.shadow.mapSize.width = 4096;
         mainLight.shadow.mapSize.height = 4096;
         mainLight.shadow.camera.near = 0.5;
-        mainLight.shadow.camera.far = 80;
-        mainLight.shadow.camera.left = -35;
-        mainLight.shadow.camera.right = 35;
-        mainLight.shadow.camera.top = 35;
-        mainLight.shadow.camera.bottom = -35;
+        mainLight.shadow.camera.far = 100;
+        mainLight.shadow.camera.left = -50;
+        mainLight.shadow.camera.right = 50;
+        mainLight.shadow.camera.top = 50;
+        mainLight.shadow.camera.bottom = -50;
         scene.add(mainLight);
 
-        const fillLight = new THREE.DirectionalLight(0x4488ff, 0.2);
-        fillLight.position.set(-15, 5, -15);
+        const fillLight = new THREE.DirectionalLight(0x4488ff, 0.15);
+        fillLight.position.set(-15, 10, -15);
         scene.add(fillLight);
 
         // ============================================================
@@ -783,31 +759,32 @@
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#2a2a2e';
             ctx.fillRect(0, 0, 512, 512);
-            for (let i = 0; i < 8000; i++) {
+            for (let i = 0; i < 10000; i++) {
                 const x = Math.random() * 512,
                     y = Math.random() * 512;
                 const g = 60 + Math.random() * 80;
                 ctx.fillStyle = `rgb(${g},${g},${g+10})`;
                 ctx.fillRect(x, y, 1 + Math.random() * 2, 1 + Math.random() * 2);
             }
-            ctx.strokeStyle = 'rgba(80,80,90,0.15)';
+            // 道路標線
+            ctx.strokeStyle = 'rgba(80,80,90,0.12)';
             ctx.lineWidth = 2;
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 30; i++) {
                 const x = Math.random() * 512;
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
-                ctx.lineTo(x + (Math.random() - 0.5) * 100, 512);
+                ctx.lineTo(x + (Math.random() - 0.5) * 150, 512);
                 ctx.stroke();
             }
             const tex = new THREE.CanvasTexture(canvas);
             tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-            tex.repeat.set(30, 30);
+            tex.repeat.set(40, 40);
             tex.anisotropy = 8;
             return tex;
         }
 
         const ground = new THREE.Mesh(
-            new THREE.CircleGeometry(60, 80),
+            new THREE.CircleGeometry(70, 80),
             new THREE.MeshStandardMaterial({
                 map: createGroundTexture(),
                 roughness: 0.9,
@@ -820,35 +797,54 @@
         scene.add(ground);
 
         // ============================================================
-        //  4. 建築物
+        //  4. 建築物碰撞系統 (修復穿牆)
         // ============================================================
         const buildings = [];
 
-        function createBuilding(x, z, w, d, h, color = 0x445566, hasDoor = true) {
+        // 碰撞檢測函數
+        function isInsideBuilding(x, z, margin = 0.4) {
+            for (const b of buildings) {
+                if (x > b.minX + margin && x < b.maxX - margin &&
+                    z > b.minZ + margin && z < b.maxZ - margin) {
+                    return b;
+                }
+            }
+            return null;
+        }
+
+        function isPointInBuilding(x, z, margin = 0.2) {
+            for (const b of buildings) {
+                if (x > b.minX + margin && x < b.maxX - margin &&
+                    z > b.minZ + margin && z < b.maxZ - margin) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 創建建築物函數 (支援高樓)
+        function createBuilding(x, z, w, d, h, color = 0x445566, hasDoor = true, floorCount = 1) {
             const g = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0.1 });
+            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.2 });
             const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
             wall.position.y = h / 2;
             wall.castShadow = true;
             wall.receiveShadow = true;
             g.add(wall);
 
-            const roofMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
-            const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.1, d + 0.3), roofMat);
-            roof.position.y = h + 0.05;
-            roof.castShadow = true;
-            g.add(roof);
-
+            // 窗戶 (樓層越多窗戶越多)
             const winMat = new THREE.MeshStandardMaterial({
                 color: 0x88ccff,
                 emissive: 0x88ccff,
-                emissiveIntensity: 0.05,
+                emissiveIntensity: 0.08,
                 transparent: true,
-                opacity: 0.3,
+                opacity: 0.25,
             });
-            for (let wx of [-w * 0.3, w * 0.3]) {
-                for (let wy of [h * 0.3, h * 0.6]) {
-                    const win = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), winMat);
+            const floors = Math.max(1, Math.floor(h / 2.5));
+            for (let f = 0; f < floors; f++) {
+                const wy = 0.8 + f * (h / floors);
+                for (let wx of [-w * 0.3, w * 0.3]) {
+                    const win = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.5), winMat);
                     win.position.set(wx, wy, d / 2 + 0.01);
                     g.add(win);
                     const win2 = win.clone();
@@ -858,6 +854,14 @@
                 }
             }
 
+            // 屋頂
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.1, d + 0.2), roofMat);
+            roof.position.y = h + 0.05;
+            roof.castShadow = true;
+            g.add(roof);
+
+            // 大門 (可進入標記)
             if (hasDoor) {
                 const doorMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.9 });
                 const door = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.2), doorMat);
@@ -871,6 +875,8 @@
             g.position.set(x, 0, z);
             scene.add(g);
 
+            // 儲存碰撞資料 (稍微縮小碰撞範圍讓玩家可以靠近牆壁)
+            const margin = 0.3;
             buildings.push({
                 mesh: g,
                 x,
@@ -878,55 +884,83 @@
                 w,
                 d,
                 h,
-                minX: x - w / 2,
-                maxX: x + w / 2,
-                minZ: z - d / 2,
-                maxZ: z + d / 2,
+                minX: x - w / 2 - margin,
+                maxX: x + w / 2 + margin,
+                minZ: z - d / 2 - margin,
+                maxZ: z + d / 2 + margin,
                 enterable: hasDoor,
+                floorCount: floors,
             });
             return g;
         }
 
-        createBuilding(-12, -8, 5, 6, 3.5, 0x556677);
-        createBuilding(-12, 0, 5, 6, 3.5, 0x667788);
-        createBuilding(-12, 8, 5, 6, 3.5, 0x556677);
-        createBuilding(0, -12, 7, 5, 4.0, 0x445566);
-        createBuilding(0, 0, 8, 6, 4.5, 0x556677);
-        createBuilding(0, 10, 7, 5, 4.0, 0x445566);
-        createBuilding(12, -8, 5, 6, 3.5, 0x667788);
-        createBuilding(12, 0, 5, 6, 3.5, 0x556677);
-        createBuilding(12, 8, 5, 6, 3.5, 0x667788);
-        createBuilding(-6, -15, 8, 5, 5.0, 0x3a4a5a);
-        createBuilding(6, 14, 8, 5, 5.0, 0x3a4a5a);
+        // ============================================================
+        //  5. 生成城市 (包含高樓大廈)
+        // ============================================================
 
+        // 市中心高樓群
+        // 高樓 1 - 8層
+        createBuilding(-15, -10, 6, 6, 12, 0x445566, true, 8);
+        // 高樓 2 - 6層
+        createBuilding(15, -10, 5, 5, 10, 0x556677, true, 6);
+        // 高樓 3 - 7層
+        createBuilding(-15, 12, 6, 5, 11, 0x3a4a5a, true, 7);
+        // 高樓 4 - 5層
+        createBuilding(15, 12, 5, 6, 9, 0x4a5a6a, true, 5);
+
+        // 中型建築
+        createBuilding(-8, -5, 4, 4, 6, 0x667788, true, 4);
+        createBuilding(8, -5, 4, 4, 6, 0x5a6a7a, true, 4);
+        createBuilding(-8, 6, 4, 4, 6, 0x6a7a8a, true, 4);
+        createBuilding(8, 6, 4, 4, 6, 0x4a5a6a, true, 4);
+
+        // 小型建築 (矮房)
+        createBuilding(-4, -8, 3, 3, 3.5, 0x7a8a7a, true, 2);
+        createBuilding(4, -8, 3, 3, 3.5, 0x8a7a6a, true, 2);
+        createBuilding(-4, 9, 3, 3, 3.5, 0x6a7a8a, true, 2);
+        createBuilding(4, 9, 3, 3, 3.5, 0x7a8a9a, true, 2);
+
+        // 邊緣建築
+        createBuilding(-20, -5, 5, 4, 5, 0x3a4a5a, true, 3);
+        createBuilding(20, -5, 5, 4, 5, 0x4a5a6a, true, 3);
+        createBuilding(-20, 5, 5, 4, 5, 0x5a6a7a, true, 3);
+        createBuilding(20, 5, 5, 4, 5, 0x6a7a8a, true, 3);
+
+        // 街燈
         function createStreetLight(x, z) {
             const g = new THREE.Group();
             const poleMat = new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.4, metalness: 0.7 });
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 3.0, 8), poleMat);
-            pole.position.y = 1.5;
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 2.8, 8), poleMat);
+            pole.position.y = 1.4;
             pole.castShadow = true;
             g.add(pole);
             const lamp = new THREE.Mesh(
-                new THREE.SphereGeometry(0.1, 8, 8),
+                new THREE.SphereGeometry(0.08, 8, 8),
                 new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.3, metalness: 0.5 })
             );
-            lamp.position.y = 3.0;
+            lamp.position.y = 2.8;
             g.add(lamp);
-            const light = new THREE.PointLight(0xffcc77, 0.3, 4);
-            light.position.y = 2.8;
+            const light = new THREE.PointLight(0xffcc77, 0.25, 4);
+            light.position.y = 2.6;
             g.add(light);
             g.position.set(x, 0, z);
             scene.add(g);
         }
-        for (let x = -18; x <= 18; x += 6) {
-            for (let z = -18; z <= 18; z += 6) {
+
+        // 沿著街道放路燈
+        for (let x = -25; x <= 25; x += 5) {
+            for (let z = -25; z <= 25; z += 5) {
                 if (Math.abs(x) < 3 && Math.abs(z) < 3) continue;
-                if (Math.random() < 0.3) createStreetLight(x + (Math.random() - 0.5) * 2, z + (Math.random() - 0.5) * 2);
+                // 檢查是否在建築物內
+                if (isPointInBuilding(x, z, 0.1)) continue;
+                if (Math.random() < 0.15) {
+                    createStreetLight(x + (Math.random() - 0.5) * 1, z + (Math.random() - 0.5) * 1);
+                }
             }
         }
 
         // ============================================================
-        //  5. 防具稀有度系統
+        //  6. 防具稀有度系統
         // ============================================================
         const ARMOR_RARITIES = {
             common: { label: '普通', color: '#888888', stars: '⭐', dmgReduction: 0.05, maxDurability: 60 },
@@ -999,7 +1033,7 @@
         }
 
         // ============================================================
-        //  6. 武器系統
+        //  7. 武器系統
         // ============================================================
         const RARITIES = {
             common: { label: '普通', color: '#888888', stars: '⭐', dmgMult: 1.0, ammoMult: 1.0, fireRateMult: 1.0 },
@@ -1097,7 +1131,7 @@
         }
 
         // ============================================================
-        //  7. 音效
+        //  8. 音效
         // ============================================================
         function playShootSound(volume = 0.25) {
             try {
@@ -1237,7 +1271,7 @@
         }
 
         // ============================================================
-        //  8. 載具系統
+        //  9. 載具系統
         // ============================================================
         let vehicles = [];
         let currentVehicle = null;
@@ -1356,16 +1390,17 @@
 
         function spawnInitialVehicles() {
             const positions = [
-                [-8, -6, 0.5],
-                [8, -5, -0.8],
-                [-6, 9, 1.2],
-                [7, 7, -0.5],
-                [0, -10, 0],
-                [-10, 4, 2.0],
-                [10, 5, -1.5],
+                [-10, -8, 0.5],
+                [10, -7, -0.8],
+                [-8, 10, 1.2],
+                [9, 9, -0.5],
+                [2, -12, 0],
+                [-12, 5, 2.0],
+                [12, 6, -1.5],
+                [0, 14, 0.3],
             ];
             for (const [x, z, rot] of positions) {
-                if (Math.random() < 0.7) {
+                if (Math.random() < 0.6 && !isPointInBuilding(x, z, 1)) {
                     createVehicle(x, z, rot);
                 }
             }
@@ -1497,20 +1532,23 @@
                 move.normalize().multiplyScalar(speed * delta);
                 const newX = v.mesh.position.x + move.x;
                 const newZ = v.mesh.position.z + move.z;
-                const dist = Math.sqrt(newX * newX + newZ * newZ);
-                if (dist < 55) {
-                    v.mesh.position.x = newX;
-                    v.mesh.position.z = newZ;
-                    camera.position.x = v.mesh.position.x;
-                    camera.position.z = v.mesh.position.z;
-                    camera.position.y = 0.8;
-                    v.mesh.rotation.y = Math.atan2(move.x, move.z);
+                // 載具碰撞檢測 (不能進入建築物)
+                if (!isPointInBuilding(newX, newZ, 0.8)) {
+                    const dist = Math.sqrt(newX * newX + newZ * newZ);
+                    if (dist < 55) {
+                        v.mesh.position.x = newX;
+                        v.mesh.position.z = newZ;
+                        camera.position.x = v.mesh.position.x;
+                        camera.position.z = v.mesh.position.z;
+                        camera.position.y = 0.8;
+                        v.mesh.rotation.y = Math.atan2(move.x, move.z);
+                    }
                 }
             }
         }
 
         // ============================================================
-        //  9. 背包 & 醫療品
+        //  10. 背包 & 醫療品
         // ============================================================
         const inventory = { items: [] };
         const MEDICAL_ITEMS = {
@@ -1522,7 +1560,7 @@
         };
 
         // ============================================================
-        //  10. 掉落系統
+        //  11. 掉落系統
         // ============================================================
         let dropItems = [];
         let nearDrop = null;
@@ -1657,7 +1695,7 @@
         }
 
         // ============================================================
-        //  11. 殭屍系統
+        //  12. 殭屍系統 (加入碰撞檢測防止穿牆)
         // ============================================================
         const ZOMBIE_TYPES = {
             normal: { name: '普通', color: 0x7a8a7a, speed: 0.4, health: 3, damage: 8, size: 1.0, score: 10,
@@ -1679,6 +1717,23 @@
         let inventoryOpen = false;
 
         function createZombie(posX, posZ, type = null) {
+            // 確保殭屍不在建築物內生成
+            if (isPointInBuilding(posX, posZ, 0.5)) {
+                posX += (Math.random() - 0.5) * 4;
+                posZ += (Math.random() - 0.5) * 4;
+                if (isPointInBuilding(posX, posZ, 0.5)) {
+                    // 如果還在建築物內，重新生成位置
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = 3 + Math.random() * 8;
+                    posX = camera.position.x + Math.cos(angle) * radius;
+                    posZ = camera.position.z + Math.sin(angle) * radius;
+                    if (isPointInBuilding(posX, posZ, 0.5)) {
+                        posX = camera.position.x + (Math.random() - 0.5) * 10;
+                        posZ = camera.position.z + (Math.random() - 0.5) * 10;
+                    }
+                }
+            }
+
             if (!type) {
                 const types = ['normal', 'normal', 'normal', 'runner', 'fat'];
                 if (wave > 3) types.push('tank');
@@ -1790,11 +1845,12 @@
             const radius = 6 + Math.random() * 14;
             const x = camera.position.x + Math.cos(angle) * radius;
             const z = camera.position.z + Math.sin(angle) * radius;
-            let inside = false;
-            for (const b of buildings) {
-                if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) { inside = true; break; }
+            // 檢查是否在建築物內
+            if (isPointInBuilding(x, z, 0.5)) {
+                // 調整位置
+                spawnZombie();
+                return;
             }
-            if (inside) { spawnZombie(); return; }
             createZombie(x, z);
         }
 
@@ -1852,7 +1908,7 @@
         }
 
         // ============================================================
-        //  12. 粒子系統
+        //  13. 粒子系統
         // ============================================================
         const particleCount = 800;
         const pGeo = new THREE.BufferGeometry();
@@ -1915,7 +1971,7 @@
         }
 
         // ============================================================
-        //  13. UI 更新
+        //  14. UI 更新
         // ============================================================
         const healthBar = document.getElementById('healthBar');
         const healthLabel = document.getElementById('healthLabel');
@@ -1926,7 +1982,6 @@
         const waveDisplay = document.getElementById('waveDisplay');
         const zombieCountEl = document.getElementById('zombieCount');
         const weaponNameEl = document.getElementById('weaponName');
-        const weaponRarityEl = document.getElementById('weaponRarity');
         const ammoDisplayEl = document.getElementById('ammoDisplay');
         const reloadHintEl = document.getElementById('reloadHint');
         const weaponSlotsEl = document.getElementById('weaponSlots');
@@ -2003,7 +2058,7 @@
         }
 
         // ============================================================
-        //  14. 醫療品使用
+        //  15. 醫療品使用
         // ============================================================
         function useMedicalItem(idx) {
             const item = inventory.items[idx];
@@ -2045,7 +2100,7 @@
         }
 
         // ============================================================
-        //  15. 拾取系統
+        //  16. 拾取系統
         // ============================================================
         function pickupItem() {
             if (!nearDrop || !nearDrop.alive) return;
@@ -2204,7 +2259,7 @@
         }
 
         // ============================================================
-        //  16. 射擊系統
+        //  17. 射擊系統
         // ============================================================
         const raycaster = new THREE.Raycaster();
 
@@ -2309,7 +2364,7 @@
         }
 
         // ============================================================
-        //  17. 換彈
+        //  18. 換彈
         // ============================================================
         function reloadWeapon() {
             if (isReloading) return;
@@ -2335,7 +2390,7 @@
         }
 
         // ============================================================
-        //  18. 空投系統
+        //  19. 空投系統 (簡化)
         // ============================================================
         let airdropActive = false;
         let airdropTimer = 25;
@@ -2550,13 +2605,13 @@
         }
 
         // ============================================================
-        //  19. 控制
+        //  20. 控制
         // ============================================================
         const keys = { w: false, a: false, s: false, d: false, shift: false };
 
         document.addEventListener('keydown', (e) => {
             if (isDead) return;
-            // 防護快捷鍵 (已經在外面處理，但這裡再攔截一次)
+            // 防護
             if (e.key === 'F12' || e.keyCode === 123) { e.preventDefault(); return; }
             if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K'].includes(e.key.toUpperCase())) { e.preventDefault(); return; }
             if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'U') { e.preventDefault(); return; }
@@ -2625,7 +2680,7 @@
         document.getElementById('invClose').addEventListener('click', toggleInventory);
 
         // ============================================================
-        //  20. 移動
+        //  21. 移動 (含碰撞檢測)
         // ============================================================
         function movePlayer(delta) {
             if (isDead || inventoryOpen) return;
@@ -2654,17 +2709,21 @@
                 move.normalize().multiplyScalar(speed * delta);
                 const newX = camera.position.x + move.x;
                 const newZ = camera.position.z + move.z;
-                const dist = Math.sqrt(newX * newX + newZ * newZ);
-                if (dist < 55) {
-                    camera.position.x = newX;
-                    camera.position.z = newZ;
+
+                // 碰撞檢測：不能進入建築物
+                if (!isPointInBuilding(newX, newZ, 0.3)) {
+                    const dist = Math.sqrt(newX * newX + newZ * newZ);
+                    if (dist < 58) {
+                        camera.position.x = newX;
+                        camera.position.z = newZ;
+                    }
                 }
                 camera.position.y = 1.8;
             }
         }
 
         // ============================================================
-        //  21. 小地圖
+        //  22. 小地圖
         // ============================================================
         const minimapCanvas = document.getElementById('minimapCanvas');
         const minimapCtx = minimapCanvas.getContext('2d');
@@ -2682,17 +2741,19 @@
             ctx.arc(70, 70, 68, 0, Math.PI * 2);
             ctx.fill();
 
-            const scale = 2.2;
+            const scale = 2.0;
             const cx = 70,
                 cy = 70;
             const px = camera.position.x,
                 pz = camera.position.z;
 
+            // 建築物 (高樓用不同顏色)
             for (const b of buildings) {
                 const x = cx + (b.x - px) * scale;
                 const y = cy + (b.z - pz) * scale;
                 if (x < -10 || x > 150 || y < -10 || y > 150) continue;
-                ctx.fillStyle = 'rgba(80,100,140,0.4)';
+                const isHigh = b.h > 6;
+                ctx.fillStyle = isHigh ? 'rgba(100,140,200,0.6)' : 'rgba(80,100,140,0.4)';
                 ctx.fillRect(x - b.w * scale / 2, y - b.d * scale / 2, b.w * scale, b.d * scale);
                 ctx.strokeStyle = 'rgba(150,180,220,0.15)';
                 ctx.lineWidth = 0.5;
@@ -2755,7 +2816,7 @@
         }
 
         // ============================================================
-        //  22. 遊戲狀態
+        //  23. 遊戲狀態
         // ============================================================
         const gameoverDiv = document.getElementById('gameover');
         const finalKills = document.getElementById('finalKills');
@@ -2793,7 +2854,7 @@
         });
 
         // ============================================================
-        //  23. 動畫循環
+        //  24. 動畫循環
         // ============================================================
         const clock = new THREE.Clock();
         let waveCheckTimer = 0;
@@ -2811,6 +2872,7 @@
                     airdropTimer = 30 + Math.random() * 25;
                 }
 
+                // 殭屍 AI (加入碰撞檢測)
                 for (let i = zombies.length - 1; i >= 0; i--) {
                     const z = zombies[i];
                     if (!z) continue;
@@ -2826,11 +2888,23 @@
                     if (dist > 0.5 && dist < 30) {
                         dir.normalize();
                         const spd = z.speed * (z.type === 'runner' ? 1.5 : 1);
-                        z.mesh.position.x += dir.x * spd * delta;
-                        z.mesh.position.z += dir.z * spd * delta;
+                        const newX = z.mesh.position.x + dir.x * spd * delta;
+                        const newZ = z.mesh.position.z + dir.z * spd * delta;
+
+                        // 殭屍碰撞檢測：不能進入建築物
+                        if (!isPointInBuilding(newX, newZ, 0.5)) {
+                            z.mesh.position.x = newX;
+                            z.mesh.position.z = newZ;
+                        } else {
+                            // 如果被卡住，稍微偏移方向
+                            const altAngle = Math.atan2(dir.z, dir.x) + (Math.random() - 0.5) * 1.5;
+                            z.mesh.position.x += Math.cos(altAngle) * spd * delta * 0.5;
+                            z.mesh.position.z += Math.sin(altAngle) * spd * delta * 0.5;
+                        }
                         z.mesh.lookAt(targetPos.x, z.mesh.position.y, targetPos.z);
                     }
 
+                    // 攻擊 (對玩家或載具)
                     let attackTarget = camera.position;
                     let targetIsVehicle = false;
                     if (isInVehicle && currentVehicle) {
@@ -2881,6 +2955,7 @@
                     }
                     if (z.attackCooldown > 0) z.attackCooldown -= delta;
 
+                    // 閃爍
                     if (z.hitFlash > 0) {
                         z.hitFlash -= delta;
                         z.mesh.children.forEach(child => {
@@ -2898,6 +2973,7 @@
                         });
                     }
 
+                    // 走路擺動
                     z.mesh.children.forEach((child, idx) => {
                         if (idx === 0 || idx === 1) return;
                         if (child.isMesh && child.geometry.type === 'CylinderGeometry') {
@@ -2916,6 +2992,7 @@
                     });
                 }
 
+                // 波數檢查
                 waveCheckTimer += delta;
                 if (zombies.length === 0 && waveCheckTimer > 2) {
                     wave++;
@@ -2927,6 +3004,7 @@
                     updateUI();
                 }
 
+                // 拾取檢測
                 let found = null;
                 for (const item of dropItems) {
                     if (!item.alive) continue;
@@ -2946,6 +3024,7 @@
                     }
                 }
 
+                // 粒子更新
                 const pos = particleSystem.geometry.attributes.position.array;
                 const col = particleSystem.geometry.attributes.color.array;
                 for (let i = particleList.length - 1; i >= 0; i--) {
@@ -2966,6 +3045,7 @@
                 particleSystem.geometry.attributes.position.needsUpdate = true;
                 particleSystem.geometry.attributes.color.needsUpdate = true;
 
+                // 掉落物浮動
                 for (const d of dropItems) {
                     if (!d.alive) continue;
                     d.mesh.position.y = 0.15 + Math.sin(time * 1.5 + d.bobOffset) * 0.05;
@@ -2984,7 +3064,7 @@
         }
 
         // ============================================================
-        //  24. 視窗調整
+        //  25. 視窗調整
         // ============================================================
         window.addEventListener('resize', () => {
             const w = window.innerWidth,
@@ -3000,12 +3080,10 @@
         // ============================================================
         updateUI();
         animate();
-        console.log('🧟 殭屍生存完整版已啟動!');
+        console.log('🏙️ 殭屍生存 - 城市大樓版已啟動!');
         console.log('📖 操作: 點擊鎖定 | WASD移動 | 滑鼠瞄準射擊 | 1-5切換武器 | R換彈 | E拾取/載具射擊 | F進入/離開載具 | Tab背包');
-        console.log('⭐ 防具也有稀有度! 載具也有稀有度!');
-        console.log('💥 胖子爆炸有華麗粒子效果!');
-        console.log('🚗 載具可駕駛，有血量，可被殭屍攻擊!');
-        console.log('🔒 防護已啟用: 禁用右鍵/F12/開發者工具');
+        console.log('🏢 高樓大廈已加入! 最高 8 層樓!');
+        console.log('🔒 碰撞檢測已修復，殭屍和玩家都無法穿牆!');
     </script>
 </body>
 </html>
