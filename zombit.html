@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>殭屍生存 - 城市大樓</title>
+    <title>⚔️ 殭屍生存 - 戰鬥版</title>
     <style>
         * {
             margin: 0;
@@ -17,6 +17,69 @@
             user-select: none;
             cursor: default;
         }
+
+        /* 載入畫面 */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a18;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #fff;
+            transition: opacity 0.5s;
+        }
+        #loading .icon {
+            font-size: 72px;
+            margin-bottom: 16px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        #loading .title {
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 6px;
+            background: linear-gradient(135deg, #ff6644, #ffcc44);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #loading .sub {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.3);
+            margin-top: 4px;
+            letter-spacing: 2px;
+        }
+        #loading .bar-wrap {
+            width: 280px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        #loading .bar-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff6644, #ffcc44);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        #loading .percent {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.2);
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
         #ui {
             position: absolute;
             top: 0;
@@ -99,6 +162,11 @@
         #vehicleStatus {
             color: #88ddff;
             font-size: 12px;
+        }
+        #fpsDisplay {
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
         }
 
         #crosshair {
@@ -545,10 +613,30 @@
                 font-size: 16px;
                 padding: 14px 24px;
             }
+            #loading .bar-wrap {
+                width: 200px;
+            }
+            #loading .title {
+                font-size: 18px;
+            }
+            #loading .icon {
+                font-size: 56px;
+            }
         }
     </style>
 </head>
 <body>
+
+    <!-- ===== 載入畫面 (⚔️ 劍) ===== -->
+    <div id="loading">
+        <div class="icon">⚔️</div>
+        <div class="title">殭屍生存</div>
+        <div class="sub">載入中</div>
+        <div class="bar-wrap">
+            <div class="bar-fill" id="loadBar"></div>
+        </div>
+        <div class="percent" id="loadPercent">0%</div>
+    </div>
 
     <!-- ===== UI ===== -->
     <div id="ui">
@@ -568,6 +656,7 @@
                 <span class="stat-text" id="waveDisplay">🌊 第 1 波</span>
                 <span class="stat-text" id="zombieCount" style="color:#ff6644;font-size:12px;">🧟 0</span>
                 <span class="stat-text" id="vehicleStatus" style="color:#88ddff;font-size:11px;"></span>
+                <span class="stat-text" id="fpsDisplay">FPS: 60</span>
             </div>
         </div>
 
@@ -589,7 +678,7 @@
         <div id="vehicleHUD">🚗 載具血量: <span id="vehicleHealth">100</span>%</div>
 
         <div id="lockHint">
-            <span class="icon">🎯</span>
+            <span class="icon">⚔️</span>
             點擊畫面開始<br>
             <span style="font-size:14px;color:rgba(255,255,255,0.3);">滑鼠鎖定後即可遊玩</span>
         </div>
@@ -612,52 +701,89 @@
     <script type="importmap">
         {
             "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
             }
         }
     </script>
 
     <script type="module">
         // ============================================================
-        //  防護程式碼
+        //  載入進度
         // ============================================================
-        document.addEventListener('contextmenu', e => e.preventDefault());
+        const loadBar = document.getElementById('loadBar');
+        const loadPercent = document.getElementById('loadPercent');
+        let loadProgress = 0;
 
-        document.addEventListener('keydown', e => {
-            if (e.key === 'F12' || e.keyCode === 123) { e.preventDefault();
-                e.stopPropagation(); return false; }
-            if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K'].includes(e.key.toUpperCase())) { e.preventDefault();
-                e.stopPropagation(); return false; }
-            if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'U') { e.preventDefault();
-                e.stopPropagation(); return false; }
-            if (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) { e.preventDefault();
-                e.stopPropagation(); return false; }
-            if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'R') { e.preventDefault();
-                e.stopPropagation(); return false; }
-            if (e.ctrlKey && e.key.toUpperCase() === 'R') { e.preventDefault();
-                e.stopPropagation(); return false; }
-        });
+        function updateLoad(progress) {
+            loadProgress = Math.min(progress, 100);
+            loadBar.style.width = loadProgress + '%';
+            loadPercent.textContent = Math.round(loadProgress) + '%';
+            if (loadProgress >= 100) {
+                setTimeout(() => {
+                    document.getElementById('loading').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('loading').style.display = 'none';
+                    }, 500);
+                }, 300);
+            }
+        }
 
-        (function() {
-            setInterval(() => {
-                try {
-                    (function() { return false; })['constructor']('debugger')();
-                } catch (e) {}
-            }, 500);
-        })();
+        updateLoad(10);
+
+        // ============================================================
+        //  環境檢測 (開發模式自動關閉防護)
+        // ============================================================
+        const isDev = window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname === '';
+
+        if (!isDev) {
+            document.addEventListener('contextmenu', e => e.preventDefault());
+
+            document.addEventListener('keydown', e => {
+                if (e.key === 'F12' || e.keyCode === 123) { e.preventDefault();
+                    e.stopPropagation(); return false; }
+                if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K'].includes(e.key.toUpperCase())) { e.preventDefault();
+                    e.stopPropagation(); return false; }
+                if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'U') { e.preventDefault();
+                    e.stopPropagation(); return false; }
+                if (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) { e.preventDefault();
+                    e.stopPropagation(); return false; }
+                if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'R') { e.preventDefault();
+                    e.stopPropagation(); return false; }
+                if (e.ctrlKey && e.key.toUpperCase() === 'R') { e.preventDefault();
+                    e.stopPropagation(); return false; }
+            });
+
+            (function() {
+                let count = 0;
+                setInterval(() => {
+                    if (count++ > 3) return;
+                    try {
+                        (function() { return false; })['constructor']('debugger')();
+                    } catch (e) {}
+                }, 2000);
+            })();
+        } else {
+            console.log('🛠️ 開發模式 - 防護已關閉');
+        }
 
         // ============================================================
         //  導入 Three.js
         // ============================================================
+        updateLoad(20);
+
         import * as THREE from 'three';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
+        updateLoad(40);
+
         // ============================================================
-        //  0. 滑鼠鎖定 (修復版)
+        //  0. 滑鼠鎖定
         // ============================================================
         let audioCtx = null;
         let isLocked = false;
@@ -708,7 +834,7 @@
         const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 120);
         camera.position.set(0, 1.8, 0);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
@@ -721,10 +847,12 @@
         composer.addPass(new RenderPass(scene, camera));
         const bloom = new UnrealBloomPass(
             new THREE.Vector2(window.innerWidth, window.innerHeight),
-            0.15, 0.1, 0.05
+            0.12, 0.1, 0.05
         );
         composer.addPass(bloom);
         composer.addPass(new OutputPass());
+
+        updateLoad(50);
 
         // ============================================================
         //  2. 燈光
@@ -735,8 +863,8 @@
         const mainLight = new THREE.DirectionalLight(0xffddaa, 2.0);
         mainLight.position.set(15, 30, 10);
         mainLight.castShadow = true;
-        mainLight.shadow.mapSize.width = 4096;
-        mainLight.shadow.mapSize.height = 4096;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
         mainLight.shadow.camera.near = 0.5;
         mainLight.shadow.camera.far = 100;
         mainLight.shadow.camera.left = -50;
@@ -750,7 +878,58 @@
         scene.add(fillLight);
 
         // ============================================================
-        //  3. 地面
+        //  3. 空間網格 (Spatial Grid)
+        // ============================================================
+        class SpatialGrid {
+            constructor(cellSize = 8) {
+                this.cellSize = cellSize;
+                this.grid = new Map();
+                this.buildings = [];
+            }
+
+            getKey(x, z) {
+                return `${Math.floor(x / this.cellSize)},${Math.floor(z / this.cellSize)}`;
+            }
+
+            addBuilding(b) {
+                this.buildings.push(b);
+                const key = this.getKey(b.cx, b.cz);
+                if (!this.grid.has(key)) this.grid.set(key, []);
+                this.grid.get(key).push(b);
+            }
+
+            getNearby(x, z, radius = 15) {
+                const results = [];
+                const cellRadius = Math.ceil(radius / this.cellSize);
+                const cx = Math.floor(x / this.cellSize);
+                const cz = Math.floor(z / this.cellSize);
+                for (let dx = -cellRadius; dx <= cellRadius; dx++) {
+                    for (let dz = -cellRadius; dz <= cellRadius; dz++) {
+                        const key = `${cx + dx},${cz + dz}`;
+                        if (this.grid.has(key)) {
+                            results.push(...this.grid.get(key));
+                        }
+                    }
+                }
+                return results;
+            }
+
+            isPointInside(x, z, margin = 0.3) {
+                const nearby = this.getNearby(x, z);
+                for (const b of nearby) {
+                    if (x > b.minX + margin && x < b.maxX - margin &&
+                        z > b.minZ + margin && z < b.maxZ - margin) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        const spatialGrid = new SpatialGrid(8);
+
+        // ============================================================
+        //  4. 地面
         // ============================================================
         function createGroundTexture() {
             const canvas = document.createElement('canvas');
@@ -766,7 +945,6 @@
                 ctx.fillStyle = `rgb(${g},${g},${g+10})`;
                 ctx.fillRect(x, y, 1 + Math.random() * 2, 1 + Math.random() * 2);
             }
-            // 道路標線
             ctx.strokeStyle = 'rgba(80,80,90,0.12)';
             ctx.lineWidth = 2;
             for (let i = 0; i < 30; i++) {
@@ -779,12 +957,12 @@
             const tex = new THREE.CanvasTexture(canvas);
             tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
             tex.repeat.set(40, 40);
-            tex.anisotropy = 8;
+            tex.anisotropy = 4;
             return tex;
         }
 
         const ground = new THREE.Mesh(
-            new THREE.CircleGeometry(70, 80),
+            new THREE.CircleGeometry(70, 64),
             new THREE.MeshStandardMaterial({
                 map: createGroundTexture(),
                 roughness: 0.9,
@@ -796,33 +974,13 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
+        updateLoad(55);
+
         // ============================================================
-        //  4. 建築物碰撞系統 (修復穿牆)
+        //  5. 建築物系統
         // ============================================================
         const buildings = [];
 
-        // 碰撞檢測函數
-        function isInsideBuilding(x, z, margin = 0.4) {
-            for (const b of buildings) {
-                if (x > b.minX + margin && x < b.maxX - margin &&
-                    z > b.minZ + margin && z < b.maxZ - margin) {
-                    return b;
-                }
-            }
-            return null;
-        }
-
-        function isPointInBuilding(x, z, margin = 0.2) {
-            for (const b of buildings) {
-                if (x > b.minX + margin && x < b.maxX - margin &&
-                    z > b.minZ + margin && z < b.maxZ - margin) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // 創建建築物函數 (支援高樓)
         function createBuilding(x, z, w, d, h, color = 0x445566, hasDoor = true, floorCount = 1) {
             const g = new THREE.Group();
             const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.2 });
@@ -832,7 +990,6 @@
             wall.receiveShadow = true;
             g.add(wall);
 
-            // 窗戶 (樓層越多窗戶越多)
             const winMat = new THREE.MeshStandardMaterial({
                 color: 0x88ccff,
                 emissive: 0x88ccff,
@@ -854,20 +1011,18 @@
                 }
             }
 
-            // 屋頂
             const roofMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.8 });
             const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.1, d + 0.2), roofMat);
             roof.position.y = h + 0.05;
             roof.castShadow = true;
             g.add(roof);
 
-            // 大門 (可進入標記)
             if (hasDoor) {
                 const doorMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.9 });
                 const door = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.2), doorMat);
                 door.position.set(0, 0.6, d / 2 + 0.01);
                 g.add(door);
-                const glow = new THREE.PointLight(0xff8844, 0.15, 2);
+                const glow = new THREE.PointLight(0xff8844, 0.12, 2);
                 glow.position.set(0, 0.6, d / 2 + 0.5);
                 g.add(glow);
             }
@@ -875,89 +1030,51 @@
             g.position.set(x, 0, z);
             scene.add(g);
 
-            // 儲存碰撞資料 (稍微縮小碰撞範圍讓玩家可以靠近牆壁)
             const margin = 0.3;
-            buildings.push({
+            const buildingData = {
                 mesh: g,
                 x,
                 z,
                 w,
                 d,
                 h,
+                cx: x,
+                cz: z,
                 minX: x - w / 2 - margin,
                 maxX: x + w / 2 + margin,
                 minZ: z - d / 2 - margin,
                 maxZ: z + d / 2 + margin,
                 enterable: hasDoor,
                 floorCount: floors,
-            });
+            };
+            buildings.push(buildingData);
+            spatialGrid.addBuilding(buildingData);
             return g;
         }
 
-        // ============================================================
-        //  5. 生成城市 (包含高樓大廈)
-        // ============================================================
-
-        // 市中心高樓群
-        // 高樓 1 - 8層
+        // 生成建築物
         createBuilding(-15, -10, 6, 6, 12, 0x445566, true, 8);
-        // 高樓 2 - 6層
         createBuilding(15, -10, 5, 5, 10, 0x556677, true, 6);
-        // 高樓 3 - 7層
         createBuilding(-15, 12, 6, 5, 11, 0x3a4a5a, true, 7);
-        // 高樓 4 - 5層
         createBuilding(15, 12, 5, 6, 9, 0x4a5a6a, true, 5);
-
-        // 中型建築
         createBuilding(-8, -5, 4, 4, 6, 0x667788, true, 4);
         createBuilding(8, -5, 4, 4, 6, 0x5a6a7a, true, 4);
         createBuilding(-8, 6, 4, 4, 6, 0x6a7a8a, true, 4);
         createBuilding(8, 6, 4, 4, 6, 0x4a5a6a, true, 4);
-
-        // 小型建築 (矮房)
         createBuilding(-4, -8, 3, 3, 3.5, 0x7a8a7a, true, 2);
         createBuilding(4, -8, 3, 3, 3.5, 0x8a7a6a, true, 2);
         createBuilding(-4, 9, 3, 3, 3.5, 0x6a7a8a, true, 2);
         createBuilding(4, 9, 3, 3, 3.5, 0x7a8a9a, true, 2);
-
-        // 邊緣建築
         createBuilding(-20, -5, 5, 4, 5, 0x3a4a5a, true, 3);
         createBuilding(20, -5, 5, 4, 5, 0x4a5a6a, true, 3);
         createBuilding(-20, 5, 5, 4, 5, 0x5a6a7a, true, 3);
         createBuilding(20, 5, 5, 4, 5, 0x6a7a8a, true, 3);
 
-        // 街燈
-        function createStreetLight(x, z) {
-            const g = new THREE.Group();
-            const poleMat = new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.4, metalness: 0.7 });
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 2.8, 8), poleMat);
-            pole.position.y = 1.4;
-            pole.castShadow = true;
-            g.add(pole);
-            const lamp = new THREE.Mesh(
-                new THREE.SphereGeometry(0.08, 8, 8),
-                new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.3, metalness: 0.5 })
-            );
-            lamp.position.y = 2.8;
-            g.add(lamp);
-            const light = new THREE.PointLight(0xffcc77, 0.25, 4);
-            light.position.y = 2.6;
-            g.add(light);
-            g.position.set(x, 0, z);
-            scene.add(g);
+        function isPointInBuilding(x, z, margin = 0.2) {
+            return spatialGrid.isPointInside(x, z, margin);
         }
 
-        // 沿著街道放路燈
-        for (let x = -25; x <= 25; x += 5) {
-            for (let z = -25; z <= 25; z += 5) {
-                if (Math.abs(x) < 3 && Math.abs(z) < 3) continue;
-                // 檢查是否在建築物內
-                if (isPointInBuilding(x, z, 0.1)) continue;
-                if (Math.random() < 0.15) {
-                    createStreetLight(x + (Math.random() - 0.5) * 1, z + (Math.random() - 0.5) * 1);
-                }
-            }
-        }
+        updateLoad(60);
 
         // ============================================================
         //  6. 防具稀有度系統
@@ -1130,6 +1247,8 @@
             return playerWeapons[currentWeaponIndex] || null;
         }
 
+        updateLoad(65);
+
         // ============================================================
         //  8. 音效
         // ============================================================
@@ -1270,6 +1389,8 @@
             } catch (e) {}
         }
 
+        updateLoad(70);
+
         // ============================================================
         //  9. 載具系統
         // ============================================================
@@ -1407,145 +1528,7 @@
         }
         spawnInitialVehicles();
 
-        function vehicleShoot() {
-            if (!isInVehicle || !currentVehicle) return;
-            const v = currentVehicle;
-            const now = performance.now();
-            if (now - v.turretCooldown < 150) return;
-            v.turretCooldown = now;
-
-            const origin = v.mesh.position.clone();
-            origin.y = 0.8;
-            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            dir.y = 0;
-            dir.normalize();
-
-            let hitZombie = null;
-            let hitDist = Infinity;
-            for (const z of zombies) {
-                const zPos = z.mesh.position.clone();
-                zPos.y = 0.8;
-                const toZ = zPos.clone().sub(origin);
-                const proj = toZ.dot(dir);
-                if (proj < 0 || proj > 50) continue;
-                const closest = origin.clone().add(dir.clone().multiplyScalar(proj));
-                const dist = closest.distanceTo(zPos);
-                if (dist < 1.0 && proj < hitDist) {
-                    hitDist = proj;
-                    hitZombie = z;
-                }
-            }
-
-            if (hitZombie) {
-                const dmg = v.turretDmg;
-                hitZombie.health -= dmg;
-                hitZombie.hitFlash = 0.15;
-                emitParticles(hitZombie.mesh.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 20, [1, 0.5, 0.1]);
-                showDamagePopup(hitZombie.mesh.position.clone().add(new THREE.Vector3(0, 0.8, 0)), dmg, false);
-
-                if (hitZombie.health <= 0) {
-                    killZombie(hitZombie);
-                    killCount++;
-                    if (Math.random() < hitZombie.def.dropRate) {
-                        const dp = hitZombie.mesh.position.clone();
-                        dp.y = 0.15;
-                        spawnDrop(dp);
-                    }
-                    setTimeout(() => {
-                        if (zombies.length < 20 + wave * 2) spawnZombie();
-                    }, 500 + Math.random() * 1500);
-                    updateUI();
-                }
-            }
-
-            playShootSound(0.15);
-            emitParticles(origin.clone().add(dir.clone().multiplyScalar(1.5)), 10, [1, 0.8, 0.2]);
-        }
-
-        function enterVehicle() {
-            if (isInVehicle) {
-                leaveVehicle();
-                return;
-            }
-
-            let nearest = null;
-            let nearDist = 3.0;
-            for (const v of vehicles) {
-                if (v.occupied) continue;
-                const dist = camera.position.distanceTo(v.mesh.position);
-                if (dist < nearDist) {
-                    nearDist = dist;
-                    nearest = v;
-                }
-            }
-
-            if (nearest) {
-                isInVehicle = true;
-                currentVehicle = nearest;
-                nearest.occupied = true;
-                camera.position.set(nearest.mesh.position.x, 0.8, nearest.mesh.position.z);
-                camera.rotation.order = 'YXZ';
-                document.getElementById('vehicleHUD').classList.add('show');
-                document.getElementById('vehicleStatus').textContent = '🚗 駕駛中';
-                playVehicleSound();
-                updateUI();
-                showPickupHint('🚗 已進入載具! 按 F 離開 | E 機槍射擊');
-            } else {
-                showPickupHint('❌ 附近沒有可用的載具');
-            }
-        }
-
-        function leaveVehicle() {
-            if (!isInVehicle || !currentVehicle) return;
-            isInVehicle = false;
-            currentVehicle.occupied = false;
-            const pos = currentVehicle.mesh.position.clone();
-            pos.x += 1.5;
-            pos.z += 1.5;
-            camera.position.set(pos.x, 1.8, pos.z);
-            currentVehicle = null;
-            document.getElementById('vehicleHUD').classList.remove('show');
-            document.getElementById('vehicleStatus').textContent = '';
-            updateUI();
-            showPickupHint('🚶 已離開載具');
-        }
-
-        function moveVehicle(delta) {
-            if (!isInVehicle || !currentVehicle) return;
-            const v = currentVehicle;
-            const speed = v.speed;
-
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-            forward.y = 0;
-            right.y = 0;
-            forward.normalize();
-            right.normalize();
-
-            const move = new THREE.Vector3();
-            if (keys.w) move.add(forward);
-            if (keys.s) move.sub(forward);
-            if (keys.a) move.sub(right);
-            if (keys.d) move.add(right);
-
-            if (move.length() > 0) {
-                move.normalize().multiplyScalar(speed * delta);
-                const newX = v.mesh.position.x + move.x;
-                const newZ = v.mesh.position.z + move.z;
-                // 載具碰撞檢測 (不能進入建築物)
-                if (!isPointInBuilding(newX, newZ, 0.8)) {
-                    const dist = Math.sqrt(newX * newX + newZ * newZ);
-                    if (dist < 55) {
-                        v.mesh.position.x = newX;
-                        v.mesh.position.z = newZ;
-                        camera.position.x = v.mesh.position.x;
-                        camera.position.z = v.mesh.position.z;
-                        camera.position.y = 0.8;
-                        v.mesh.rotation.y = Math.atan2(move.x, move.z);
-                    }
-                }
-            }
-        }
+        updateLoad(75);
 
         // ============================================================
         //  10. 背包 & 醫療品
@@ -1684,7 +1667,7 @@
             scene.add(group);
             item.mesh = group;
 
-            const glow = new THREE.PointLight(0x44ff88, 0.2, 1.5);
+            const glow = new THREE.PointLight(0x44ff88, 0.15, 1.5);
             glow.position.copy(position);
             glow.position.y = 0.3;
             scene.add(glow);
@@ -1695,7 +1678,7 @@
         }
 
         // ============================================================
-        //  12. 殭屍系統 (加入碰撞檢測防止穿牆)
+        //  12. 殭屍系統
         // ============================================================
         const ZOMBIE_TYPES = {
             normal: { name: '普通', color: 0x7a8a7a, speed: 0.4, health: 3, damage: 8, size: 1.0, score: 10,
@@ -1717,12 +1700,10 @@
         let inventoryOpen = false;
 
         function createZombie(posX, posZ, type = null) {
-            // 確保殭屍不在建築物內生成
             if (isPointInBuilding(posX, posZ, 0.5)) {
                 posX += (Math.random() - 0.5) * 4;
                 posZ += (Math.random() - 0.5) * 4;
                 if (isPointInBuilding(posX, posZ, 0.5)) {
-                    // 如果還在建築物內，重新生成位置
                     const angle = Math.random() * Math.PI * 2;
                     const radius = 3 + Math.random() * 8;
                     posX = camera.position.x + Math.cos(angle) * radius;
@@ -1748,24 +1729,24 @@
             const clothMat = new THREE.MeshStandardMaterial({ color: 0x3a3a2a, roughness: 0.9 });
             const pantsMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.9 });
 
-            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * scale, 0.45 * scale, 0.9 * scale, 10),
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * scale, 0.45 * scale, 0.9 * scale, 8),
             clothMat);
             torso.position.y = 0.85 * scale;
             torso.castShadow = true;
             torso.receiveShadow = true;
             group.add(torso);
 
-            const head = new THREE.Mesh(new THREE.SphereGeometry(0.28 * scale, 12, 12), skinMat);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.28 * scale, 8, 8), skinMat);
             head.position.y = 1.45 * scale;
             head.scale.set(1, 0.9, 0.95);
             head.castShadow = true;
             group.add(head);
 
             const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff2200, emissive: 0xff2200, emissiveIntensity: 0.3 });
-            const eL = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 8, 8), eyeMat);
+            const eL = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 6, 6), eyeMat);
             eL.position.set(-0.14 * scale, 1.5 * scale, 0.26 * scale);
             group.add(eL);
-            const eR = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 8, 8), eyeMat);
+            const eR = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 6, 6), eyeMat);
             eR.position.set(0.14 * scale, 1.5 * scale, 0.26 * scale);
             group.add(eR);
 
@@ -1811,7 +1792,7 @@
                     transparent: true,
                     opacity: 0.3,
                 });
-                const glow = new THREE.Mesh(new THREE.SphereGeometry(0.5 * scale, 8, 8), glowMat);
+                const glow = new THREE.Mesh(new THREE.SphereGeometry(0.5 * scale, 6, 6), glowMat);
                 glow.position.y = 0.85 * scale;
                 group.add(glow);
             }
@@ -1845,9 +1826,7 @@
             const radius = 6 + Math.random() * 14;
             const x = camera.position.x + Math.cos(angle) * radius;
             const z = camera.position.z + Math.sin(angle) * radius;
-            // 檢查是否在建築物內
             if (isPointInBuilding(x, z, 0.5)) {
-                // 調整位置
                 spawnZombie();
                 return;
             }
@@ -1859,9 +1838,9 @@
             if (z.explosive) {
                 const pos = z.mesh.position.clone();
                 pos.y = 0.5;
-                emitParticles(pos, 80, [1, 0.4, 0], 2.5);
-                emitParticles(pos, 40, [1, 0.8, 0.2], 1.5);
-                emitParticles(pos, 30, [0.8, 0.2, 0.1], 1.0);
+                emitParticles(pos, 60, [1, 0.4, 0], 2.5);
+                emitParticles(pos, 30, [1, 0.8, 0.2], 1.5);
+                emitParticles(pos, 20, [0.8, 0.2, 0.1], 1.0);
                 playExplosionSound();
                 const boomPos = z.mesh.position;
                 for (const other of zombies) {
@@ -1887,7 +1866,7 @@
                         v.hp -= 30;
                         emitParticles(v.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0)), 20, [1, 0.5, 0.1]);
                         if (v.hp <= 0) {
-                            emitParticles(v.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0)), 60, [1, 0.3, 0],
+                            emitParticles(v.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0)), 50, [1, 0.3, 0],
                             2);
                             playExplosionSound();
                             scene.remove(v.mesh);
@@ -1901,73 +1880,81 @@
                 }
             }
 
-            emitParticles(z.mesh.position.clone().add(new THREE.Vector3(0, 0.6, 0)), 40, [0.6, 0.2, 0.1]);
+            emitParticles(z.mesh.position.clone().add(new THREE.Vector3(0, 0.6, 0)), 30, [0.6, 0.2, 0.1]);
             scene.remove(z.mesh);
             const idx = zombies.indexOf(z);
             if (idx > -1) zombies.splice(idx, 1);
         }
 
+        updateLoad(80);
+
         // ============================================================
-        //  13. 粒子系統
+        //  13. 粒子系統 (物件池)
         // ============================================================
-        const particleCount = 800;
-        const pGeo = new THREE.BufferGeometry();
-        const pPos = new Float32Array(particleCount * 3);
-        const pCol = new Float32Array(particleCount * 3);
-        const pSize = new Float32Array(particleCount);
-        for (let i = 0; i < particleCount; i++) {
-            pPos[i * 3 + 1] = -1000;
-            pCol[i * 3] = 1;
-            pCol[i * 3 + 1] = 0.3;
-            pCol[i * 3 + 2] = 0.1;
-            pSize[i] = 0.05 + Math.random() * 0.15;
+        const MAX_PARTICLES = 600;
+        const particlePool = [];
+
+        class Particle {
+            constructor() {
+                this.mesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.05, 0.05, 0.05),
+                    new THREE.MeshStandardMaterial({ color: 0xff8844, emissive: 0xff4400, emissiveIntensity: 0.2 })
+                );
+                this.mesh.visible = false;
+                this.vel = new THREE.Vector3();
+                this.life = 0;
+                this.maxLife = 0;
+                this.alive = false;
+                scene.add(this.mesh);
+            }
+
+            init(pos, color, speedMult = 1) {
+                this.mesh.position.copy(pos);
+                this.mesh.position.x += (Math.random() - 0.5) * 0.3;
+                this.mesh.position.y += (Math.random() - 0.5) * 0.3;
+                this.mesh.position.z += (Math.random() - 0.5) * 0.3;
+                const speed = (0.3 + Math.random() * 3.0) * speedMult;
+                this.vel.set(
+                    (Math.random() - 0.5) * 2,
+                    Math.random() * 3,
+                    (Math.random() - 0.5) * 2
+                ).normalize().multiplyScalar(speed);
+                this.life = 0.3 + Math.random() * 1.0;
+                this.maxLife = this.life;
+                this.alive = true;
+                this.mesh.visible = true;
+                this.mesh.material.color.setHex(color);
+                this.mesh.material.emissive.setHex(color);
+            }
+
+            update(delta) {
+                if (!this.alive) return;
+                this.life -= delta;
+                if (this.life <= 0) {
+                    this.alive = false;
+                    this.mesh.visible = false;
+                    return;
+                }
+                this.mesh.position.add(this.vel.clone().multiplyScalar(delta));
+                this.vel.y -= 2.5 * delta;
+                const alpha = this.life / this.maxLife;
+                this.mesh.material.opacity = alpha;
+                this.mesh.scale.setScalar(0.5 + alpha * 0.5);
+            }
         }
-        pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-        pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
-        pGeo.setAttribute('size', new THREE.BufferAttribute(pSize, 1));
 
-        const pMat = new THREE.PointsMaterial({
-            size: 0.15,
-            vertexColors: true,
-            blending: THREE.AdditiveBlending,
-            transparent: true,
-            opacity: 0.9,
-            depthWrite: false,
-        });
-        const particleSystem = new THREE.Points(pGeo, pMat);
-        scene.add(particleSystem);
-
-        let particleList = [];
+        for (let i = 0; i < MAX_PARTICLES; i++) {
+            particlePool.push(new Particle());
+        }
+        let particleIndex = 0;
 
         function emitParticles(origin, count = 30, color = [1, 0.3, 0.1], speedMult = 1) {
-            const pos = particleSystem.geometry.attributes.position.array;
-            const col = particleSystem.geometry.attributes.color.array;
-            let emitted = 0;
-            for (let i = 0; i < particleCount && emitted < count; i++) {
-                if (pos[i * 3 + 1] < -500) {
-                    pos[i * 3] = origin.x + (Math.random() - 0.5) * 0.5;
-                    pos[i * 3 + 1] = origin.y + (Math.random() - 0.5) * 0.5;
-                    pos[i * 3 + 2] = origin.z + (Math.random() - 0.5) * 0.5;
-                    const speed = (0.3 + Math.random() * 3.0) * speedMult;
-                    const dir = new THREE.Vector3(
-                        (Math.random() - 0.5) * 2,
-                        Math.random() * 3,
-                        (Math.random() - 0.5) * 2
-                    ).normalize().multiplyScalar(speed);
-                    particleList.push({
-                        idx: i,
-                        vel: dir,
-                        life: 0.3 + Math.random() * 1.0,
-                        maxLife: 0.3 + Math.random() * 1.0,
-                    });
-                    col[i * 3] = color[0];
-                    col[i * 3 + 1] = color[1] * (0.3 + Math.random() * 0.7);
-                    col[i * 3 + 2] = color[2] * (0.2 + Math.random() * 0.5);
-                    emitted++;
-                }
+            const hexColor = (color[0] << 16) | (color[1] << 8) | color[2];
+            for (let i = 0; i < Math.min(count, MAX_PARTICLES); i++) {
+                const p = particlePool[particleIndex % MAX_PARTICLES];
+                particleIndex++;
+                p.init(origin, hexColor, speedMult);
             }
-            particleSystem.geometry.attributes.position.needsUpdate = true;
-            particleSystem.geometry.attributes.color.needsUpdate = true;
         }
 
         // ============================================================
@@ -1991,6 +1978,10 @@
         const inventoryEl = document.getElementById('inventory');
         const invItemsEl = document.getElementById('invItems');
         const vehicleHealthEl = document.getElementById('vehicleHealth');
+        const fpsDisplay = document.getElementById('fpsDisplay');
+
+        let frameCount = 0;
+        let lastFpsUpdate = 0;
 
         function updateUI() {
             const hpPct = Math.max(0, (playerHealth / maxHealth) * 100);
@@ -2194,13 +2185,13 @@
                         playerArmor.helmet.rarity = rarity;
                         playerArmor.helmet.maxDurability = rInfo.maxDurability;
                         playerArmor.helmet.durability = Math.min(playerArmor.helmet.durability + amount, rInfo
-                        .maxDurability);
+                            .maxDurability);
                         showPickupHint(`⬆️ 頭盔升級為 ${rInfo.stars} ${rInfo.label}!`);
                     } else if (newRank > vRank) {
                         playerArmor.vest.rarity = rarity;
                         playerArmor.vest.maxDurability = rInfo.maxDurability;
                         playerArmor.vest.durability = Math.min(playerArmor.vest.durability + amount, rInfo
-                        .maxDurability);
+                            .maxDurability);
                         showPickupHint(`⬆️ 背心升級為 ${rInfo.stars} ${rInfo.label}!`);
                     } else {
                         let repaired = 0;
@@ -2263,6 +2254,61 @@
         // ============================================================
         const raycaster = new THREE.Raycaster();
 
+        function vehicleShoot() {
+            if (!isInVehicle || !currentVehicle) return;
+            const v = currentVehicle;
+            const now = performance.now();
+            if (now - v.turretCooldown < 150) return;
+            v.turretCooldown = now;
+
+            const origin = v.mesh.position.clone();
+            origin.y = 0.8;
+            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            dir.y = 0;
+            dir.normalize();
+
+            let hitZombie = null;
+            let hitDist = Infinity;
+            for (const z of zombies) {
+                const zPos = z.mesh.position.clone();
+                zPos.y = 0.8;
+                const toZ = zPos.clone().sub(origin);
+                const proj = toZ.dot(dir);
+                if (proj < 0 || proj > 50) continue;
+                const closest = origin.clone().add(dir.clone().multiplyScalar(proj));
+                const dist = closest.distanceTo(zPos);
+                if (dist < 1.0 && proj < hitDist) {
+                    hitDist = proj;
+                    hitZombie = z;
+                }
+            }
+
+            if (hitZombie) {
+                const dmg = v.turretDmg;
+                hitZombie.health -= dmg;
+                hitZombie.hitFlash = 0.15;
+                emitParticles(hitZombie.mesh.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 15, [1, 0.5, 0.1]);
+                showDamagePopup(hitZombie.mesh.position.clone().add(new THREE.Vector3(0, 0.8, 0)), dmg, false);
+
+                if (hitZombie.health <= 0) {
+                    killZombie(hitZombie);
+                    killCount++;
+                    if (Math.random() < hitZombie.def.dropRate) {
+                        const dp = hitZombie.mesh.position.clone();
+                        dp.y = 0.15;
+                        spawnDrop(dp);
+                    }
+                    setTimeout(() => {
+                        if (zombies.length < 20 + wave * 2) spawnZombie();
+                    }, 500 + Math.random() * 1500);
+                    updateUI();
+                }
+            }
+
+            playShootSound(0.15);
+            emitParticles(origin.clone().add(dir.clone().multiplyScalar(1.5)), 8, [1, 0.8, 0.2]);
+        }
+
         function shoot() {
             if (isDead) return;
             if (isInVehicle) {
@@ -2292,11 +2338,11 @@
                 raycaster.setFromCamera({ x: offsetX, y: offsetY }, camera);
 
                 const targets = [];
-                zombies.forEach(z => {
+                for (const z of zombies) {
                     z.mesh.children.forEach(child => {
                         targets.push({ zombie: z, mesh: child });
                     });
-                });
+                }
 
                 const meshes = targets.map(t => t.mesh);
                 const intersects = raycaster.intersectObjects(meshes);
@@ -2316,7 +2362,7 @@
                         if (z.armored) damage *= 0.6;
                         z.health -= damage;
                         z.hitFlash = 0.15;
-                        emitParticles(hit.point, 12, [1, 0.4, 0.1]);
+                        emitParticles(hit.point, 8, [1, 0.4, 0.1]);
 
                         if (z.health <= 0) {
                             killZombie(z);
@@ -2336,7 +2382,7 @@
                     const far = new THREE.Vector3(0, 0, -40);
                     far.applyQuaternion(camera.quaternion);
                     far.add(camera.position);
-                    emitParticles(far, 5, [0.6, 0.5, 0.2]);
+                    emitParticles(far, 3, [0.6, 0.5, 0.2]);
                 }
             }
 
@@ -2390,7 +2436,7 @@
         }
 
         // ============================================================
-        //  19. 空投系統 (簡化)
+        //  19. 空投系統
         // ============================================================
         let airdropActive = false;
         let airdropTimer = 25;
@@ -2421,7 +2467,7 @@
                 color: 0x88ccff,
                 roughness: 0.8,
                 transparent: true,
-                opacity: 0.5,
+                opacity: 0.4,
                 side: THREE.DoubleSide,
             });
             const para = new THREE.Mesh(new THREE.CircleGeometry(1.2, 8), paraMat);
@@ -2438,7 +2484,7 @@
                 rope.position.set(Math.cos(a) * 0.4, 0.6, Math.sin(a) * 0.4);
                 group.add(rope);
             }
-            const glow = new THREE.PointLight(0x44ddff, 2.0, 6);
+            const glow = new THREE.PointLight(0x44ddff, 1.5, 5);
             glow.position.y = 0.3;
             group.add(glow);
 
@@ -2486,7 +2532,7 @@
                     requestAnimationFrame(dropAnimate);
                 } else {
                     group.position.y = targetY;
-                    emitParticles(group.position.clone().add(new THREE.Vector3(0, 0.5, 0)), 50, [0.3, 0.6, 1.0]);
+                    emitParticles(group.position.clone().add(new THREE.Vector3(0, 0.5, 0)), 40, [0.3, 0.6, 1.0]);
 
                     const pos = group.position.clone();
                     pos.y = 0.15;
@@ -2507,7 +2553,7 @@
                         };
                         const g = new THREE.Group();
                         const sphere = new THREE.Mesh(
-                            new THREE.SphereGeometry(0.12, 12, 12),
+                            new THREE.SphereGeometry(0.12, 8, 8),
                             new THREE.MeshStandardMaterial({
                                 color: new THREE.Color(RARITIES[w.rarity].color),
                                 emissive: new THREE.Color(RARITIES[w.rarity].color),
@@ -2521,7 +2567,7 @@
                         g.position.copy(dp);
                         scene.add(g);
                         item.mesh = g;
-                        const gl = new THREE.PointLight(new THREE.Color(RARITIES[w.rarity].color), 0.3, 1.5);
+                        const gl = new THREE.PointLight(new THREE.Color(RARITIES[w.rarity].color), 0.25, 1.5);
                         gl.position.copy(dp);
                         gl.position.y = 0.3;
                         scene.add(gl);
@@ -2576,7 +2622,7 @@
                         g.position.copy(dp);
                         scene.add(g);
                         item.mesh = g;
-                        const gl = new THREE.PointLight(new THREE.Color(info.color), 0.2, 1.2);
+                        const gl = new THREE.PointLight(new THREE.Color(info.color), 0.15, 1.2);
                         gl.position.copy(dp);
                         gl.position.y = 0.3;
                         scene.add(gl);
@@ -2611,7 +2657,6 @@
 
         document.addEventListener('keydown', (e) => {
             if (isDead) return;
-            // 防護
             if (e.key === 'F12' || e.keyCode === 123) { e.preventDefault(); return; }
             if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'K'].includes(e.key.toUpperCase())) { e.preventDefault(); return; }
             if ((e.ctrlKey || e.metaKey) && e.key.toUpperCase() === 'U') { e.preventDefault(); return; }
@@ -2679,6 +2724,90 @@
         }
         document.getElementById('invClose').addEventListener('click', toggleInventory);
 
+        function enterVehicle() {
+            if (isInVehicle) {
+                leaveVehicle();
+                return;
+            }
+
+            let nearest = null;
+            let nearDist = 3.0;
+            for (const v of vehicles) {
+                if (v.occupied) continue;
+                const dist = camera.position.distanceTo(v.mesh.position);
+                if (dist < nearDist) {
+                    nearDist = dist;
+                    nearest = v;
+                }
+            }
+
+            if (nearest) {
+                isInVehicle = true;
+                currentVehicle = nearest;
+                nearest.occupied = true;
+                camera.position.set(nearest.mesh.position.x, 0.8, nearest.mesh.position.z);
+                camera.rotation.order = 'YXZ';
+                document.getElementById('vehicleHUD').classList.add('show');
+                document.getElementById('vehicleStatus').textContent = '🚗 駕駛中';
+                playVehicleSound();
+                updateUI();
+                showPickupHint('🚗 已進入載具! 按 F 離開 | E 機槍射擊');
+            } else {
+                showPickupHint('❌ 附近沒有可用的載具');
+            }
+        }
+
+        function leaveVehicle() {
+            if (!isInVehicle || !currentVehicle) return;
+            isInVehicle = false;
+            currentVehicle.occupied = false;
+            const pos = currentVehicle.mesh.position.clone();
+            pos.x += 1.5;
+            pos.z += 1.5;
+            camera.position.set(pos.x, 1.8, pos.z);
+            currentVehicle = null;
+            document.getElementById('vehicleHUD').classList.remove('show');
+            document.getElementById('vehicleStatus').textContent = '';
+            updateUI();
+            showPickupHint('🚶 已離開載具');
+        }
+
+        function moveVehicle(delta) {
+            if (!isInVehicle || !currentVehicle) return;
+            const v = currentVehicle;
+            const speed = v.speed;
+
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            forward.y = 0;
+            right.y = 0;
+            forward.normalize();
+            right.normalize();
+
+            const move = new THREE.Vector3();
+            if (keys.w) move.add(forward);
+            if (keys.s) move.sub(forward);
+            if (keys.a) move.sub(right);
+            if (keys.d) move.add(right);
+
+            if (move.length() > 0) {
+                move.normalize().multiplyScalar(speed * delta);
+                const newX = v.mesh.position.x + move.x;
+                const newZ = v.mesh.position.z + move.z;
+                if (!isPointInBuilding(newX, newZ, 0.8)) {
+                    const dist = Math.sqrt(newX * newX + newZ * newZ);
+                    if (dist < 55) {
+                        v.mesh.position.x = newX;
+                        v.mesh.position.z = newZ;
+                        camera.position.x = v.mesh.position.x;
+                        camera.position.z = v.mesh.position.z;
+                        camera.position.y = 0.8;
+                        v.mesh.rotation.y = Math.atan2(move.x, move.z);
+                    }
+                }
+            }
+        }
+
         // ============================================================
         //  21. 移動 (含碰撞檢測)
         // ============================================================
@@ -2710,7 +2839,6 @@
                 const newX = camera.position.x + move.x;
                 const newZ = camera.position.z + move.z;
 
-                // 碰撞檢測：不能進入建築物
                 if (!isPointInBuilding(newX, newZ, 0.3)) {
                     const dist = Math.sqrt(newX * newX + newZ * newZ);
                     if (dist < 58) {
@@ -2747,7 +2875,6 @@
             const px = camera.position.x,
                 pz = camera.position.z;
 
-            // 建築物 (高樓用不同顏色)
             for (const b of buildings) {
                 const x = cx + (b.x - px) * scale;
                 const y = cy + (b.z - pz) * scale;
@@ -2854,14 +2981,25 @@
         });
 
         // ============================================================
-        //  24. 動畫循環
+        //  24. 動畫循環 (FPS 監控)
         // ============================================================
         const clock = new THREE.Clock();
         let waveCheckTimer = 0;
+        let fpsTimer = 0;
+        let fpsCount = 0;
 
         function animate() {
             const delta = Math.min(clock.getDelta(), 0.05);
             const time = clock.getElapsedTime();
+
+            // FPS 計算
+            fpsCount++;
+            fpsTimer += delta;
+            if (fpsTimer >= 0.5) {
+                fpsDisplay.textContent = `FPS: ${Math.round(fpsCount / fpsTimer)}`;
+                fpsCount = 0;
+                fpsTimer = 0;
+            }
 
             if (!isDead) {
                 movePlayer(delta);
@@ -2872,18 +3010,26 @@
                     airdropTimer = 30 + Math.random() * 25;
                 }
 
-                // 殭屍 AI (加入碰撞檢測)
-                for (let i = zombies.length - 1; i >= 0; i--) {
+                // 殭屍 AI (優化)
+                const playerPos = camera.position;
+                const zombieCount = zombies.length;
+                for (let i = zombieCount - 1; i >= 0; i--) {
                     const z = zombies[i];
                     if (!z) continue;
 
                     const dir = new THREE.Vector3();
                     const targetPos = isInVehicle && currentVehicle ?
                         currentVehicle.mesh.position.clone() :
-                        camera.position.clone();
+                        playerPos.clone();
                     dir.subVectors(targetPos, z.mesh.position);
                     dir.y = 0;
                     const dist = dir.length();
+
+                    // 距離太遠不更新 (優化)
+                    if (dist > 40) {
+                        if (z.attackCooldown > 0) z.attackCooldown -= delta;
+                        continue;
+                    }
 
                     if (dist > 0.5 && dist < 30) {
                         dir.normalize();
@@ -2891,12 +3037,10 @@
                         const newX = z.mesh.position.x + dir.x * spd * delta;
                         const newZ = z.mesh.position.z + dir.z * spd * delta;
 
-                        // 殭屍碰撞檢測：不能進入建築物
                         if (!isPointInBuilding(newX, newZ, 0.5)) {
                             z.mesh.position.x = newX;
                             z.mesh.position.z = newZ;
                         } else {
-                            // 如果被卡住，稍微偏移方向
                             const altAngle = Math.atan2(dir.z, dir.x) + (Math.random() - 0.5) * 1.5;
                             z.mesh.position.x += Math.cos(altAngle) * spd * delta * 0.5;
                             z.mesh.position.z += Math.sin(altAngle) * spd * delta * 0.5;
@@ -2904,8 +3048,8 @@
                         z.mesh.lookAt(targetPos.x, z.mesh.position.y, targetPos.z);
                     }
 
-                    // 攻擊 (對玩家或載具)
-                    let attackTarget = camera.position;
+                    // 攻擊
+                    let attackTarget = playerPos.clone();
                     let targetIsVehicle = false;
                     if (isInVehicle && currentVehicle) {
                         attackTarget = currentVehicle.mesh.position.clone();
@@ -2919,10 +3063,10 @@
                             if (targetIsVehicle && currentVehicle) {
                                 currentVehicle.hp -= dmg * 0.5;
                                 emitParticles(currentVehicle.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0)),
-                                    15, [1, 0.5, 0.1]);
+                                    10, [1, 0.5, 0.1]);
                                 if (currentVehicle.hp <= 0) {
                                     emitParticles(currentVehicle.mesh.position.clone().add(new THREE.Vector3(0, 0.5,
-                                        0)), 60, [1, 0.3, 0], 2);
+                                        0)), 40, [1, 0.3, 0], 2);
                                     playExplosionSound();
                                     const vIdx = vehicles.indexOf(currentVehicle);
                                     if (vIdx > -1) {
@@ -2973,7 +3117,7 @@
                         });
                     }
 
-                    // 走路擺動
+                    // 走路擺動 (簡化)
                     z.mesh.children.forEach((child, idx) => {
                         if (idx === 0 || idx === 1) return;
                         if (child.isMesh && child.geometry.type === 'CylinderGeometry') {
@@ -3024,26 +3168,10 @@
                     }
                 }
 
-                // 粒子更新
-                const pos = particleSystem.geometry.attributes.position.array;
-                const col = particleSystem.geometry.attributes.color.array;
-                for (let i = particleList.length - 1; i >= 0; i--) {
-                    const p = particleList[i];
-                    p.life -= delta;
-                    if (p.life <= 0) {
-                        pos[p.idx * 3 + 1] = -1000;
-                        particleList.splice(i, 1);
-                    } else {
-                        pos[p.idx * 3] += p.vel.x * delta;
-                        pos[p.idx * 3 + 1] += p.vel.y * delta;
-                        pos[p.idx * 3 + 2] += p.vel.z * delta;
-                        p.vel.y -= 2.5 * delta;
-                        col[p.idx * 3 + 1] *= 0.995;
-                        col[p.idx * 3 + 2] *= 0.995;
-                    }
+                // 更新粒子 (物件池)
+                for (const p of particlePool) {
+                    p.update(delta);
                 }
-                particleSystem.geometry.attributes.position.needsUpdate = true;
-                particleSystem.geometry.attributes.color.needsUpdate = true;
 
                 // 掉落物浮動
                 for (const d of dropItems) {
@@ -3078,12 +3206,20 @@
         // ============================================================
         //  啟動
         // ============================================================
+        updateLoad(90);
+
+        for (let i = 0; i < 8; i++) {
+            setTimeout(spawnZombie, i * 100);
+        }
+
+        updateLoad(100);
+
         updateUI();
         animate();
-        console.log('🏙️ 殭屍生存 - 城市大樓版已啟動!');
+
+        console.log('⚔️ 殭屍生存 - 戰鬥版 (優化) 已啟動!');
         console.log('📖 操作: 點擊鎖定 | WASD移動 | 滑鼠瞄準射擊 | 1-5切換武器 | R換彈 | E拾取/載具射擊 | F進入/離開載具 | Tab背包');
-        console.log('🏢 高樓大廈已加入! 最高 8 層樓!');
-        console.log('🔒 碰撞檢測已修復，殭屍和玩家都無法穿牆!');
+        console.log(isDev ? '🛠️ 開發模式 - 防護已關閉' : '🔒 生產模式 - 防護已啟用');
     </script>
 </body>
 </html>
