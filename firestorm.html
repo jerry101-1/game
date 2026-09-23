@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FIRESTORM — 1v1 連線對戰</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#000;
+               font-family:"Segoe UI", -apple-system, Roboto, sans-serif; }
+  canvas { display:block; }
+
+  /* 準星 */
+  #crosshair { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+               pointer-events:none; z-index:10; width:48px; height:48px; }
+  #crosshair div { position:absolute; background:rgba(255,255,255,.9);
+                   box-shadow:0 0 4px rgba(0,0,0,.9); }
+  #chDot { width:2px; height:2px; left:23px; top:23px; border-radius:50%; }
+
+  #hitmarker { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+               color:#ff3b30; font-size:28px; line-height:1; pointer-events:none;
+               opacity:0; z-index:10; font-weight:900; text-shadow:0 0 8px rgba(255,60,40,.8); }
+
+  #damage { position:fixed; inset:0; pointer-events:none; z-index:9;
+            box-shadow: inset 0 0 0 0 rgba(200,0,0,0); transition: box-shadow .28s ease-out; }
+
+  /* HUD */
+  #hud { position:fixed; inset:0; pointer-events:none; z-index:10; display:none; }
+  #hud.on { display:block; }
+
+  #hpBox { position:fixed; left:24px; bottom:24px; }
+  #hpLabel { color:#cfe6f5; font-size:11px; letter-spacing:3px; margin-bottom:6px;
+             text-shadow:0 0 6px #000; font-weight:600; }
+  #hpBar { width:260px; height:14px; background:rgba(0,0,0,.55);
+           border:1px solid rgba(255,255,255,.2); border-radius:3px;
+           overflow:hidden; position:relative; }
+  #hpFill { height:100%; width:100%; background:linear-gradient(90deg,#2ecc71,#27ae60);
+            transition:width .18s ease-out; box-shadow:0 0 14px rgba(46,204,113,.5); }
+  #hpText { position:absolute; right:8px; top:0; font-size:11px; color:#fff;
+            line-height:14px; text-shadow:0 0 3px #000; font-weight:700; }
+
+  #enemyBox { position:fixed; left:24px; top:20px; width:200px; }
+  #enemyLabel { color:#ffb0a0; font-size:10px; letter-spacing:3px; margin-bottom:4px;
+                text-shadow:0 0 6px #000; font-weight:600; }
+  #enemyBar { width:200px; height:8px; background:rgba(0,0,0,.55);
+              border:1px solid rgba(255,255,255,.18); border-radius:2px; overflow:hidden; }
+  #enemyFill { height:100%; width:100%; background:linear-gradient(90deg,#e74c3c,#c0392b);
+               transition:width .2s ease-out; }
+
+  #scoreBox { position:fixed; right:24px; top:20px; text-align:right;
+              color:#fff; text-shadow:0 0 6px #000; }
+  #scoreBox .num { font-size:44px; font-weight:800; line-height:1;
+                   font-variant-numeric:tabular-nums; }
+  #scoreBox .lbl { font-size:10px; letter-spacing:3px; opacity:.6; margin-top:4px; }
+  #scoreBox .enemyScore { font-size:20px; opacity:.6; margin-top:6px;
+                          font-variant-numeric:tabular-nums; }
+
+  #ammo { position:fixed; right:28px; bottom:18px; z-index:10; pointer-events:none;
+          color:#fff; text-align:right; text-shadow:0 0 8px #000; }
+  #ammoCurrent { font-size:48px; font-weight:800; line-height:1;
+                 font-variant-numeric:tabular-nums; }
+  #ammoReserve { font-size:20px; opacity:.5; margin-left:8px; }
+  #reloadHint { font-size:13px; color:#f39c12; margin-top:4px; opacity:0;
+                letter-spacing:2px; }
+  #reloadBar { width:0; height:2px; background:#f39c12; margin-top:4px;
+               margin-left:auto; transition:width .05s linear; }
+
+  #modeHint { position:fixed; left:50%; top:14px; transform:translateX(-50%);
+              color:#8cf; font-size:11px; z-index:10; pointer-events:none;
+              text-shadow:0 0 6px #000; opacity:.85; letter-spacing:2px;
+              padding:5px 14px; border:1px solid rgba(140,200,255,.25);
+              border-radius:4px; background:rgba(10,20,30,.4); }
+  #roomBadge { position:fixed; left:50%; bottom:20px; transform:translateX(-50%);
+               color:#8cf; font-size:10px; z-index:10; pointer-events:none;
+               letter-spacing:2px; opacity:.55; }
+
+  #msgBig { position:fixed; top:32%; left:50%; transform:translate(-50%,-50%);
+            color:#fff; font-size:42px; font-weight:800; letter-spacing:8px;
+            text-shadow:0 0 30px rgba(120,200,255,.8), 0 0 60px rgba(0,0,0,.9);
+            pointer-events:none; z-index:20; opacity:0;
+            transition:opacity .35s, transform .35s; }
+
+  /* 主選單 */
+  #menu { position:fixed; inset:0; z-index:100;
+          display:flex; flex-direction:column; align-items:center; justify-content:center;
+          background:radial-gradient(circle at 50% 40%, rgba(18,30,48,.96), rgba(0,0,0,.99));
+          color:#fff; padding:20px; text-align:center; user-select:none; }
+  #menu h1 { font-size:52px; letter-spacing:14px; margin-bottom:4px; font-weight:800;
+             background:linear-gradient(180deg,#fff 0%, #7aa7d8 100%);
+             -webkit-background-clip:text; background-clip:text; color:transparent;
+             filter:drop-shadow(0 0 20px rgba(100,180,255,.4)); }
+  #menu .sub { font-size:12px; letter-spacing:8px; color:#6cf; margin-bottom:44px; opacity:.75; }
+
+  .menuSection { margin:10px 0; }
+  .btn { display:inline-block; padding:14px 42px; margin:8px;
+         border:1px solid rgba(120,200,255,.5); border-radius:6px;
+         background:rgba(30,52,76,.6); color:#cfe6f5;
+         font-size:15px; font-weight:700; letter-spacing:4px;
+         cursor:pointer; transition:all .15s; user-select:none;
+         font-family:inherit; }
+  .btn:hover { border-color:rgba(120,200,255,.9); background:rgba(40,72,106,.85);
+               transform:translateY(-1px); box-shadow:0 4px 20px rgba(80,160,230,.3); }
+  .btn:active { transform:translateY(0); }
+  .btn.ghost { background:transparent; border-color:rgba(255,255,255,.2); }
+
+  #joinInput { padding:12px 18px; width:260px; font-size:15px;
+               background:rgba(20,32,46,.8); border:1px solid rgba(120,200,255,.4);
+               border-radius:6px; color:#cfe6f5; font-family:inherit;
+               letter-spacing:2px; text-align:center; outline:none; }
+  #joinInput:focus { border-color:rgba(120,200,255,.9);
+                     box-shadow:0 0 12px rgba(80,160,230,.4); }
+  #joinInput::placeholder { color:rgba(140,180,220,.4); letter-spacing:1px; }
+
+  #roomCode { font-size:32px; letter-spacing:6px; color:#f5c542;
+              font-weight:800; margin:16px 0; font-family:monospace;
+              user-select:all; cursor:pointer;
+              padding:12px 24px; border:1px dashed rgba(245,197,66,.4);
+              border-radius:8px; background:rgba(50,42,20,.3); }
+  #roomCode:hover { background:rgba(50,42,20,.6); }
+
+  #status { font-size:13px; letter-spacing:2px; opacity:.6; margin-top:16px;
+            min-height:20px; }
+  #status.err { color:#f88; opacity:1; }
+
+  #howto { font-size:11px; opacity:.35; margin-top:36px;
+           letter-spacing:1.5px; line-height:2; }
+
+  #err { position:fixed; inset:0; display:none; z-index:200;
+         align-items:center; justify-content:center;
+         background:rgba(20,5,5,.96); color:#f88; font-size:14px;
+         text-align:center; line-height:1.9; padding:30px;
+         white-space:pre-wrap; }
+
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="crosshair" class="hidden">
+  <div id="chT" style="width:2px;height:8px;"></div>
+  <div id="chB" style="width:2px;height:8px;"></div>
+  <div id="chL" style="width:8px;height:2px;"></div>
+  <div id="chR" style="width:8px;height:2px;"></div>
+  <div id="chDot"></div>
+</div>
+<div id="hitmarker" class="hidden">✕</div>
+<div id="damage"></div>
+
+<div id="hud">
+  <div id="enemyBox">
+    <div id="enemyLabel">對手</div>
+    <div id="enemyBar"><div id="enemyFill"></div></div>
+  </div>
+  <div id="hpBox">
+    <div id="hpLabel">HP</div>
+    <div id="hpBar">
+      <div id="hpFill"></div>
+      <span id="hpText">100</span>
+    </div>
+  </div>
+  <div id="scoreBox">
+    <div class="num" id="myScore">0</div>
+    <div class="lbl">擊殺</div>
+    <div class="enemyScore" id="enemyScore">對手 0</div>
+  </div>
+  <div id="ammo">
+    <div><span id="ammoCurrent">30</span><span id="ammoReserve">/999</span></div>
+    <div id="reloadHint">裝填中…</div>
+    <div id="reloadBar"></div>
+  </div>
+  <div id="modeHint">🎯 滑鼠移動到畫面邊緣轉視角 · 左鍵射擊</div>
+  <div id="roomBadge"></div>
+</div>
+
+<div id="msgBig"></div>
+
+<div id="menu">
+  <h1>FIRESTORM</h1>
+  <div class="sub">1 VS 1 ONLINE</div>
+
+  <div id="menuMain">
+    <div class="menuSection">
+      <button class="btn" id="btnCreate">建立房間</button>
+    </div>
+    <div class="menuSection">
+      <button class="btn ghost" id="btnShowJoin">加入房間</button>
+    </div>
+  </div>
+
+  <div id="menuRoom" class="hidden">
+    <div style="font-size:13px;letter-spacing:3px;opacity:.7;margin-bottom:8px;">
+      把這串房號給對手
+    </div>
+    <div id="roomCode">------</div>
+    <div id="status">等待對手加入…</div>
+    <div style="margin-top:24px;">
+      <button class="btn ghost" id="btnCancel">取消</button>
+    </div>
+  </div>
+
+  <div id="menuJoin" class="hidden">
+    <div style="font-size:13px;letter-spacing:3px;opacity:.7;margin-bottom:14px;">
+      輸入對手的房號
+    </div>
+    <input id="joinInput" placeholder="例如：a3f9x2k1" maxlength="32" autocomplete="off">
+    <div style="margin-top:24px;">
+      <button class="btn" id="btnJoin">連線</button>
+      <button class="btn ghost" id="btnBack">返回</button>
+    </div>
+    <div id="statusJoin" style="font-size:13px;letter-spacing:2px;opacity:.6;
+                                margin-top:16px;min-height:20px;color:#f88;"></div>
+  </div>
+
+  <div id="howto">
+    WASD 移動 · SHIFT 疾跑 · SPACE 跳躍 · 左鍵射擊 · R 換彈<br>
+    一人建立房間 → 把房號傳給對手 → 對手輸入房號加入
+  </div>
+</div>
+
+<div id="err"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<script>
+window.addEventListener('error', function (e) {
+  var er = document.getElementById('err');
+  if (!er || er.style.display === 'flex') return;
+  er.style.display = 'flex';
+  er.innerHTML = '⚠ 執行錯誤\n\n' + (e.message || '未知') +
+                 '\n\n' + (e.filename || '') + ':' + (e.lineno || '');
+});
+</script>
+
+<script>
+(function () {
+'use strict';
+
+// ============================================================
+// 環境檢查
+// ============================================================
+if (typeof THREE === 'undefined') {
+  var er = document.getElementById('err');
+  er.style.display = 'flex';
+  er.innerHTML = '❌ Three.js 載入失敗\n請確認網路後重新整理';
+  return;
+}
+if (typeof Peer === 'undefined') {
+  var er2 = document.getElementById('err');
+  er2.style.display = 'flex';
+  er2.innerHTML = '❌ PeerJS 載入失敗\n請確認網路後重新整理\n（需要能連到 unpkg.com）';
+  return;
+}
+
+// ============================================================
+// 全域變數宣告（最優先，避免 TDZ / undefined 錯誤）
+// ============================================================
+var $ = function (id) { return document.getElementById(id); };
+
+// DOM
+var menuEl, menuMain, menuRoom, menuJoin, roomCodeEl, statusEl;
+var statusJoinEl, joinInput, btnCreate, btnShowJoin, btnJoin, btnBack, btnCancel;
+var hudEl, crosshairEl, hitEl, damageEl, hpFillEl, hpTextEl, enemyFillEl;
+var myScoreEl, enemyScoreEl, ammoCurEl, ammoResEl, reloadHintEl, reloadBarEl;
+var modeEl, roomBadge, msgBigEl;
+var chT, chB, chL, chR;
+
+// Three.js
+var scene, camera, renderer, canvas;
+
+// 遊戲資料
+var walls = [];
+var bullets = [];      // 敵方子彈視覺（本地不需顯示己方子彈）
+var particles = [];
+var tracers = [];
+
+// 玩家狀態
+var yaw = 0, pitch = 0;
+var hp = 100;
+var kills = 0;
+var enemyKills = 0;
+var keys = {};
+var mouseScreenX = 0, mouseScreenY = 0;
+var mouseDown = false;
+var useHover = false;
+var locked = false;
+var inGame = false;
+var velocityY = 0, onGround = true, eyeHeight = 1.7;
+var shakeAmount = 0;
+var currentWeapon = 0;
+var nextShotTime = 0;
+var reloading = false;
+var reloadStart = 0, reloadDuration = 1.8;
+var spreadAmount = 0.002;
+var recoilPitch = 0;
+var muzzleTimer = 0;
+var respawnAt = 0;
+var isDead = false;
+
+// 武器設定（保留 1 種就好，簡化）
+var WEAPONS = [
+  { name: '突擊步槍', auto: true, damage: 22, fireRate: 0.09, spread: 0.011,
+    recoil: 0.0085, magSize: 30, reserve: 9999, reloadTime: 1.8, range: 200,
+    sound: 'rifle' }
+];
+
+// ============================================================
+// 抓 DOM
+// ============================================================
+menuEl      = $('menu');
+menuMain    = $('menuMain');
+menuRoom    = $('menuRoom');
+menuJoin    = $('menuJoin');
+roomCodeEl  = $('roomCode');
+statusEl    = $('status');
+statusJoinEl= $('statusJoin');
+joinInput   = $('joinInput');
+btnCreate   = $('btnCreate');
+btnShowJoin = $('btnShowJoin');
+btnJoin     = $('btnJoin');
+btnBack     = $('btnBack');
+btnCancel   = $('btnCancel');
+hudEl       = $('hud');
+crosshairEl = $('crosshair');
+hitEl       = $('hitmarker');
+damageEl    = $('damage');
+hpFillEl    = $('hpFill');
+hpTextEl    = $('hpText');
+enemyFillEl = $('enemyFill');
+myScoreEl   = $('myScore');
+enemyScoreEl= $('enemyScore');
+ammoCurEl   = $('ammoCurrent');
+ammoResEl   = $('ammoReserve');
+reloadHintEl= $('reloadHint');
+reloadBarEl = $('reloadBar');
+modeEl      = $('modeHint');
+roomBadge   = $('roomBadge');
+msgBigEl    = $('msgBig');
+chT = $('chT'); chB = $('chB'); chL = $('chL'); chR = $('chR');
+
+mouseScreenX = innerWidth / 2;
+mouseScreenY = innerHeight / 2;
+
+// ============================================================
+// 音效（合成）
+// ============================================================
+var actx = null;
+function initAudio() {
+  try {
+    if (!actx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    if (actx && actx.state === 'suspended') actx.resume();
+  } catch (e) {}
+}
+function tone(f1, f2, dur, vol, type) {
+  if (!actx) return;
+  try {
+    var t = actx.currentTime;
+    var o = actx.createOscillator();
+    var g = actx.createGain();
+    var filt = actx.createBiquadFilter();
+    filt.type = 'lowpass'; filt.frequency.value = 4200;
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(f1, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(1, f2), t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(filt); filt.connect(g); g.connect(actx.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  } catch (e) {}
+}
+function noiseBurst(dur, vol, freq) {
+  if (!actx) return;
+  try {
+    var t = actx.currentTime;
+    var len = Math.floor(actx.sampleRate * dur);
+    var buf = actx.createBuffer(1, len, actx.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var src = actx.createBufferSource(); src.buffer = buf;
+    var filt = actx.createBiquadFilter();
+    filt.type = 'bandpass'; filt.frequency.value = freq || 900; filt.Q.value = 1.5;
+    var g = actx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(filt); filt.connect(g); g.connect(actx.destination);
+    src.start(t);
+  } catch (e) {}
+}
+var SFX = {
+  shoot:    function () { tone(280, 60, 0.08, 0.08, 'square'); noiseBurst(0.05, 0.13, 1400); },
+  enemyShot:function () { tone(260, 70, 0.06, 0.04, 'square'); },
+  hit:      function () { tone(880, 500, 0.05, 0.09, 'sine'); },
+  headshot: function () { tone(1400, 700, 0.07, 0.10, 'sine'); },
+  hurt:     function () { tone(130, 50, 0.20, 0.15, 'sawtooth'); noiseBurst(0.10, 0.10, 400); },
+  kill:     function () { tone(660, 220, 0.20, 0.10, 'triangle'); },
+  death:    function () { tone(300, 60, 0.6, 0.15, 'sawtooth'); },
+  empty:    function () { tone(180, 130, 0.05, 0.06, 'square'); },
+  reload:   function () { tone(200, 450, 0.10, 0.05, 'triangle'); }
+};
+
+// ============================================================
+// Three.js 場景初始化
+// ============================================================
+scene = new THREE.Scene();
+scene.background = new THREE.Color(0x6b8cae);
+scene.fog = new THREE.FogExp2(0x6b8cae, 0.008);
+
+camera = new THREE.PerspectiveCamera(78, innerWidth / innerHeight, 0.1, 500);
+camera.position.set(0, 1.7, 0);
+camera.rotation.order = 'YXZ';
+scene.add(camera);
+
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (e) {
+  var er3 = document.getElementById('err');
+  er3.style.display = 'flex';
+  er3.innerHTML = '❌ WebGL 無法啟動\n請改用 Chrome / Edge / Firefox 最新版';
+  return;
+}
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+if (THREE.ACESFilmicToneMapping) renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.appendChild(renderer.domElement);
+canvas = renderer.domElement;
+
+// 光照
+var sun = new THREE.DirectionalLight(0xffd9a8, 1.15);
+sun.position.set(60, 100, 50);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
+sun.shadow.camera.top = 60;   sun.shadow.camera.bottom = -60;
+sun.shadow.camera.far = 250;
+scene.add(sun);
+scene.add(new THREE.AmbientLight(0x8098b8, 0.45));
+scene.add(new THREE.HemisphereLight(0x8ab0d8, 0x3a4a3a, 0.6));
+var rim = new THREE.DirectionalLight(0x88bbff, 0.35);
+rim.position.set(-50, 30, -70);
+scene.add(rim);
+
+// 地面（60 x 60 的競技場）
+var ARENA = 30;   // 半徑 30 => 60x60
+var ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200, 200),
+  new THREE.MeshStandardMaterial({ color: 0x3f5a42, roughness: 0.96 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+var grid = new THREE.GridHelper(120, 60, 0x2a3f2a, 0x335033);
+grid.position.y = 0.02;
+grid.material.opacity = 0.2;
+grid.material.transparent = true;
+scene.add(grid);
+
+// 競技場掩體（對稱配置）
+var boxGeo = new THREE.BoxGeometry(1, 1, 1);
+var boxMat = new THREE.MeshStandardMaterial({ color: 0x6a6a72, roughness: 0.8, metalness: 0.15 });
+var boxMat2 = new THREE.MeshStandardMaterial({ color: 0x7a6a58, roughness: 0.9 });
+
+function addBox(x, z, w, h, d, mat) {
+  var m = new THREE.Mesh(boxGeo, mat || boxMat);
+  m.scale.set(w, h, d);
+  m.position.set(x, h / 2, z);
+  m.castShadow = true; m.receiveShadow = true;
+  scene.add(m); walls.push(m);
+}
+
+// 外牆
+addBox(0, -ARENA, ARENA * 2, 5, 1, boxMat);
+addBox(0,  ARENA, ARENA * 2, 5, 1, boxMat);
+addBox(-ARENA, 0, 1, 5, ARENA * 2, boxMat);
+addBox( ARENA, 0, 1, 5, ARENA * 2, boxMat);
+
+// 對稱掩體
+var布局 = [
+  [0, 0, 6, 2, 6],
+  [-12, 8, 4, 3, 4],
+  [12, -8, 4, 3, 4],
+  [-8, -12, 3, 2, 3],
+  [8, 12, 3, 2, 3],
+  [-18, -3, 2, 4, 2],
+  [18, 3, 2, 4, 2],
+  [-5, 15, 3, 2, 3],
+  [5, -15, 3, 2, 3],
+  [15, 15, 4, 3, 4],
+  [-15, -15, 4, 3, 4]
+];
+for (var li = 0; li < 布局.length; li++) {
+  var lay = 布局[li];
+  addBox(lay[0], lay[1], lay[2], lay[3], lay[4], li % 2 ? boxMat2 : boxMat);
+}
+
+// ============================================================
+// 本地槍模型
+// ============================================================
+var gunGroup = new THREE.Group();
+camera.add(gunGroup);
+var gunBody, gunBarrel, muzzleSprite, muzzleLight;
+var glowTexture = (function () {
+  var c = document.createElement('canvas');
+  c.width = c.height = 128;
+  var g = c.getContext('2d');
+  var grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0.0, 'rgba(255,255,230,1)');
+  grad.addColorStop(0.25, 'rgba(255,220,120,0.9)');
+  grad.addColorStop(0.55, 'rgba(255,140,40,0.45)');
+  grad.addColorStop(1.0, 'rgba(255,80,0,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+})();
+
+function buildGun() {
+  while (gunGroup.children.length) gunGroup.remove(gunGroup.children[0]);
+
+  gunBody = new THREE.Mesh(
+    new THREE.BoxGeometry(0.13, 0.16, 0.52),
+    new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.5, metalness: 0.7 })
+  );
+  gunBody.position.set(0, 0, -0.12);
+
+  var accent = new THREE.Mesh(
+    new THREE.BoxGeometry(0.135, 0.05, 0.32),
+    new THREE.MeshStandardMaterial({ color: 0x2a2a34, roughness: 0.4, metalness: 0.75 })
+  );
+  accent.position.set(0, 0.055, -0.18);
+
+  gunBarrel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.035, 0.035, 0.42, 10),
+    new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.35, metalness: 0.85 })
+  );
+  gunBarrel.rotation.x = Math.PI / 2;
+  gunBarrel.position.set(0, 0.01, -0.55);
+
+  var grip = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.16, 0.09),
+    new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.7, metalness: 0.4 })
+  );
+  grip.position.set(0, -0.14, 0.12);
+  grip.rotation.x = -0.28;
+
+  gunGroup.add(gunBody, accent, gunBarrel, grip);
+
+  muzzleSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture, color: 0xffcc66, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  muzzleSprite.scale.set(0.7, 0.7, 1);
+  muzzleSprite.position.set(0.26, -0.19, -1.05 - 0.02);
+  gunGroup.add(muzzleSprite);
+
+  muzzleLight = new THREE.PointLight(0xffaa44, 0, 10, 2);
+  muzzleLight.position.copy(muzzleSprite.position);
+  gunGroup.add(muzzleLight);
+
+  gunGroup.position.set(0.26, -0.22, -0.02);
+}
+buildGun();
+
+// ============================================================
+// 遠端玩家模型
+// ============================================================
+var remotePlayer = null;
+
+function buildRemotePlayer() {
+  var g = new THREE.Group();
+  var bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a3a5a, roughness: 0.65, metalness: 0.4 });
+  var armorMat = new THREE.MeshStandardMaterial({
+    color: 0x1a5a9a, roughness: 0.5, metalness: 0.6,
+    emissive: 0x001133, emissiveIntensity: 0.8
+  });
+  var visorMat = new THREE.MeshBasicMaterial({ color: 0x00ddff });
+
+  var body = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.15, 0.62), bodyMat);
+  body.position.y = 1.28; body.castShadow = true; g.add(body);
+
+  var chest = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.42, 0.3), armorMat);
+  chest.position.set(0, 1.4, 0.3); chest.castShadow = true; g.add(chest);
+
+  var shoulderGeo = new THREE.BoxGeometry(0.28, 0.22, 0.42);
+  var shL = new THREE.Mesh(shoulderGeo, armorMat);
+  shL.position.set(-0.55, 1.62, 0); shL.castShadow = true; g.add(shL);
+  var shR = new THREE.Mesh(shoulderGeo, armorMat);
+  shR.position.set(0.55, 1.62, 0); shR.castShadow = true; g.add(shR);
+
+  var head = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.56, 0.56), bodyMat);
+  head.position.y = 2.18; head.castShadow = true; g.add(head);
+
+  var visor = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.14, 0.06), visorMat);
+  visor.position.set(0, 2.2, 0.30); g.add(visor);
+
+  var armGeo = new THREE.BoxGeometry(0.24, 0.86, 0.24);
+  var armL = new THREE.Mesh(armGeo, bodyMat); armL.position.set(-0.62, 1.16, 0);
+  armL.castShadow = true; g.add(armL);
+  var armR = new THREE.Mesh(armGeo, bodyMat); armR.position.set(0.62, 1.16, 0);
+  armR.castShadow = true; g.add(armR);
+
+  var legGeo = new THREE.BoxGeometry(0.28, 0.75, 0.28);
+  var legL = new THREE.Mesh(legGeo, bodyMat); legL.position.set(-0.22, 0.38, 0);
+  legL.castShadow = true; g.add(legL);
+  var legR = new THREE.Mesh(legGeo, bodyMat); legR.position.set(0.22, 0.38, 0);
+  legR.castShadow = true; g.add(legR);
+
+  g.userData.headParts = [head, visor];
+  g.userData.bodyMat = bodyMat;
+  g.userData.armorMat = armorMat;
+  return g;
+}
+
+// ============================================================
+// HUD 更新
+// ============================================================
+function updateHpHud() {
+  hpFillEl.style.width = Math.max(0, hp) + '%';
+  hpTextEl.textContent = Math.max(0, Math.ceil(hp));
+}
+function updateScoreHud() {
+  myScoreEl.textContent = kills;
+  enemyScoreEl.textContent = '對手 ' + enemyKills;
+}
+function updateAmmoHud() {
+  var w = WEAPONS[0];
+  ammoCurEl.textContent = w.ammo;
+  ammoResEl.textContent = '/' + w.reserve;
+}
+function showBigMsg(text, color, size) {
+  msgBigEl.textContent = text;
+  msgBigEl.style.color = color || '#fff';
+  msgBigEl.style.fontSize = (size || 42) + 'px';
+  msgBigEl.style.opacity = 1;
+  msgBigEl.style.transform = 'translate(-50%,-50%) scale(1)';
+  clearTimeout(showBigMsg._t);
+  showBigMsg._t = setTimeout(function () {
+    msgBigEl.style.opacity = 0;
+    msgBigEl.style.transform = 'translate(-50%,-50%) scale(1.15)';
+  }, 1400);
+}
+function flashDamage() {
+  damageEl.style.boxShadow = 'inset 0 0 160px 40px rgba(220,20,20,0.8)';
+  setTimeout(function () {
+    damageEl.style.boxShadow = 'inset 0 0 0 0 rgba(200,0,0,0)';
+  }, 80);
+}
+
+// ============================================================
+// PeerJS 連線
+// ============================================================
+var peer = null;
+var conn = null;
+var isHost = false;
+var roomId = '';
+var remoteState = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, hp: 100 };
+var remoteLastUpdate = 0;
+var lastSentState = 0;
+
+function peerOptions() {
+  return {
+    debug: 1,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
+    }
+  };
+}
+
+function createRoom() {
+  if (peer) return;
+  statusEl.textContent = '正在建立房間…';
+  statusEl.className = '';
+  menuMain.classList.add('hidden');
+  menuRoom.classList.remove('hidden');
+
+  peer = new Peer(peerOptions());
+
+  peer.on('open', function (id) {
+    roomId = id;
+    isHost = true;
+    roomCodeEl.textContent = id;
+    statusEl.textContent = '等待對手加入…';
+    // 點房號複製
+    roomCodeEl.onclick = function () {
+      try {
+        navigator.clipboard.writeText(id);
+        statusEl.textContent = '✓ 已複製房號';
+        setTimeout(function () { statusEl.textContent = '等待對手加入…'; }, 1500);
+      } catch (e) {}
+    };
+  });
+
+  peer.on('connection', function (c) {
+    if (conn) { c.close(); return; }
+    conn = c;
+    setupConnection(c);
+  });
+
+  peer.on('error', function (err) {
+    statusEl.textContent = '連線錯誤：' + (err.type || err.message || '未知');
+    statusEl.className = 'err';
+  });
+}
+
+function joinRoom(hostId) {
+  if (peer) return;
+  if (!hostId) {
+    statusJoinEl.textContent = '請輸入房號';
+    return;
+  }
+  statusJoinEl.textContent = '連線中…';
+
+  peer = new Peer(peerOptions());
+
+  peer.on('open', function () {
+    var c = peer.connect(hostId, { reliable: true });
+    conn = c;
+    setupConnection(c);
+
+    // 5 秒 timeout
+    setTimeout(function () {
+      if (!inGame) {
+        statusJoinEl.textContent = '連線逾時，請確認房號是否正確';
+      }
+    }, 5000);
+  });
+
+  peer.on('error', function (err) {
+    statusJoinEl.textContent = '連線失敗：' + (err.type || err.message || '未知');
+    try { peer.destroy(); } catch (e) {}
+    peer = null;
+    conn = null;
+  });
+}
+
+function setupConnection(c) {
+  c.on('open', function () {
+    isHost = (c.peer !== null && peer && peer.id === roomId) || isHost;
+    startGame();
+  });
+  c.on('data', function (data) {
+    handleNetData(data);
+  });
+  c.on('close', function () {
+    if (inGame) {
+      showBigMsg('對手已離線', '#f88', 34);
+      setTimeout(function () { location.reload(); }, 2000);
+    }
+  });
+  c.on('error', function (err) {
+    if (inGame) showBigMsg('連線錯誤', '#f88', 30);
+  });
+}
+
+function sendNet(data) {
+  if (conn && conn.open) {
+    try { conn.send(data); } catch (e) {}
+  }
+}
+
+function handleNetData(data) {
+  if (!data || typeof data !== 'object') return;
+
+  if (data.t === 'state') {
+    remoteState.x = data.x;
+    remoteState.y = data.y;
+    remoteState.z = data.z;
+    remoteState.yaw = data.yaw;
+    remoteState.pitch = data.pitch;
+    remoteState.hp = data.hp;
+    remoteLastUpdate = performance.now();
+
+    // 更新對手血條
+    enemyFillEl.style.width = Math.max(0, data.hp) + '%';
+  } else if (data.t === 'damage') {
+    applyDamage(data.amount || 20);
+    SFX.hurt();
+    flashDamage();
+    shakeAmount = Math.min(shakeAmount + 0.07, 0.15);
+  } else if (data.t === 'killed') {
+    // 對手說他殺了我
+    enemyKills++;
+    updateScoreHud();
+    showBigMsg('你被擊殺', '#f55', 40);
+  } else if (data.t === 'iKilled') {
+    // 我殺了對手（對方告訴我他死了）
+    kills++;
+    updateScoreHud();
+    showBigMsg('擊殺！', '#5fd0ff', 44);
+    SFX.kill();
+  } else if (data.t === 'shot') {
+    // 對手開槍（播放音效）
+    SFX.enemyShot();
+  }
+}
+
+// ============================================================
+// 遊戲開始
+// ============================================================
+function startGame() {
+  if (inGame) return;
+  inGame = true;
+
+  menuEl.classList.add('hidden');
+  hudEl.classList.add('on');
+  crosshairEl.classList.remove('hidden');
+  hitEl.classList.remove('hidden');
+  roomBadge.textContent = '房號 ' + roomId;
+
+  // 出生點：host 在 (-18, 0)，client 在 (18, 0)
+  camera.position.set(isHost ? -18 : 18, 1.7, 0);
+  yaw = isHost ? -Math.PI / 2 : Math.PI / 2;
+  hp = 100;
+
+  // 建立遠端玩家模型
+  remotePlayer = buildRemotePlayer();
+  scene.add(remotePlayer);
+  remotePlayer.position.set(isHost ? 18 : -18, 0, 0);
+
+  // 初始化遠端狀態
+  remoteState.x = remotePlayer.position.x;
+  remoteState.y = 0;
+  remoteState.z = 0;
+
+  updateHpHud();
+  updateScoreHud();
+  updateAmmoHud();
+
+  // 綁定輸入
+  initInput();
+
+  // 開始網絡同步
+  setInterval(sendState, 50);   // 20Hz
+
+  canvas.requestPointerLock && canvas.requestPointerLock();
+  enableHoverMode();
+
+  showBigMsg('戰鬥開始', '#8cf', 38);
+}
+
+// ============================================================
+// 輸入處理
+// ============================================================
+function initInput() {
+  document.addEventListener('mousemove', function (e) {
+    mouseScreenX = e.clientX;
+    mouseScreenY = e.clientY;
+    if (locked) rotate(e.movementX || 0, e.movementY || 0);
+  });
+
+  document.addEventListener('pointerlockchange', function () {
+    locked = (document.pointerLockElement === canvas);
+    if (locked) {
+      useHover = false;
+      canvas.style.cursor = 'none';
+      modeEl.textContent = '🎯 滑鼠鎖定中 · ESC 釋放';
+    } else {
+      enableHoverMode();
+    }
+  });
+
+  canvas.addEventListener('click', function () {
+    if (!inGame) return;
+    if (!locked) {
+      try {
+        var p = canvas.requestPointerLock();
+        if (p && p.catch) p.catch(function () { enableHoverMode(); });
+      } catch (e) { enableHoverMode(); }
+    }
+  });
+
+  document.addEventListener('mousedown', function (e) {
+    if (!inGame || e.button !== 0) return;
+    mouseDown = true;
+    shoot();
+  });
+  document.addEventListener('mouseup', function (e) {
+    if (e.button !== 0) return;
+    mouseDown = false;
+  });
+  document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  document.addEventListener('keydown', function (e) {
+    if (keys[e.code]) return;
+    keys[e.code] = true;
+    if (!inGame) return;
+    if (e.code === 'Space') e.preventDefault();
+    if (e.code === 'KeyR') startReload();
+  });
+  document.addEventListener('keyup', function (e) { keys[e.code] = false; });
+  window.addEventListener('blur', function () { keys = {}; mouseDown = false; });
+}
+
+function enableHoverMode() {
+  if (useHover) return;
+  useHover = true;
+  if (canvas) canvas.style.cursor = 'none';
+  modeEl.textContent = '🎯 滑鼠移到畫面邊緣轉視角 · 左鍵射擊';
+}
+
+function rotate(dx, dy) {
+  yaw   -= dx * 0.0021;
+  pitch -= dy * 0.0021;
+  var lim = Math.PI / 2 - 0.02;
+  pitch = Math.max(-lim, Math.min(lim, pitch));
+}
+
+// ============================================================
+// 網絡同步
+// ============================================================
+function sendState() {
+  if (!inGame) return;
+  sendNet({
+    t: 'state',
+    x: +camera.position.x.toFixed(3),
+    y: +camera.position.y.toFixed(3),
+    z: +camera.position.z.toFixed(3),
+    yaw: +yaw.toFixed(3),
+    pitch: +pitch.toFixed(3),
+    hp: hp
+  });
+}
+
+// ============================================================
+// 射擊
+// ============================================================
+var raycaster = new THREE.Raycaster();
+var screenCenter = new THREE.Vector2(0, 0);
+
+function shoot() {
+  if (isDead) return;
+  var now = performance.now() / 1000;
+  var w = WEAPONS[0];
+  if (reloading) return;
+  if (now < nextShotTime) return;
+  if (w.ammo <= 0) {
+    SFX.empty();
+    nextShotTime = now + 0.2;
+    startReload();
+    return;
+  }
+
+  w.ammo--;
+  nextShotTime = now + w.fireRate;
+  updateAmmoHud();
+  SFX.shoot();
+
+  // 通知對手播放開槍音效
+  sendNet({ t: 'shot' });
+
+  // 槍口火光
+  if (muzzleSprite) {
+    muzzleSprite.material.opacity = 0.95;
+    muzzleSprite.material.rotation = Math.random() * Math.PI * 2;
+    var sc = 0.6 + Math.random() * 0.4;
+    muzzleSprite.scale.set(sc, sc, 1);
+  }
+  if (muzzleLight) muzzleLight.intensity = 5 + Math.random() * 3;
+  muzzleTimer = 0.055;
+
+  // 後座力
+  pitch += w.recoil * (0.72 + Math.random() * 0.55);
+  yaw   += (Math.random() - 0.5) * w.recoil * 0.95;
+  recoilPitch += w.recoil * 0.7;
+  shakeAmount = Math.min(shakeAmount + w.recoil * 14, 0.11);
+  spreadAmount = Math.min(spreadAmount + w.spread * 8, 0.06);
+
+  // Raycast
+  raycaster.setFromCamera(screenCenter, camera);
+  var dir = raycaster.ray.direction.clone();
+  dir.x += (Math.random() - 0.5) * spreadAmount;
+  dir.y += (Math.random() - 0.5) * spreadAmount;
+  dir.z += (Math.random() - 0.5) * spreadAmount;
+  dir.normalize();
+  raycaster.set(camera.position, dir);
+  raycaster.far = w.range;
+
+  // 檢查是否打到遠端玩家
+  if (remotePlayer) {
+    var hits = raycaster.intersectObject(remotePlayer, true);
+    if (hits.length > 0) {
+      var isHead = remotePlayer.userData.headParts.indexOf(hits[0].object) >= 0;
+      var dmg = w.damage * (isHead ? 2.5 : 1);
+      sendNet({ t: 'damage', amount: dmg });
+      SFX[isHead ? 'headshot' : 'hit']();
+
+      // 命中標記
+      hitEl.style.opacity = 1;
+      hitEl.style.transform = 'translate(-50%,-50%) scale(' + (isHead ? 1.3 : 1) + ')';
+      setTimeout(function () {
+        hitEl.style.opacity = 0;
+        hitEl.style.transform = 'translate(-50%,-50%) scale(1)';
+      }, 75);
+
+      // 粒子
+      spawnParticles(hits[0].point, isHead ? 0xff4444 : 0x66aaff, 10, 5);
+      return;
+    }
+  }
+
+  // 沒打到人，畫一條曳光
+  var start = new THREE.Vector3();
+  if (muzzleSprite) muzzleSprite.getWorldPosition(start);
+  var end = camera.position.clone().addScaledVector(dir, 60);
+  spawnTracer(start, end);
+}
+
+function startReload() {
+  var w = WEAPONS[0];
+  if (reloading) return;
+  if (w.ammo >= w.magSize) return;
+  reloading = true;
+  reloadStart = performance.now() / 1000;
+  reloadDuration = w.reloadTime;
+  reloadHintEl.style.opacity = 1;
+  SFX.reload();
+}
+function finishReload() {
+  var w = WEAPONS[0];
+  w.ammo = w.magSize;
+  reloading = false;
+  reloadHintEl.style.opacity = 0;
+  reloadBarEl.style.width = '0%';
+  updateAmmoHud();
+}
+
+// ============================================================
+// 粒子 / 曳光
+// ============================================================
+var partGeo = new THREE.BoxGeometry(1, 1, 1);
+function spawnParticles(pos, color, count, power) {
+  for (var i = 0; i < count; i++) {
+    var size = 0.05 + Math.random() * 0.06;
+    var p = new THREE.Mesh(partGeo, new THREE.MeshBasicMaterial({
+      color: color, transparent: true, opacity: 1 }));
+    p.scale.set(size, size, size);
+    p.position.copy(pos);
+    p.userData = {
+      vel: new THREE.Vector3(
+        (Math.random() - 0.5) * power,
+        Math.random() * power * 0.8 + 1.5,
+        (Math.random() - 0.5) * power),
+      life: 0.5 + Math.random() * 0.4,
+      spin: (Math.random() - 0.5) * 16
+    };
+    scene.add(p);
+    particles.push(p);
+  }
+}
+
+var tracers = [];
+function spawnTracer(from, to) {
+  try {
+    var geo = new THREE.BufferGeometry().setFromPoints([from.clone(), to.clone()]);
+    var line = new THREE.Line(geo, new THREE.LineBasicMaterial({
+      color: 0xffdd88, transparent: true, opacity: 0.85,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    scene.add(line);
+    tracers.push({ line: line, life: 0.09 });
+  } catch (e) {}
+}
+
+// ============================================================
+// 傷害 / 重生
+// ============================================================
+function applyDamage(amount) {
+  if (isDead) return;
+  hp -= amount;
+  if (hp <= 0) {
+    hp = 0;
+    isDead = true;
+    respawnAt = performance.now() / 1000 + 3;
+    SFX.death();
+    showBigMsg('陣亡', '#f55', 46);
+
+    // 告訴對手我死了
+    sendNet({ t: 'killed' });
+  }
+  updateHpHud();
+}
+
+function respawn() {
+  isDead = false;
+  hp = 100;
+  updateHpHud();
+
+  // 隨機對角出生
+  var spawns = [
+    { x: -18, z: 0, yaw: -Math.PI / 2 },
+    { x:  18, z: 0, yaw:  Math.PI / 2 },
+    { x: 0, z: -18, yaw: 0 },
+    { x: 0, z:  18, yaw: Math.PI }
+  ];
+  // 選離對手最遠的
+  var best = spawns[0], bestD = -1;
+  for (var i = 0; i < spawns.length; i++) {
+    var d = Math.hypot(spawns[i].x - remoteState.x, spawns[i].z - remoteState.z);
+    if (d > bestD) { bestD = d; best = spawns[i]; }
+  }
+
+  camera.position.set(best.x, 1.7, best.z);
+  yaw = best.yaw;
+  pitch = 0;
+}
+
+// ============================================================
+// 主迴圈
+// ============================================================
+var clock = new THREE.Clock();
+var forward = new THREE.Vector3();
+var right = new THREE.Vector3();
+var moveVec = new THREE.Vector3();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  var dt = Math.min(clock.getDelta(), 0.05);
+  var now = performance.now() / 1000;
+
+  if (!inGame) { renderer.render(scene, camera); return; }
+
+  // Hover 模式轉視角
+  if (useHover && !locked && document.pointerLockElement !== canvas) {
+    var cx = innerWidth / 2, cy = innerHeight / 2;
+    var nx = (mouseScreenX - cx) / cx;
+    var ny = (mouseScreenY - cy) / cy;
+    nx = Math.max(-1, Math.min(1, nx));
+    ny = Math.max(-1, Math.min(1, ny));
+    var dz = 0.12;
+    var rx = Math.sign(nx) * Math.max(0, Math.abs(nx) - dz) / (1 - dz);
+    var ry = Math.sign(ny) * Math.max(0, Math.abs(ny) - dz) / (1 - dz);
+    var maxRate = 2.8;
+    yaw   -= rx * maxRate * dt;
+    pitch -= ry * maxRate * dt;
+    var lim = Math.PI / 2 - 0.02;
+    pitch = Math.max(-lim, Math.min(lim, pitch));
+  }
+
+  // 換彈
+  if (reloading) {
+    var prog = (now - reloadStart) / reloadDuration;
+    if (prog >= 1) finishReload();
+    else reloadBarEl.style.width = (prog * 100) + '%';
+  }
+
+  // 死亡 → 重生
+  if (isDead && now >= respawnAt) respawn();
+
+  // 玩家移動
+  if (!isDead) {
+    var sprinting = (keys['ShiftLeft'] || keys['ShiftRight']) && (keys['KeyW'] || keys['ArrowUp']);
+    var speed = sprinting ? 11 : 7.5;
+    forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+    right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+    moveVec.set(0, 0, 0);
+    if (keys['KeyW'] || keys['ArrowUp'])    moveVec.add(forward);
+    if (keys['KeyS'] || keys['ArrowDown'])  moveVec.sub(forward);
+    if (keys['KeyD'] || keys['ArrowRight']) moveVec.add(right);
+    if (keys['KeyA'] || keys['ArrowLeft'])  moveVec.sub(right);
+    if (moveVec.lengthSq() > 0) {
+      moveVec.normalize().multiplyScalar(speed * dt);
+      camera.position.x += moveVec.x;
+      camera.position.z += moveVec.z;
+      camera.position.x = Math.max(-ARENA + 1, Math.min(ARENA - 1, camera.position.x));
+      camera.position.z = Math.max(-ARENA + 1, Math.min(ARENA - 1, camera.position.z));
+      spreadAmount = Math.min(spreadAmount + dt * 0.01, 0.028);
+    }
+
+    // 跳躍
+    if (keys['Space'] && onGround) { velocityY = 6.3; onGround = false; }
+    if (!onGround) {
+      velocityY -= 18 * dt;
+      eyeHeight += velocityY * dt;
+      if (eyeHeight <= 1.7) { eyeHeight = 1.7; velocityY = 0; onGround = true; }
+    }
+  }
+
+  // 相機
+  recoilPitch *= Math.pow(0.0009, dt);
+  spreadAmount *= Math.pow(0.0009, dt);
+  spreadAmount = Math.max(spreadAmount, 0.002);
+  shakeAmount *= Math.pow(0.0005, dt);
+
+  var shakeX = (Math.random() - 0.5) * shakeAmount;
+  var shakeY = (Math.random() - 0.5) * shakeAmount;
+
+  camera.position.y = eyeHeight + shakeY;
+  camera.rotation.y = yaw + shakeX;
+  camera.rotation.x = pitch - recoilPitch;
+
+  if (moveVec.lengthSq() > 0 && onGround) {
+    camera.position.y += Math.sin(now * 10) * 0.035;
+    camera.rotation.z = Math.sin(now * 5) * 0.007;
+  } else {
+    camera.rotation.z *= Math.pow(0.001, dt);
+  }
+
+  // 槍動畫
+  var targetZ = -0.02 + (reloading ? 0.16 : 0);
+  var targetY = -0.22 - (reloading ? 0.12 : 0);
+  gunGroup.position.z += (targetZ - gunGroup.position.z) * Math.min(1, dt * 14);
+  gunGroup.position.y += (targetY - gunGroup.position.y) * Math.min(1, dt * 10);
+  gunGroup.rotation.x = reloading ? -0.42 : 0;
+
+  if (muzzleTimer > 0) {
+    muzzleTimer -= dt;
+    if (muzzleTimer <= 0) {
+      if (muzzleSprite) muzzleSprite.material.opacity = 0;
+      if (muzzleLight) muzzleLight.intensity = 0;
+    }
+  }
+
+  // 連發
+  if (mouseDown && WEAPONS[0].auto && !reloading && !isDead) shoot();
+
+  // 更新遠端玩家
+  if (remotePlayer) {
+    remotePlayer.visible = !(remoteState.hp <= 0);
+    if (remotePlayer.visible) {
+      var lerp = Math.min(1, dt * 12);
+      remotePlayer.position.x += (remoteState.x - remotePlayer.position.x) * lerp;
+      remotePlayer.position.y += (remoteState.y - remotePlayer.position.y) * lerp;
+      remotePlayer.position.z += (remoteState.z - remotePlayer.position.z) * lerp;
+      // yaw 處理環繞
+      var dy = remoteState.yaw - remotePlayer.rotation.y;
+      while (dy > Math.PI) dy -= Math.PI * 2;
+      while (dy < -Math.PI) dy += Math.PI * 2;
+      remotePlayer.rotation.y += dy * lerp;
+      // 更新眼睛顏色：血量低時偏紅
+      var t = 1 - (remoteState.hp / 100);
+      remotePlayer.userData.armorMat.color.setRGB(0.1, 0.35 - t * 0.2, 0.6 - t * 0.3);
+    }
+  }
+
+  // 粒子
+  for (var q = particles.length - 1; q >= 0; q--) {
+    var pa = particles[q];
+    pa.userData.vel.y -= 17 * dt;
+    pa.position.addScaledVector(pa.userData.vel, dt);
+    pa.userData.life -= dt;
+    pa.material.opacity = Math.max(0, pa.userData.life * 2.2);
+    pa.rotation.x += pa.userData.spin * dt;
+    pa.rotation.y += pa.userData.spin * 0.7 * dt;
+    if (pa.userData.life <= 0 || pa.position.y < 0) {
+      scene.remove(pa); pa.material.dispose(); particles.splice(q, 1);
+    }
+  }
+
+  // 曳光
+  for (var ti = tracers.length - 1; ti >= 0; ti--) {
+    var tr = tracers[ti];
+    tr.life -= dt;
+    tr.line.material.opacity = Math.max(0, tr.life / 0.09) * 0.85;
+    if (tr.life <= 0) {
+      scene.remove(tr.line); tr.line.geometry.dispose();
+      tr.line.material.dispose(); tracers.splice(ti, 1);
+    }
+  }
+
+  // 準星
+  var gap = 3 + spreadAmount * 1100;
+  chT.style.left = '23px'; chT.style.top = (24 - gap - 8) + 'px';
+  chB.style.left = '23px'; chB.style.top = (24 + gap) + 'px';
+  chL.style.left = (24 - gap - 8) + 'px'; chL.style.top = '23px';
+  chR.style.left = (24 + gap) + 'px'; chR.style.top = '23px';
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// ============================================================
+// 選單按鈕
+// ============================================================
+btnCreate.addEventListener('click', function () {
+  initAudio();
+  createRoom();
+});
+btnShowJoin.addEventListener('click', function () {
+  menuMain.classList.add('hidden');
+  menuJoin.classList.remove('hidden');
+  setTimeout(function () { joinInput.focus(); }, 50);
+});
+btnJoin.addEventListener('click', function () {
+  initAudio();
+  joinRoom(joinInput.value.trim());
+});
+btnBack.addEventListener('click', function () {
+  menuJoin.classList.add('hidden');
+  menuMain.classList.remove('hidden');
+  statusJoinEl.textContent = '';
+});
+btnCancel.addEventListener('click', function () {
+  if (peer) { try { peer.destroy(); } catch (e) {} }
+  peer = null; conn = null;
+  menuRoom.classList.add('hidden');
+  menuMain.classList.remove('hidden');
+});
+joinInput.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') btnJoin.click();
+});
+
+// ============================================================
+// 視窗縮放
+// ============================================================
+addEventListener('resize', function () {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+})();
+</script>
+</body>
+</html>
