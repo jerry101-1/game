@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>⚔ RPG 冒險 ⚔</title>
 <style>
+  /* ===== 基礎重置 ===== */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background: #0a0a0f;
@@ -14,6 +15,7 @@
     max-width: 760px;
     margin: 0 auto;
     min-height: 100vh;
+    line-height: 1.5;
   }
   h1 {
     color: #4fc3f7;
@@ -22,19 +24,39 @@
     margin-bottom: 15px;
     text-shadow: 0 0 10px rgba(79,195,247,0.5);
   }
+
+  /* ===== 面板通用 ===== */
   .panel {
     background: #151520;
     border: 1px solid #2a2a3a;
     border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
   }
   .panel-title {
     color: #4fc3f7;
     font-weight: bold;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     font-size: 0.95em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
+  .subtitle { color: #888; font-size: 12px; }
+  .hidden { display: none !important; }
+
+  /* ===== 狀態列 ===== */
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin: 4px 0;
+    color: #ccc;
+  }
+  .stat-row .val { color: #4fc3f7; font-weight: bold; }
+
+  /* ===== 血條 ===== */
   .hp-bar {
     background: #1a1a25;
     height: 22px;
@@ -54,22 +76,17 @@
   .hp-fill.red { background: linear-gradient(90deg,#c62828,#f44336); }
   .hp-text {
     font-size: 11px;
-    color: #aaa;
+    color: #fff;
     text-align: center;
-    margin-top: -18px;
-    position: relative;
-    z-index: 2;
-    text-shadow: 0 0 3px #000;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
     line-height: 22px;
+    z-index: 2;
+    text-shadow: 0 0 4px #000, 0 0 2px #000;
+    pointer-events: none;
   }
-  .stat-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    margin: 3px 0;
-    color: #ccc;
-  }
-  .stat-row .val { color: #4fc3f7; font-weight: bold; }
+
+  /* ===== 按鈕 ===== */
   button {
     background: #1e88e5;
     color: #fff;
@@ -83,15 +100,8 @@
     font-family: inherit;
     transition: all 0.15s;
   }
-  button:hover:not(:disabled) {
-    background: #42a5f5;
-    transform: translateY(-1px);
-  }
-  button:disabled {
-    background: #333;
-    color: #666;
-    cursor: not-allowed;
-  }
+  button:hover:not(:disabled) { background: #42a5f5; transform: translateY(-1px); }
+  button:disabled { background: #333; color: #666; cursor: not-allowed; }
   button.skill { background: #8e24aa; }
   button.skill:hover:not(:disabled) { background: #ab47bc; }
   button.defend { background: #00897b; }
@@ -104,6 +114,20 @@
   button.gold:hover:not(:disabled) { background: #fdd835; }
   button.fruit { background: #6a1b9a; }
   button.fruit:hover:not(:disabled) { background: #8e24aa; }
+  button.small { padding: 6px 12px; font-size: 12px; }
+
+  /* ===== 標籤 ===== */
+  .badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+  }
+  .badge.boss { background: #ff5252; color: #fff; }
+  .badge.prefix { background: #7b1fa2; color: #fff; }
+  .badge.auto { background: #00897b; color: #fff; }
+
+  /* ===== 記錄區 ===== */
   #log {
     background: #08080c;
     border: 1px solid #2a2a3a;
@@ -114,7 +138,7 @@
     font-size: 13px;
     line-height: 1.6;
   }
-  #log div { margin-bottom: 3px; }
+  #log div { margin-bottom: 4px; word-break: break-word; }
   .dmg-player { color: #4caf50; }
   .dmg-monster { color: #f44336; }
   .system { color: #ffeb3b; }
@@ -125,65 +149,84 @@
   .loot { color: #ffd54f; }
   .boss { color: #ff5252; font-weight: bold; }
   .fruit-text { color: #ba68c8; font-weight: bold; }
-  .hidden { display: none !important; }
-  .actions { text-align: center; margin: 8px 0; }
-  .subtitle { color: #888; font-size: 12px; }
-  .chapter-badge {
-    background: #ff5252;
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: bold;
-  }
-  .prefix-badge {
-    background: #7b1fa2;
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-  }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #111; }
-  ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
-  .shop-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 10px;
-    border-bottom: 1px solid #222;
-    font-size: 13px;
-  }
-  .shop-item:last-child { border-bottom: none; }
-  .shop-item button { padding: 6px 12px; font-size: 12px; margin: 0; }
-  .shop-item .cost { color: #ffd54f; font-weight: bold; }
+
+  /* ===== 果實卡片 ===== */
   .fruit-card {
     background: #1a1a25;
     border: 1px solid #4a148c;
     border-radius: 8px;
-    padding: 10px;
-    margin: 6px 0;
+    padding: 12px;
+    margin: 8px 0;
   }
+  .fruit-card.active { border-color: #ffd54f; box-shadow: 0 0 8px rgba(255,213,79,0.3); }
   .fruit-card .fruit-name { color: #ba68c8; font-weight: bold; font-size: 15px; }
   .fruit-card .fruit-lv { color: #ffd54f; font-size: 12px; }
   .fruit-card .fruit-skill { color: #80cbc4; font-size: 12px; margin-top: 4px; }
-  .fruit-locked { opacity: 0.5; }
   .fruit-bar {
-    background: #1a1a25; height: 12px; border-radius: 6px;
-    overflow: hidden; margin: 4px 0; border: 1px solid #2a2a3a;
+    background: #1a1a25; height: 10px; border-radius: 5px;
+    overflow: hidden; margin: 6px 0; border: 1px solid #2a2a3a;
   }
   .fruit-bar-fill {
     height: 100%; background: linear-gradient(90deg,#6a1b9a,#ba68c8);
     transition: width 0.3s;
   }
-  .tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+
+  /* ===== 分頁 ===== */
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
   .tab {
-    padding: 6px 14px; background: #1a1a25; border: 1px solid #2a2a3a;
+    padding: 8px 16px; background: #1a1a25; border: 1px solid #2a2a3a;
     border-radius: 6px; cursor: pointer; font-size: 13px; color: #888;
+    transition: all 0.15s;
   }
+  .tab:hover { background: #22223a; }
   .tab.active { background: #1e88e5; color: #fff; border-color: #1e88e5; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+
+  /* ===== 商店列表 ===== */
+  .shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #222;
+    font-size: 13px;
+    gap: 10px;
+  }
+  .shop-item:last-child { border-bottom: none; }
+  .shop-item .cost { color: #ffd54f; font-weight: bold; }
+
+  /* ===== 動作區 ===== */
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin: 10px 0;
+  }
+
+  /* ===== 果實技能列 ===== */
+  #fruitSkillBar {
+    display: flex;
+    justify-content: center;
+    margin: 8px 0;
+    min-height: 24px;
+  }
+
+  /* ===== 輸入框 ===== */
+  input[type="text"] {
+    background: #1a1a25;
+    border: 1px solid #333;
+    color: #eee;
+    padding: 6px 10px;
+    border-radius: 5px;
+    font-family: inherit;
+    width: 60%;
+    font-size: 14px;
+  }
+
+  /* ===== 捲軸 ===== */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #111; }
+  ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
 </style>
 </head>
 <body>
@@ -196,9 +239,11 @@
   <p class="subtitle" style="margin-bottom:10px;">在很久很久以前...世界被黑暗籠罩...而你，是唯一的希望...</p>
   <div style="margin-bottom:10px;">
     <label style="font-size:13px;">勇者名字：</label>
-    <input id="inputName" type="text" placeholder="無名勇者" style="background:#1a1a25;border:1px solid #333;color:#eee;padding:6px 10px;border-radius:5px;font-family:inherit;width:60%;">
+    <input id="inputName" type="text" placeholder="無名勇者">
   </div>
-  <button class="gold" onclick="startGame()">開始冒險</button>
+  <div class="actions" style="justify-content:flex-start;">
+    <button class="gold" onclick="startGame()">開始冒險</button>
+  </div>
 </div>
 
 <!-- ===== 村莊 ===== -->
@@ -231,7 +276,7 @@
   <div class="panel-title">🍇 果實系統 <span class="subtitle" id="fruitMoney"></span></div>
   <div class="tabs">
     <div class="tab active" data-tab="draw" onclick="switchFruitTab('draw')">🎰 抽果</div>
-    <div class="tab" data-tab="bag" onclick="switchFruitTab('bag')">🎒 果實背包</div>
+    <div class="tab" data-tab="bag" onclick="switchFruitTab('bag')">🎒 背包</div>
     <div class="tab" data-tab="train" onclick="switchFruitTab('train')">💪 練果</div>
   </div>
   <div id="fruitContent"></div>
@@ -249,22 +294,29 @@
 
 <!-- ===== 戰鬥 ===== -->
 <div id="screen-battle" class="panel hidden">
+  <!-- 玩家 -->
   <div class="panel-title">🧙 你（<span id="battleRole"></span> Lv.<span id="battleLevel"></span>）</div>
-  <div class="hp-bar"><div id="playerHpBar" class="hp-fill green" style="width:100%"></div></div>
-  <div class="hp-text" id="playerHpText">100 / 100</div>
+  <div class="hp-bar">
+    <div id="playerHpBar" class="hp-fill green" style="width:100%"></div>
+    <div class="hp-text" id="playerHpText">100 / 100</div>
+  </div>
   <div class="stat-row" style="margin-top:6px;">
     <span>攻擊 <span class="val" id="battleAtk"></span></span>
     <span>防禦 <span class="val" id="battleDef"></span></span>
     <span>藥水 <span class="val" id="battlePotion"></span></span>
   </div>
 
-  <div style="margin-top:14px;">
-    <div class="panel-title">👹 <span id="monsterName">野生史萊姆</span>
-      <span id="monsterPrefix" class="prefix-badge hidden"></span>
-      <span id="monsterBoss" class="chapter-badge hidden"></span>
+  <!-- 怪物 -->
+  <div style="margin-top:16px;">
+    <div class="panel-title">
+      👹 <span id="monsterName">野生史萊姆</span>
+      <span id="monsterPrefix" class="badge prefix hidden"></span>
+      <span id="monsterBoss" class="badge boss hidden"></span>
     </div>
-    <div class="hp-bar"><div id="monsterHpBar" class="hp-fill green" style="width:100%"></div></div>
-    <div class="hp-text" id="monsterHpText">50 / 50</div>
+    <div class="hp-bar">
+      <div id="monsterHpBar" class="hp-fill green" style="width:100%"></div>
+      <div class="hp-text" id="monsterHpText">50 / 50</div>
+    </div>
     <div class="stat-row" style="margin-top:6px;">
       <span>Lv.<span class="val" id="monsterLv"></span></span>
       <span>弱點 <span class="val" id="monsterWeak"></span></span>
@@ -273,6 +325,7 @@
     <div class="subtitle" id="monsterSkill" style="margin-top:4px;"></div>
   </div>
 
+  <!-- 行動按鈕 -->
   <div class="actions" style="margin-top:14px;">
     <button id="btnAttack" onclick="playerAttack()">普通攻擊</button>
     <button id="btnSkill" class="skill" onclick="playerSkill()">職業技能</button>
@@ -281,13 +334,18 @@
     <button id="btnPotion" class="potion" onclick="playerPotion()">藥水</button>
     <button id="btnAuto" class="gold" onclick="toggleAuto()">自動</button>
   </div>
-  <div id="fruitSkillBar" class="actions"></div>
+
+  <!-- 果實技能 -->
+  <div id="fruitSkillBar"></div>
+
+  <!-- 戰後按鈕 -->
   <div class="actions">
     <button id="btnContinue" class="gold hidden" onclick="continueAdventure()">繼續探索</button>
     <button id="btnReturn" class="hidden" onclick="returnToTown()">返回村莊</button>
   </div>
 </div>
 
+<!-- ===== 記錄 ===== -->
 <div class="panel">
   <div class="panel-title">📜 戰鬥記錄</div>
   <div id="log"></div>
@@ -307,30 +365,22 @@ const S = {
   chapter: 1, killCount: 0, runCount: 1,
   swordLevel: 0, shieldLevel: 0, contractLevel: 0, expShopLevel: 0,
 
-  // 果實系統
-  fruits: {},          // { fruitId: { level, exp } }
-  activeFruit: null,   // 當前裝備的果實 id
+  fruits: {},        // { fruitId: { level, exp } }
+  activeFruit: null, // 當前裝備的果實 id
 
   monster: null,
-  skillCD: 0,
-  fruitSkillCD: 0,
-  isDefending: false,
-  isShieldActive: false,
-  monsterFrozen: false,
-  monsterCharging: false,
+  skillCD: 0, fruitSkillCD: 0,
+  isDefending: false, isShieldActive: false,
+  monsterFrozen: false, monsterCharging: false,
   poisonTurns: 0, poisonDamage: 0,
   burnTurns: 0, burnDamage: 0,
-  bleedTurns: 0, bleedDamage: 0,
   weakenTurns: 0,
-  autoMode: false,
-  inBattle: false,
-  gameOver: false,
-  isBossFight: false,
+  autoMode: false, inBattle: false, gameOver: false, isBossFight: false,
   playerDodge: 5,
 };
 
 // ============================================================
-//  職業定義（大幅擴充）
+//  職業（12 種）
 // ============================================================
 const ROLES = {
   1:  { name:"人類劍聖",       hp:160, def:15, atk:80,  desc:"均衡型，技能必中要害" },
@@ -348,7 +398,7 @@ const ROLES = {
 };
 
 // ============================================================
-//  詞綴定義（大幅擴充）
+//  詞綴（12 種）
 // ============================================================
 const PREFIXES = {
   1:  { name:"狂暴的",   desc:"低血時攻擊×2" },
@@ -366,7 +416,7 @@ const PREFIXES = {
 };
 
 // ============================================================
-//  怪物模板
+//  怪物
 // ============================================================
 const MONSTERS = {
   1: { name:"野生史萊姆",   skill:"跳起來壓在你臉上！",     hp:50,  atk:10, def:2,  exp:30,  money:20,  dodge:0,  weak:1, res:4 },
@@ -387,7 +437,7 @@ const BOSSES = {
 };
 
 // ============================================================
-//  果實定義（核心新系統）
+//  果實（10 種）
 // ============================================================
 const FRUITS = {
   rubber: {
@@ -492,7 +542,6 @@ const FRUITS = {
   },
 };
 
-// 果實抽獎池（依稀有度加權）
 const FRUIT_POOL = [
   { id:"rubber",  weight:30 },
   { id:"flame",   weight:20 },
@@ -533,9 +582,6 @@ function showScreen(name) {
 function elemName(e) {
   return { 1:'火', 2:'冰', 3:'雷', 4:'物理' }[e] || '無';
 }
-function elemColor(e) {
-  return { 1:'#f44336', 2:'#4fc3f7', 3:'#ffeb3b', 4:'#aaa' }[e] || '#aaa';
-}
 
 // ============================================================
 //  開場
@@ -544,7 +590,6 @@ function startGame() {
   const nameInput = $('inputName').value.trim();
   S.playerName = nameInput || "無名勇者";
 
-  // 隨機職業（12 種）
   const n = rand(1, 100);
   if (n <= 5)        S.roleType = 1;
   else if (n <= 12)  S.roleType = 2;
@@ -580,7 +625,7 @@ function startGame() {
 }
 
 // ============================================================
-//  村莊 UI
+//  村莊
 // ============================================================
 function updateTownUI() {
   $('townRole').textContent = S.roleName;
@@ -618,14 +663,8 @@ function loadGame() {
 // ============================================================
 //  商店
 // ============================================================
-function openShop() {
-  showScreen('screen-shop');
-  renderShop();
-}
-function closeShop() {
-  updateTownUI();
-  showScreen('screen-town');
-}
+function openShop() { showScreen('screen-shop'); renderShop(); }
+function closeShop() { updateTownUI(); showScreen('screen-town'); }
 
 function renderShop() {
   $('shopMoney').textContent = `（金幣：${S.money}）`;
@@ -692,8 +731,8 @@ function renderShop() {
     row.className = 'shop-item';
     const canBuy = S.money >= it.cost;
     row.innerHTML = `<span>${it.name}</span>
-      <span><span class="cost">${it.cost} 金</span>
-      <button ${canBuy ? '' : 'disabled'}>購買</button></span>`;
+      <span style="white-space:nowrap;"><span class="cost">${it.cost} 金</span>
+      <button class="small" ${canBuy ? '' : 'disabled'}>購買</button></span>`;
     row.querySelector('button').onclick = () => {
       if (S.money < it.cost) { log('金幣不足！', 'lose'); return; }
       it.action();
@@ -709,14 +748,8 @@ function renderShop() {
 // ============================================================
 let fruitTab = 'draw';
 
-function openFruit() {
-  showScreen('screen-fruit');
-  renderFruit();
-}
-function closeFruit() {
-  updateTownUI();
-  showScreen('screen-town');
-}
+function openFruit() { showScreen('screen-fruit'); renderFruit(); }
+function closeFruit() { updateTownUI(); showScreen('screen-town'); }
 function switchFruitTab(tab) {
   fruitTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
@@ -726,15 +759,16 @@ function switchFruitTab(tab) {
 // 抽果費用（依等級）
 function drawCost() {
   if (S.level < 15) return null;
-  if (S.level < 50) return 500;    // 15~49 等：500 金
-  if (S.level < 100) return 1500;  // 50~99 等：1500 金
-  return 3000;                     // 100 等以上：3000 金
+  if (S.level < 50) return 500;    // 15~49 等
+  if (S.level < 100) return 1500;  // 50~99 等
+  return 3000;                     // 100 等以上
 }
 
 function renderFruit() {
   $('fruitMoney').textContent = `（金幣：${S.money}）`;
   const c = $('fruitContent');
 
+  // ===== 抽果 =====
   if (fruitTab === 'draw') {
     const cost = drawCost();
     if (cost === null) {
@@ -747,8 +781,8 @@ function renderFruit() {
     c.innerHTML = `
       <div style="text-align:center;padding:10px;">
         <div class="subtitle">每次抽果消耗 <b style="color:#ffd54f;">${cost} 金幣</b></div>
-        <div class="subtitle">目前等級 Lv.${S.level}｜金幣 ${S.money}</div>
-        <div style="margin-top:12px;">
+        <div class="subtitle" style="margin-bottom:10px;">目前等級 Lv.${S.level}｜金幣 ${S.money}</div>
+        <div class="actions">
           <button class="fruit" onclick="drawFruit(1)">抽 1 次（${cost} 金）</button>
           <button class="fruit" onclick="drawFruit(10)">抽 10 次（${cost*10} 金）</button>
         </div>
@@ -756,15 +790,15 @@ function renderFruit() {
         <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px;">
           ${FRUIT_POOL.map(p => {
             const f = FRUITS[p.id];
-            return `<span style="background:#1a1a25;padding:4px 8px;border-radius:6px;font-size:12px;color:${
-              f.rarity==='神話'?'#ff5252':f.rarity==='傳說'?'#ffd54f':f.rarity==='史詩'?'#ba68c8':f.rarity==='稀有'?'#4fc3f7':'#aaa'
-            };">${f.icon} ${f.name} <span style="color:#666;">(${f.rarity})</span></span>`;
+            const color = f.rarity==='神話'?'#ff5252':f.rarity==='傳說'?'#ffd54f':f.rarity==='史詩'?'#ba68c8':f.rarity==='稀有'?'#4fc3f7':'#aaa';
+            return `<span style="background:#1a1a25;padding:4px 8px;border-radius:6px;font-size:12px;color:${color};">${f.icon} ${f.name}</span>`;
           }).join('')}
         </div>
       </div>`;
     return;
   }
 
+  // ===== 背包 =====
   if (fruitTab === 'bag') {
     const owned = Object.keys(S.fruits);
     if (owned.length === 0) {
@@ -782,20 +816,21 @@ function renderFruit() {
           ${unlocked?'✓':'🔒'} Lv.${sk.lv} ${sk.name}｜${sk.desc}（CD ${sk.cd}）
         </div>`;
       }).join('');
-      return `<div class="fruit-card ${isActive?'':''}" style="${isActive?'border-color:#ffd54f;':''}">
+      return `<div class="fruit-card ${isActive?'active':''}">
         <div class="fruit-name">${f.icon} ${f.name} <span style="color:${rarityColor};font-size:12px;">[${f.rarity}]</span></div>
         <div class="fruit-lv">Lv.${data.level}｜經驗 ${data.exp}｜屬性：${elemName(f.element)}</div>
         <div class="fruit-bar"><div class="fruit-bar-fill" style="width:${fruitExpPct(data.level, data.exp)}%"></div></div>
         <div class="subtitle">${f.desc}</div>
         ${skills}
-        <div style="margin-top:6px;">
-          ${isActive ? '<button class="gold" onclick="unequipFruit()">卸下</button>' : `<button class="fruit" onclick="equipFruit('${id}')">裝備</button>`}
+        <div style="margin-top:8px;">
+          ${isActive ? '<button class="gold small" onclick="unequipFruit()">卸下</button>' : `<button class="fruit small" onclick="equipFruit('${id}')">裝備</button>`}
         </div>
       </div>`;
     }).join('');
     return;
   }
 
+  // ===== 練果 =====
   if (fruitTab === 'train') {
     const owned = Object.keys(S.fruits);
     if (owned.length === 0) {
@@ -811,9 +846,9 @@ function renderFruit() {
         <div class="fruit-name">${f.icon} ${f.name} Lv.${data.level}</div>
         <div class="fruit-bar"><div class="fruit-bar-fill" style="width:${fruitExpPct(data.level, data.exp)}%"></div></div>
         <div class="subtitle">經驗 ${data.exp} / ${fruitExpNeeded(data.level)}</div>
-        <div style="margin-top:6px;">
-          <button class="fruit" ${canTrain?'':'disabled'} onclick="trainFruit('${id}')">練果（${cost} 金）</button>
-          <button class="fruit" ${canTrain?'':'disabled'} onclick="trainFruit10('${id}')">練 10 次（${cost*10} 金）</button>
+        <div style="margin-top:8px;">
+          <button class="fruit small" ${canTrain?'':'disabled'} onclick="trainFruit('${id}')">練果（${cost} 金）</button>
+          <button class="fruit small" ${canTrain?'':'disabled'} onclick="trainFruit10('${id}')">練 10 次（${cost*10} 金）</button>
         </div>
       </div>`;
     }).join('');
@@ -821,15 +856,9 @@ function renderFruit() {
   }
 }
 
-function fruitExpNeeded(lv) {
-  return Math.floor(100 * Math.pow(lv, 1.4));
-}
-function fruitExpPct(lv, exp) {
-  return Math.min(100, Math.floor(exp / fruitExpNeeded(lv) * 100));
-}
-function trainCost(lv) {
-  return 50 + lv * 20;
-}
+function fruitExpNeeded(lv) { return Math.floor(100 * Math.pow(lv, 1.4)); }
+function fruitExpPct(lv, exp) { return Math.min(100, Math.floor(exp / fruitExpNeeded(lv) * 100)); }
+function trainCost(lv) { return 50 + lv * 20; }
 
 function drawFruit(times) {
   const cost = drawCost() * times;
@@ -844,7 +873,6 @@ function drawFruit(times) {
       results.push({ id, isNew: true });
     } else {
       S.fruits[id].exp += 50;
-      // 自動升等
       while (S.fruits[id].exp >= fruitExpNeeded(S.fruits[id].level)) {
         S.fruits[id].exp -= fruitExpNeeded(S.fruits[id].level);
         S.fruits[id].level++;
@@ -853,9 +881,8 @@ function drawFruit(times) {
     }
   }
 
-  // 顯示結果
   const c = $('fruitContent');
-  let html = `<div style="text-align:center;margin-bottom:8px;"><b style="color:#ffd54f;">抽果結果</b></div>`;
+  let html = `<div style="text-align:center;margin-bottom:10px;"><b style="color:#ffd54f;">抽果結果</b></div>`;
   html += results.map(r => {
     const f = FRUITS[r.id];
     const rarityColor = f.rarity==='神話'?'#ff5252':f.rarity==='傳說'?'#ffd54f':f.rarity==='史詩'?'#ba68c8':f.rarity==='稀有'?'#4fc3f7':'#aaa';
@@ -899,19 +926,14 @@ function trainFruit(id) {
   if (S.money < cost) { log('金幣不足！', 'lose'); return; }
   S.money -= cost;
   data.exp += rand(30, 80);
-  let leveled = false;
   while (data.exp >= fruitExpNeeded(data.level)) {
     data.exp -= fruitExpNeeded(data.level);
     data.level++;
-    leveled = true;
-    // 檢查是否解鎖新技能
     const f = FRUITS[id];
     const unlocked = f.skills.find(sk => sk.lv === data.level);
-    if (unlocked) {
-      log(`★ ${f.name} 解鎖新技能：${unlocked.name}！`, 'fruit-text');
-    }
+    if (unlocked) log(`★ ${f.name} 解鎖新技能：${unlocked.name}！`, 'fruit-text');
   }
-  log(`練果成功！${FRUITS[id].name} 經驗 +，目前 Lv.${data.level}`, 'fruit-text');
+  log(`練果成功！${FRUITS[id].name} 目前 Lv.${data.level}`, 'fruit-text');
   renderFruit();
   updateTownUI();
 }
@@ -928,9 +950,7 @@ function trainFruit10(id) {
       data.level++;
       const f = FRUITS[id];
       const unlocked = f.skills.find(sk => sk.lv === data.level);
-      if (unlocked) {
-        log(`★ ${f.name} 解鎖新技能：${unlocked.name}！`, 'fruit-text');
-      }
+      if (unlocked) log(`★ ${f.name} 解鎖新技能：${unlocked.name}！`, 'fruit-text');
     }
   }
   log(`練果 10 次完成！${FRUITS[id].name} 目前 Lv.${data.level}`, 'fruit-text');
@@ -942,7 +962,7 @@ function trainFruit10(id) {
 //  冒險
 // ============================================================
 function goAdventure() {
-  if (S.hp <= 0) { S.hp = S.maxHp; }
+  if (S.hp <= 0) S.hp = S.maxHp;
   showScreen('screen-adventure');
   updateAdventureUI();
   log('你踏入了荒野...', 'system');
@@ -990,20 +1010,18 @@ function spawnMonster() {
     const base = MONSTERS[type];
     tpl = {
       name: base.name, skill: base.skill,
-      hp: base.hp + (base.hp * 0.3 | 0) * lv,
-      atk: base.atk + (base.atk * 0.3 | 0) * lv,
-      def: base.def + (base.def * 0.3 | 0) * lv,
+      hp: base.hp + Math.floor(base.hp * 0.3) * lv,
+      atk: base.atk + Math.floor(base.atk * 0.3) * lv,
+      def: base.def + Math.floor(base.def * 0.3) * lv,
       exp: base.exp * lv, money: base.money * lv,
       weak: base.weak, res: base.res, dodge: base.dodge,
     };
   }
 
-  // 詞綴（30% 機率，12 種）
   let prefixType = 0, prefix = "";
   if (type !== 7 && roll(30)) {
     prefixType = rand(1, 12);
     prefix = PREFIXES[prefixType].name;
-    // 套用詞綴效果
     if (prefixType === 6) tpl.def = Math.floor(tpl.def * 1.5);
     if (prefixType === 10) { tpl.hp = Math.floor(tpl.hp * 1.5); tpl.atk = Math.floor(tpl.atk * 1.2); }
     if (prefixType === 11) tpl.dodge += 20;
@@ -1013,7 +1031,6 @@ function spawnMonster() {
     ...tpl, maxHp: tpl.hp, lv, type, prefixType, prefix,
     name: prefix + tpl.name,
   };
-
   if (prefixType) log(`詞綴：${prefix}（${PREFIXES[prefixType].desc}）`, 'skill-text');
 }
 
@@ -1022,7 +1039,7 @@ function spawnBoss(ch) {
   const lv = ch * 10;
   S.monster = {
     name: b.name, skill: b.skill,
-    hp: b.hp + (b.hp * 0.1 | 0) * lv,
+    hp: b.hp + Math.floor(b.hp * 0.1) * lv,
     atk: b.atk + b.atk * 0.1 * lv,
     def: b.def + b.def * 0.1 * lv,
     exp: b.exp * lv, money: b.money * lv,
@@ -1047,7 +1064,6 @@ function startBattle() {
   S.monsterCharging = false;
   S.poisonTurns = 0; S.poisonDamage = 0;
   S.burnTurns = 0; S.burnDamage = 0;
-  S.bleedTurns = 0; S.bleedDamage = 0;
   S.weakenTurns = 0;
 
   S.playerDodge = 5;
@@ -1113,7 +1129,6 @@ function renderBattleUI() {
   if (S.skillCD > 0) { sk.textContent = `職業技能 (CD:${S.skillCD})`; sk.disabled = true; }
   else { sk.textContent = '職業技能'; sk.disabled = false; }
 
-  // 果實技能列
   renderFruitSkillBar();
 }
 
@@ -1125,11 +1140,8 @@ function renderFruitSkillBar() {
   }
   const f = FRUITS[S.activeFruit];
   const data = S.fruits[S.activeFruit];
-  // 找當前最高解鎖技能
   let usable = null;
-  for (const sk of f.skills) {
-    if (data.level >= sk.lv) usable = sk;
-  }
+  for (const sk of f.skills) if (data.level >= sk.lv) usable = sk;
   if (!usable) { bar.innerHTML = '<span class="subtitle">果實技能未解鎖</span>'; return; }
 
   const cdText = S.fruitSkillCD > 0 ? `(CD:${S.fruitSkillCD})` : '';
@@ -1175,13 +1187,11 @@ function playerFruitSkill() {
 
   log(`【${f.name}·${usable.name}】${usable.desc}`, 'fruit-text');
 
-  // 弱點/抗性
   let mult = 1.0;
   if (element === m.weak) { mult = 1.5; log('【弱點命中！】傷害 ×1.5', 'crit'); }
   else if (element === m.res) { mult = 0.7; log('【抗性】傷害 ×0.7', 'system'); }
   pDmg = Math.max(1, Math.round(pDmg * mult));
 
-  // 特殊效果
   if (S.activeFruit === 'ice' || S.activeFruit === 'void') {
     if (roll(30)) { S.monsterFrozen = true; log('敵人被凍結！', 'skill-text'); }
   }
@@ -1220,7 +1230,6 @@ function playerAction(action) {
   let element = 4;
 
   if (action === 2) {
-    // 各職業技能
     switch (S.roleType) {
       case 1: pDmg = Math.round(S.atk * 2.3) * 2; S.skillCD = 3;
         log(`【會心一擊】你屏氣凝神，一劍貫穿弱點！造成 ${pDmg} 點傷害！`, 'skill-text'); break;
@@ -1353,7 +1362,6 @@ function monsterTurn() {
 
   mDmg = Math.max(1, mDmg);
 
-  // 詞綴效果
   if (m.prefixType === 1 && m.hp < m.maxHp * 0.3) { mDmg *= 2; log(`【狂暴】${m.name} 攻擊力倍增！`, 'lose'); }
   if (m.prefixType === 3 && roll(25)) { mDmg *= 2; log(`【迅捷】${m.name} 連續攻擊了兩次！`, 'lose'); }
   if (m.prefixType === 12) { const heal = Math.floor(m.maxHp * 0.05); m.hp = Math.min(m.maxHp, m.hp + heal); log(`【詛咒血脈】${m.name} 回復 ${heal} 點 HP！`, 'win'); }
@@ -1373,7 +1381,6 @@ function monsterTurn() {
     }
   }
 
-  // 負面狀態
   if (m.type === 6 && roll(40)) {
     S.poisonTurns = 3; S.poisonDamage = Math.floor(S.maxHp * 0.05);
     log(`【中毒】你被毒孢子感染，每回合損失 ${S.poisonDamage} 點 HP！`, 'lose');
@@ -1437,7 +1444,6 @@ function toggleAuto() {
 function autoDecide() {
   if (!S.inBattle || S.gameOver) return;
   if (S.hp < S.maxHp * 0.3 && S.potion > 0) { playerPotion(); return; }
-  // 果實技能優先
   if (S.activeFruit && S.fruits[S.activeFruit] && S.fruitSkillCD === 0) { playerFruitSkill(); return; }
   if (S.skillCD === 0) { playerSkill(); return; }
   playerAttack();
@@ -1493,7 +1499,7 @@ function offerLoot() {
     const l = pool[idx];
     const row = document.createElement('div');
     row.className = 'shop-item';
-    row.innerHTML = `<span>(${i+1}) ${l.name}${l.val}</span><button>選擇</button>`;
+    row.innerHTML = `<span>(${i+1}) ${l.name}${l.val}</span><button class="small">選擇</button>`;
     row.querySelector('button').onclick = () => { applyLoot(l); closeShop(); afterBattle(); };
     list.appendChild(row);
   });
@@ -1522,7 +1528,6 @@ function afterBattle() {
     S.maxHp += hpGain; S.hp = S.maxHp;
     S.atk += atkGain; S.def += defGain;
     log(`★ 【等級提升】你升到了 Lv.${S.level}！ HP+${hpGain} 攻擊+${atkGain} 防禦+${defGain}`, 'win');
-    // 升級提示解鎖果實
     if (S.level === 15) log('🍇 已解鎖果實系統！可至村莊的果實區抽果。', 'fruit-text');
     if (S.level === 50) log('🍇 抽果費用提升，可獲得更高稀有度果實！', 'fruit-text');
     if (S.level === 100) log('🍇 抽果費用再提升，可獲得神話級果實！', 'fruit-text');
@@ -1598,7 +1603,7 @@ function triggerRandomEvent() {
     case 5: { S.playexp += 5; log(`受到高人指點！經驗加成提升至 ${S.playexp}%。`, 'win'); break; }
     case 6: { log('找到隱藏商店！', 'loot'); S.money += 100; S.potion++; log('神秘商人送了你 100 金幣和 1 瓶藥水。', 'win'); break; }
   }
-  if (S.hp <= 0) { S.hp = 0; }
+  if (S.hp <= 0) S.hp = 0;
 }
 
 // ============================================================
