@@ -11,7 +11,7 @@
     color: #e0e0e0;
     font-family: 'Consolas', 'Monaco', monospace;
     padding: 15px;
-    max-width: 720px;
+    max-width: 760px;
     margin: 0 auto;
     min-height: 100vh;
   }
@@ -102,6 +102,8 @@
   button.danger:hover:not(:disabled) { background: #e53935; }
   button.gold { background: #f9a825; color: #111; }
   button.gold:hover:not(:disabled) { background: #fdd835; }
+  button.fruit { background: #6a1b9a; }
+  button.fruit:hover:not(:disabled) { background: #8e24aa; }
   #log {
     background: #08080c;
     border: 1px solid #2a2a3a;
@@ -122,11 +124,7 @@
   .skill-text { color: #ce93d8; }
   .loot { color: #ffd54f; }
   .boss { color: #ff5252; font-weight: bold; }
-  .menu-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-  }
+  .fruit-text { color: #ba68c8; font-weight: bold; }
   .hidden { display: none !important; }
   .actions { text-align: center; margin: 8px 0; }
   .subtitle { color: #888; font-size: 12px; }
@@ -159,13 +157,40 @@
   .shop-item:last-child { border-bottom: none; }
   .shop-item button { padding: 6px 12px; font-size: 12px; margin: 0; }
   .shop-item .cost { color: #ffd54f; font-weight: bold; }
+  .fruit-card {
+    background: #1a1a25;
+    border: 1px solid #4a148c;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 6px 0;
+  }
+  .fruit-card .fruit-name { color: #ba68c8; font-weight: bold; font-size: 15px; }
+  .fruit-card .fruit-lv { color: #ffd54f; font-size: 12px; }
+  .fruit-card .fruit-skill { color: #80cbc4; font-size: 12px; margin-top: 4px; }
+  .fruit-locked { opacity: 0.5; }
+  .fruit-bar {
+    background: #1a1a25; height: 12px; border-radius: 6px;
+    overflow: hidden; margin: 4px 0; border: 1px solid #2a2a3a;
+  }
+  .fruit-bar-fill {
+    height: 100%; background: linear-gradient(90deg,#6a1b9a,#ba68c8);
+    transition: width 0.3s;
+  }
+  .tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+  .tab {
+    padding: 6px 14px; background: #1a1a25; border: 1px solid #2a2a3a;
+    border-radius: 6px; cursor: pointer; font-size: 13px; color: #888;
+  }
+  .tab.active { background: #1e88e5; color: #fff; border-color: #1e88e5; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
 </style>
 </head>
 <body>
 
 <h1>⚔ RPG 冒險 ⚔</h1>
 
-<!-- ===== 開場畫面 ===== -->
+<!-- ===== 開場 ===== -->
 <div id="screen-start" class="panel">
   <div class="panel-title">歡迎來到冒險世界</div>
   <p class="subtitle" style="margin-bottom:10px;">在很久很久以前...世界被黑暗籠罩...而你，是唯一的希望...</p>
@@ -176,7 +201,7 @@
   <button class="gold" onclick="startGame()">開始冒險</button>
 </div>
 
-<!-- ===== 村莊畫面 ===== -->
+<!-- ===== 村莊 ===== -->
 <div id="screen-town" class="panel hidden">
   <div class="panel-title">🏘️ 村莊</div>
   <div class="stat-row"><span>職業：<span class="val" id="townRole">-</span></span><span>等級：<span class="val" id="townLevel">1</span></span></div>
@@ -187,11 +212,12 @@
   <div class="actions" style="margin-top:12px;">
     <button onclick="goAdventure()">⚔ 出發冒險</button>
     <button class="gold" onclick="openShop()">🛒 商店</button>
+    <button class="fruit" onclick="openFruit()">🍇 果實</button>
     <button onclick="saveGame()">💾 存檔</button>
   </div>
 </div>
 
-<!-- ===== 商店畫面 ===== -->
+<!-- ===== 商店 ===== -->
 <div id="screen-shop" class="panel hidden">
   <div class="panel-title">🛒 村莊商店 <span class="subtitle" id="shopMoney"></span></div>
   <div id="shopList"></div>
@@ -200,19 +226,29 @@
   </div>
 </div>
 
-<!-- ===== 冒險畫面 ===== -->
-<div id="screen-adventure" class="panel hidden">
-  <div class="panel-title">
-    🌲 荒野探索
-    <span id="autoBadge" class="hidden" style="background:#00897b;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">自動</span>
+<!-- ===== 果實 ===== -->
+<div id="screen-fruit" class="panel hidden">
+  <div class="panel-title">🍇 果實系統 <span class="subtitle" id="fruitMoney"></span></div>
+  <div class="tabs">
+    <div class="tab active" data-tab="draw" onclick="switchFruitTab('draw')">🎰 抽果</div>
+    <div class="tab" data-tab="bag" onclick="switchFruitTab('bag')">🎒 果實背包</div>
+    <div class="tab" data-tab="train" onclick="switchFruitTab('train')">💪 練果</div>
   </div>
+  <div id="fruitContent"></div>
+  <div class="actions" style="margin-top:10px;">
+    <button onclick="closeFruit()">離開</button>
+  </div>
+</div>
+
+<!-- ===== 冒險 ===== -->
+<div id="screen-adventure" class="panel hidden">
+  <div class="panel-title">🌲 荒野探索</div>
   <div class="stat-row"><span>HP：<span class="val" id="advHp">-</span></span><span>金幣：<span class="val" id="advMoney">0</span></span></div>
   <div class="stat-row"><span>經驗：<span class="val" id="advExp">0/100</span></span><span>藥水：<span class="val" id="advPotion">0</span></span></div>
 </div>
 
-<!-- ===== 戰鬥畫面 ===== -->
+<!-- ===== 戰鬥 ===== -->
 <div id="screen-battle" class="panel hidden">
-  <!-- 玩家 -->
   <div class="panel-title">🧙 你（<span id="battleRole"></span> Lv.<span id="battleLevel"></span>）</div>
   <div class="hp-bar"><div id="playerHpBar" class="hp-fill green" style="width:100%"></div></div>
   <div class="hp-text" id="playerHpText">100 / 100</div>
@@ -222,7 +258,6 @@
     <span>藥水 <span class="val" id="battlePotion"></span></span>
   </div>
 
-  <!-- 怪物 -->
   <div style="margin-top:14px;">
     <div class="panel-title">👹 <span id="monsterName">野生史萊姆</span>
       <span id="monsterPrefix" class="prefix-badge hidden"></span>
@@ -238,7 +273,6 @@
     <div class="subtitle" id="monsterSkill" style="margin-top:4px;"></div>
   </div>
 
-  <!-- 行動按鈕 -->
   <div class="actions" style="margin-top:14px;">
     <button id="btnAttack" onclick="playerAttack()">普通攻擊</button>
     <button id="btnSkill" class="skill" onclick="playerSkill()">職業技能</button>
@@ -247,13 +281,13 @@
     <button id="btnPotion" class="potion" onclick="playerPotion()">藥水</button>
     <button id="btnAuto" class="gold" onclick="toggleAuto()">自動</button>
   </div>
+  <div id="fruitSkillBar" class="actions"></div>
   <div class="actions">
     <button id="btnContinue" class="gold hidden" onclick="continueAdventure()">繼續探索</button>
     <button id="btnReturn" class="hidden" onclick="returnToTown()">返回村莊</button>
   </div>
 </div>
 
-<!-- ===== 戰鬥記錄 ===== -->
 <div class="panel">
   <div class="panel-title">📜 戰鬥記錄</div>
   <div id="log"></div>
@@ -264,31 +298,30 @@
 //  遊戲狀態
 // ============================================================
 const S = {
-  // 玩家
   playerName: "無名勇者",
   roleType: 4, roleName: "弱小的新手",
   level: 1, exp: 0, expNeeded: 100,
   maxHp: 150, hp: 150, atk: 35, def: 9,
   money: 0, potion: 3,
   playexp: 100,
-
-  // 章節 / 進度
-  chapter: 1,
-  killCount: 0,
-  runCount: 1,
-
-  // 商店升級等級
+  chapter: 1, killCount: 0, runCount: 1,
   swordLevel: 0, shieldLevel: 0, contractLevel: 0, expShopLevel: 0,
 
-  // 戰鬥暫存
+  // 果實系統
+  fruits: {},          // { fruitId: { level, exp } }
+  activeFruit: null,   // 當前裝備的果實 id
+
   monster: null,
   skillCD: 0,
+  fruitSkillCD: 0,
   isDefending: false,
   isShieldActive: false,
   monsterFrozen: false,
   monsterCharging: false,
   poisonTurns: 0, poisonDamage: 0,
   burnTurns: 0, burnDamage: 0,
+  bleedTurns: 0, bleedDamage: 0,
+  weakenTurns: 0,
   autoMode: false,
   inBattle: false,
   gameOver: false,
@@ -296,17 +329,45 @@ const S = {
   playerDodge: 5,
 };
 
-// 職業基礎屬性
+// ============================================================
+//  職業定義（大幅擴充）
+// ============================================================
 const ROLES = {
-  1: { name: "殺傷性強的人類", hp:160, def:15, atk:80 },
-  2: { name: "耐久高的戰士",   hp:240, def:35, atk:45 },
-  3: { name: "靈活的刺客",     hp:140, def:7,  atk:110 },
-  4: { name: "弱小的新手",     hp:150, def:9,  atk:35 },
-  5: { name: "強力的法師",     hp:130, def:10, atk:95 },
-  6: { name: "神秘的暗影刺客", hp:140, def:20, atk:75 },
+  1:  { name:"人類劍聖",       hp:160, def:15, atk:80,  desc:"均衡型，技能必中要害" },
+  2:  { name:"鐵壁戰士",       hp:240, def:35, atk:45,  desc:"高防高血，技能附格擋" },
+  3:  { name:"疾影刺客",       hp:140, def:7,  atk:110, desc:"高攻高閃，技能爆傷" },
+  4:  { name:"熱血新手",       hp:150, def:9,  atk:35,  desc:"成長型，技能有等級加成" },
+  5:  { name:"奧術法師",       hp:130, def:10, atk:95,  desc:"技能帶火屬性，機率冰凍" },
+  6:  { name:"暗影刺客",       hp:140, def:20, atk:75,  desc:"技能帶雷屬性，可吸血" },
+  7:  { name:"聖光牧師",       hp:170, def:18, atk:60,  desc:"技能可治療自身" },
+  8:  { name:"狂暴蠻戰",       hp:200, def:12, atk:100, desc:"血量越低攻擊越高" },
+  9:  { name:"元素術士",       hp:135, def:14, atk:85,  desc:"技能屬性隨機變化" },
+  10: { name:"龍騎士",         hp:190, def:25, atk:90,  desc:"全能型，技能附龍息" },
+  11: { name:"死靈法師",       hp:145, def:16, atk:88,  desc:"技能吸取生命轉為護盾" },
+  12: { name:"神射手",         hp:150, def:13, atk:105, desc:"高爆擊率，無視部分防禦" },
 };
 
-// 怪物模板
+// ============================================================
+//  詞綴定義（大幅擴充）
+// ============================================================
+const PREFIXES = {
+  1:  { name:"狂暴的",   desc:"低血時攻擊×2" },
+  2:  { name:"荊棘的",   desc:"攻擊時反傷5%" },
+  3:  { name:"迅捷的",   desc:"25%機率攻擊兩次" },
+  4:  { name:"吸血的",   desc:"攻擊時回復30%傷害" },
+  5:  { name:"詛咒的",   desc:"技能CD+1" },
+  6:  { name:"堅硬的",   desc:"防禦力×1.5" },
+  7:  { name:"劇毒的",   desc:"攻擊附加中毒" },
+  8:  { name:"燃燒的",   desc:"攻擊附加燃燒" },
+  9:  { name:"虛弱的",   desc:"攻擊降低你攻擊力" },
+  10: { name:"巨大的",   desc:"血量×1.5，攻擊+20%" },
+  11: { name:"幽靈的",   desc:"閃避率+20%" },
+  12: { name:"詛咒血脈", desc:"每回合回復5%HP" },
+};
+
+// ============================================================
+//  怪物模板
+// ============================================================
 const MONSTERS = {
   1: { name:"野生史萊姆",   skill:"跳起來壓在你臉上！",     hp:50,  atk:10, def:2,  exp:30,  money:20,  dodge:0,  weak:1, res:4 },
   2: { name:"暴躁哥布林",   skill:"揮舞著鐵劍亂砍！",       hp:120, atk:30, def:5,  exp:60,  money:40,  dodge:5,  weak:2, res:1 },
@@ -325,12 +386,128 @@ const BOSSES = {
   5: { name:"【最終 BOSS】毀滅之龍",   skill:"世界終焉的化身！",           hp:20000,atk:400, def:200, exp:10000,money:10000,weak:3, res:1 },
 };
 
-const PREFIXES = {
-  1: "狂暴的", 2: "荊棘的", 3: "迅捷的", 4: "吸血的", 5: "詛咒的",
+// ============================================================
+//  果實定義（核心新系統）
+// ============================================================
+const FRUITS = {
+  rubber: {
+    name:"橡膠果實", icon:"🟣", rarity:"普通", element:4,
+    desc:"身體化為橡膠，攻擊附帶彈性衝擊",
+    skills: [
+      { lv:1,  name:"橡膠槍",       cd:2, mult:1.5, desc:"伸長手臂攻擊，造成150%傷害" },
+      { lv:15, name:"橡膠火箭炮",   cd:3, mult:2.2, desc:"蓄力一擊，造成220%傷害" },
+      { lv:50, name:"橡膠巨人之拳", cd:4, mult:3.5, desc:"巨大化拳頭，造成350%傷害並暈眩" },
+      { lv:100,name:"橡膠覺醒·五檔", cd:6, mult:6.0, desc:"覺醒形態，造成600%傷害並回復30%HP" },
+    ]
+  },
+  flame: {
+    name:"燒燒果實", icon:"🔴", rarity:"稀有", element:1,
+    desc:"身體化為火焰，攻擊附帶燃燒",
+    skills: [
+      { lv:1,  name:"火焰拳",       cd:2, mult:1.6, desc:"火焰纏繞拳頭，造成160%傷害並附加燃燒" },
+      { lv:15, name:"炎帝",         cd:3, mult:2.4, desc:"巨大火球，造成240%傷害" },
+      { lv:50, name:"螢火·火達摩",  cd:4, mult:3.8, desc:"連續火焰攻擊，造成380%傷害" },
+      { lv:100,name:"炎帝·業火",    cd:6, mult:6.5, desc:"地獄業火，造成650%傷害並附加強力燃燒" },
+    ]
+  },
+  ice: {
+    name:"冰冰果實", icon:"🔵", rarity:"稀有", element:2,
+    desc:"身體化為寒冰，攻擊附帶冰凍",
+    skills: [
+      { lv:1,  name:"冰之箭",       cd:2, mult:1.5, desc:"射出冰箭，造成150%傷害" },
+      { lv:15, name:"冰河時代",     cd:3, mult:2.3, desc:"凍結敵人，造成230%傷害並冰凍1回合" },
+      { lv:50, name:"冰之聖劍",     cd:4, mult:3.6, desc:"冰劍斬擊，造成360%傷害" },
+      { lv:100,name:"絕對零度",     cd:6, mult:6.2, desc:"凍結一切，造成620%傷害並冰凍2回合" },
+    ]
+  },
+  thunder: {
+    name:"轟雷果實", icon:"⚡", rarity:"稀有", element:3,
+    desc:"身體化為雷電，攻擊附帶麻痺",
+    skills: [
+      { lv:1,  name:"雷電拳",       cd:2, mult:1.7, desc:"雷電纏繞，造成170%傷害" },
+      { lv:15, name:"雷神之怒",     cd:3, mult:2.5, desc:"落雷攻擊，造成250%傷害" },
+      { lv:50, name:"雷迎",         cd:4, mult:4.0, desc:"巨大雷球，造成400%傷害" },
+      { lv:100,name:"雷霆·神罰",    cd:6, mult:7.0, desc:"天罰雷霆，造成700%傷害無視防禦" },
+    ]
+  },
+  dark: {
+    name:"暗暗果實", icon:"🌑", rarity:"史詩", element:3,
+    desc:"操控黑暗，攻擊附帶吸血",
+    skills: [
+      { lv:1,  name:"暗影球",       cd:2, mult:1.6, desc:"黑暗球體，造成160%傷害並吸血20%" },
+      { lv:15, name:"暗穴",         cd:3, mult:2.4, desc:"吞噬一切，造成240%傷害並吸血40%" },
+      { lv:50, name:"暗影吞噬",     cd:4, mult:3.8, desc:"吞噬敵人，造成380%傷害並吸血60%" },
+      { lv:100,name:"黑洞·解放",    cd:6, mult:6.8, desc:"釋放黑洞，造成680%傷害並吸血80%" },
+    ]
+  },
+  light: {
+    name:"閃閃果實", icon:"✨", rarity:"史詩", element:3,
+    desc:"操控光，攻擊附帶神聖傷害",
+    skills: [
+      { lv:1,  name:"光之刃",       cd:2, mult:1.7, desc:"光刃斬擊，造成170%傷害" },
+      { lv:15, name:"八咫鏡",       cd:3, mult:2.5, desc:"反射光線，造成250%傷害" },
+      { lv:50, name:"天叢雲劍",     cd:4, mult:4.0, desc:"神聖斬擊，造成400%傷害" },
+      { lv:100,name:"光之審判",     cd:6, mult:7.2, desc:"神聖審判，造成720%傷害並回復20%HP" },
+    ]
+  },
+  quake: {
+    name:"震震果實", icon:"💥", rarity:"傳說", element:4,
+    desc:"引發地震，攻擊無視部分防禦",
+    skills: [
+      { lv:1,  name:"震動拳",       cd:2, mult:1.8, desc:"震動攻擊，造成180%傷害無視20%防禦" },
+      { lv:15, name:"海震",         cd:3, mult:2.6, desc:"引發海震，造成260%傷害" },
+      { lv:50, name:"空震",         cd:4, mult:4.2, desc:"空間震動，造成420%傷害" },
+      { lv:100,name:"震震覺醒·陸沉", cd:6, mult:7.5, desc:"大陸沉沒，造成750%傷害無視50%防禦" },
+    ]
+  },
+  dragon: {
+    name:"龍龍果實·幻獸種", icon:"🐉", rarity:"傳說", element:1,
+    desc:"化身巨龍，全屬性提升",
+    skills: [
+      { lv:1,  name:"龍息",         cd:2, mult:1.8, desc:"噴吐龍息，造成180%傷害" },
+      { lv:15, name:"龍鱗護體",     cd:3, mult:2.0, desc:"龍鱗硬化，造成200%傷害並減傷50%" },
+      { lv:50, name:"龍之咆哮",     cd:4, mult:4.0, desc:"震懾咆哮，造成400%傷害" },
+      { lv:100,name:"龍神降臨",     cd:6, mult:7.5, desc:"化身龍神，造成750%傷害並全屬性+50%" },
+    ]
+  },
+  phoenix: {
+    name:"鳳凰果實·幻獸種", icon:"🔥", rarity:"神話", element:1,
+    desc:"不死鳳凰，攻擊附帶重生之力",
+    skills: [
+      { lv:1,  name:"鳳凰羽",       cd:2, mult:1.8, desc:"鳳凰羽毛，造成180%傷害" },
+      { lv:15, name:"不死鳥炎",     cd:3, mult:2.6, desc:"不死火焰，造成260%傷害並回復15%HP" },
+      { lv:50, name:"鳳凰衝擊",     cd:4, mult:4.2, desc:"鳳凰俯衝，造成420%傷害並回復25%HP" },
+      { lv:100,name:"鳳凰涅槃",     cd:6, mult:7.5, desc:"涅槃重生，造成750%傷害並回復50%HP" },
+    ]
+  },
+  void: {
+    name:"虛空果實", icon:"🌌", rarity:"神話", element:3,
+    desc:"操控虛空，攻擊無視一切防禦",
+    skills: [
+      { lv:1,  name:"虛空斬",       cd:2, mult:1.9, desc:"虛空斬擊，造成190%傷害無視30%防禦" },
+      { lv:15, name:"虛空吞噬",     cd:3, mult:2.8, desc:"吞噬空間，造成280%傷害" },
+      { lv:50, name:"虛空風暴",     cd:4, mult:4.5, desc:"虛空風暴，造成450%傷害" },
+      { lv:100,name:"虛空寂滅",     cd:6, mult:8.0, desc:"寂滅一切，造成800%傷害無視100%防禦" },
+    ]
+  },
 };
 
+// 果實抽獎池（依稀有度加權）
+const FRUIT_POOL = [
+  { id:"rubber",  weight:30 },
+  { id:"flame",   weight:20 },
+  { id:"ice",     weight:20 },
+  { id:"thunder", weight:20 },
+  { id:"dark",    weight:10 },
+  { id:"light",   weight:10 },
+  { id:"quake",   weight:5  },
+  { id:"dragon",  weight:3  },
+  { id:"phoenix", weight:2  },
+  { id:"void",    weight:1  },
+];
+
 // ============================================================
-//  DOM 工具
+//  工具
 // ============================================================
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
@@ -345,16 +522,19 @@ function log(msg, cls = '') {
   $('log').appendChild(div);
   $('log').scrollTop = $('log').scrollHeight;
 }
-
 function clearLog() { $('log').innerHTML = ''; }
 
-// ============================================================
-//  畫面切換
-// ============================================================
 function showScreen(name) {
-  ['screen-start','screen-town','screen-shop','screen-adventure','screen-battle']
+  ['screen-start','screen-town','screen-shop','screen-fruit','screen-adventure','screen-battle']
     .forEach(s => hide(s));
   if (name) show(name);
+}
+
+function elemName(e) {
+  return { 1:'火', 2:'冰', 3:'雷', 4:'物理' }[e] || '無';
+}
+function elemColor(e) {
+  return { 1:'#f44336', 2:'#4fc3f7', 3:'#ffeb3b', 4:'#aaa' }[e] || '#aaa';
 }
 
 // ============================================================
@@ -364,14 +544,20 @@ function startGame() {
   const nameInput = $('inputName').value.trim();
   S.playerName = nameInput || "無名勇者";
 
-  // 隨機分配職業
+  // 隨機職業（12 種）
   const n = rand(1, 100);
   if (n <= 5)        S.roleType = 1;
-  else if (n <= 25)  S.roleType = 2;
-  else if (n <= 50)  S.roleType = 3;
-  else if (n <= 80)  S.roleType = 4;
-  else if (n <= 90)  S.roleType = 5;
-  else               S.roleType = 6;
+  else if (n <= 12)  S.roleType = 2;
+  else if (n <= 20)  S.roleType = 3;
+  else if (n <= 35)  S.roleType = 4;
+  else if (n <= 45)  S.roleType = 5;
+  else if (n <= 55)  S.roleType = 6;
+  else if (n <= 63)  S.roleType = 7;
+  else if (n <= 72)  S.roleType = 8;
+  else if (n <= 80)  S.roleType = 9;
+  else if (n <= 88)  S.roleType = 10;
+  else if (n <= 95)  S.roleType = 11;
+  else               S.roleType = 12;
 
   const role = ROLES[S.roleType];
   S.roleName = role.name;
@@ -381,10 +567,12 @@ function startGame() {
   S.chapter = 1; S.killCount = 0; S.runCount = 1; S.potion = 3;
   S.swordLevel = S.shieldLevel = S.contractLevel = S.expShopLevel = 0;
   S.playexp = 100;
+  S.fruits = {}; S.activeFruit = null;
 
   clearLog();
   log(`歡迎你，${S.playerName}！`, 'system');
   log(`你的職業是：${S.roleName} (Lv.1)`, 'system');
+  log(`【職業特性】${role.desc}`, 'system');
   log(`HP: ${S.hp}/${S.maxHp}　攻擊: ${S.atk}　防禦: ${S.def}`, 'system');
 
   updateTownUI();
@@ -411,16 +599,16 @@ function saveGame() {
   try {
     localStorage.setItem('rpg_save', JSON.stringify(S));
     log('【系統】遊戲已存檔。', 'system');
-  } catch(e) {
-    log('【系統】存檔失敗。', 'lose');
-  }
+  } catch(e) { log('【系統】存檔失敗。', 'lose'); }
 }
 
 function loadGame() {
   try {
     const data = localStorage.getItem('rpg_save');
     if (data) {
-      Object.assign(S, JSON.parse(data));
+      const parsed = JSON.parse(data);
+      Object.assign(S, parsed);
+      if (!S.fruits) S.fruits = {};
       return true;
     }
   } catch(e) {}
@@ -434,7 +622,6 @@ function openShop() {
   showScreen('screen-shop');
   renderShop();
 }
-
 function closeShop() {
   updateTownUI();
   showScreen('screen-town');
@@ -444,7 +631,6 @@ function renderShop() {
   $('shopMoney').textContent = `（金幣：${S.money}）`;
   const items = [];
 
-  // 武器
   const swordCost = S.swordLevel === 0 ? 50 : 50 + S.swordLevel * 30;
   const swordGain = S.swordLevel === 0 ? 5 : 5 + S.swordLevel * 2;
   items.push({
@@ -453,7 +639,6 @@ function renderShop() {
     action: () => { S.atk += swordGain; S.money -= swordCost; S.swordLevel++; log(`武器強化成功！攻擊力 +${swordGain}（目前 ${S.atk}）`, 'win'); }
   });
 
-  // 護甲
   const shieldCost = S.shieldLevel === 0 ? 50 : 50 + S.shieldLevel * 30;
   const shieldGain = S.shieldLevel === 0 ? 3 : 3 + S.shieldLevel * 2;
   items.push({
@@ -462,22 +647,18 @@ function renderShop() {
     action: () => { S.def += shieldGain; S.money -= shieldCost; S.shieldLevel++; log(`護甲強化成功！防禦力 +${shieldGain}（目前 ${S.def}）`, 'win'); }
   });
 
-  // 體力
-  const hpCost = 50;
   items.push({
     name: '增加體力 (+20 最大血量)',
-    cost: hpCost,
-    action: () => { S.maxHp += 20; S.hp = S.maxHp; S.money -= hpCost; log(`體力強化成功！最大 HP +20（目前 ${S.maxHp}）`, 'win'); }
+    cost: 50,
+    action: () => { S.maxHp += 20; S.hp = S.maxHp; S.money -= 50; log(`體力強化成功！最大 HP +20（目前 ${S.maxHp}）`, 'win'); }
   });
 
-  // 藥水
   items.push({
     name: '購買治療藥水',
     cost: 100,
     action: () => { S.potion++; S.money -= 100; log(`購買成功！目前藥水 ${S.potion} 瓶`, 'win'); }
   });
 
-  // 隱藏商店商品（高等級解鎖）
   if (S.level >= 10) {
     const sc = S.contractLevel === 0 ? 500 : 500 + S.contractLevel * 500;
     const sa = S.contractLevel === 0 ? 250 : 250 + S.contractLevel * 100;
@@ -491,9 +672,7 @@ function renderShop() {
           if (S.hp > S.maxHp) S.hp = S.maxHp;
           S.money -= sc; S.contractLevel++;
           log(`黑暗契約加深！攻擊 +${sa}，最大HP -${sl}`, 'skill-text');
-        } else {
-          log('靈魂已殘破不堪，無法再簽約。', 'lose');
-        }
+        } else { log('靈魂已殘破不堪，無法再簽約。', 'lose'); }
       }
     });
 
@@ -506,7 +685,6 @@ function renderShop() {
     });
   }
 
-  // 渲染
   const list = $('shopList');
   list.innerHTML = '';
   items.forEach(it => {
@@ -527,6 +705,240 @@ function renderShop() {
 }
 
 // ============================================================
+//  果實系統
+// ============================================================
+let fruitTab = 'draw';
+
+function openFruit() {
+  showScreen('screen-fruit');
+  renderFruit();
+}
+function closeFruit() {
+  updateTownUI();
+  showScreen('screen-town');
+}
+function switchFruitTab(tab) {
+  fruitTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderFruit();
+}
+
+// 抽果費用（依等級）
+function drawCost() {
+  if (S.level < 15) return null;
+  if (S.level < 50) return 500;    // 15~49 等：500 金
+  if (S.level < 100) return 1500;  // 50~99 等：1500 金
+  return 3000;                     // 100 等以上：3000 金
+}
+
+function renderFruit() {
+  $('fruitMoney').textContent = `（金幣：${S.money}）`;
+  const c = $('fruitContent');
+
+  if (fruitTab === 'draw') {
+    const cost = drawCost();
+    if (cost === null) {
+      c.innerHTML = `<div class="subtitle" style="padding:20px;text-align:center;">
+        🍇 需要達到 <b style="color:#ffd54f;">Lv.15</b> 才能開始抽果實！<br>
+        （目前 Lv.${S.level}）
+      </div>`;
+      return;
+    }
+    c.innerHTML = `
+      <div style="text-align:center;padding:10px;">
+        <div class="subtitle">每次抽果消耗 <b style="color:#ffd54f;">${cost} 金幣</b></div>
+        <div class="subtitle">目前等級 Lv.${S.level}｜金幣 ${S.money}</div>
+        <div style="margin-top:12px;">
+          <button class="fruit" onclick="drawFruit(1)">抽 1 次（${cost} 金）</button>
+          <button class="fruit" onclick="drawFruit(10)">抽 10 次（${cost*10} 金）</button>
+        </div>
+        <div class="subtitle" style="margin-top:16px;">── 可抽到的果實 ──</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px;">
+          ${FRUIT_POOL.map(p => {
+            const f = FRUITS[p.id];
+            return `<span style="background:#1a1a25;padding:4px 8px;border-radius:6px;font-size:12px;color:${
+              f.rarity==='神話'?'#ff5252':f.rarity==='傳說'?'#ffd54f':f.rarity==='史詩'?'#ba68c8':f.rarity==='稀有'?'#4fc3f7':'#aaa'
+            };">${f.icon} ${f.name} <span style="color:#666;">(${f.rarity})</span></span>`;
+          }).join('')}
+        </div>
+      </div>`;
+    return;
+  }
+
+  if (fruitTab === 'bag') {
+    const owned = Object.keys(S.fruits);
+    if (owned.length === 0) {
+      c.innerHTML = `<div class="subtitle" style="padding:20px;text-align:center;">🎒 背包空空如也，去抽個果實吧！</div>`;
+      return;
+    }
+    c.innerHTML = owned.map(id => {
+      const f = FRUITS[id];
+      const data = S.fruits[id];
+      const isActive = S.activeFruit === id;
+      const rarityColor = f.rarity==='神話'?'#ff5252':f.rarity==='傳說'?'#ffd54f':f.rarity==='史詩'?'#ba68c8':f.rarity==='稀有'?'#4fc3f7':'#aaa';
+      const skills = f.skills.map(sk => {
+        const unlocked = data.level >= sk.lv;
+        return `<div class="fruit-skill" style="color:${unlocked?'#80cbc4':'#555'}">
+          ${unlocked?'✓':'🔒'} Lv.${sk.lv} ${sk.name}｜${sk.desc}（CD ${sk.cd}）
+        </div>`;
+      }).join('');
+      return `<div class="fruit-card ${isActive?'':''}" style="${isActive?'border-color:#ffd54f;':''}">
+        <div class="fruit-name">${f.icon} ${f.name} <span style="color:${rarityColor};font-size:12px;">[${f.rarity}]</span></div>
+        <div class="fruit-lv">Lv.${data.level}｜經驗 ${data.exp}｜屬性：${elemName(f.element)}</div>
+        <div class="fruit-bar"><div class="fruit-bar-fill" style="width:${fruitExpPct(data.level, data.exp)}%"></div></div>
+        <div class="subtitle">${f.desc}</div>
+        ${skills}
+        <div style="margin-top:6px;">
+          ${isActive ? '<button class="gold" onclick="unequipFruit()">卸下</button>' : `<button class="fruit" onclick="equipFruit('${id}')">裝備</button>`}
+        </div>
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  if (fruitTab === 'train') {
+    const owned = Object.keys(S.fruits);
+    if (owned.length === 0) {
+      c.innerHTML = `<div class="subtitle" style="padding:20px;text-align:center;">🎒 沒有果實可以練，先去抽果吧！</div>`;
+      return;
+    }
+    c.innerHTML = owned.map(id => {
+      const f = FRUITS[id];
+      const data = S.fruits[id];
+      const cost = trainCost(data.level);
+      const canTrain = S.money >= cost;
+      return `<div class="fruit-card">
+        <div class="fruit-name">${f.icon} ${f.name} Lv.${data.level}</div>
+        <div class="fruit-bar"><div class="fruit-bar-fill" style="width:${fruitExpPct(data.level, data.exp)}%"></div></div>
+        <div class="subtitle">經驗 ${data.exp} / ${fruitExpNeeded(data.level)}</div>
+        <div style="margin-top:6px;">
+          <button class="fruit" ${canTrain?'':'disabled'} onclick="trainFruit('${id}')">練果（${cost} 金）</button>
+          <button class="fruit" ${canTrain?'':'disabled'} onclick="trainFruit10('${id}')">練 10 次（${cost*10} 金）</button>
+        </div>
+      </div>`;
+    }).join('');
+    return;
+  }
+}
+
+function fruitExpNeeded(lv) {
+  return Math.floor(100 * Math.pow(lv, 1.4));
+}
+function fruitExpPct(lv, exp) {
+  return Math.min(100, Math.floor(exp / fruitExpNeeded(lv) * 100));
+}
+function trainCost(lv) {
+  return 50 + lv * 20;
+}
+
+function drawFruit(times) {
+  const cost = drawCost() * times;
+  if (S.money < cost) { log('金幣不足！', 'lose'); return; }
+  S.money -= cost;
+
+  const results = [];
+  for (let i = 0; i < times; i++) {
+    const id = pickFruit();
+    if (!S.fruits[id]) {
+      S.fruits[id] = { level: 1, exp: 0 };
+      results.push({ id, isNew: true });
+    } else {
+      S.fruits[id].exp += 50;
+      // 自動升等
+      while (S.fruits[id].exp >= fruitExpNeeded(S.fruits[id].level)) {
+        S.fruits[id].exp -= fruitExpNeeded(S.fruits[id].level);
+        S.fruits[id].level++;
+      }
+      results.push({ id, isNew: false });
+    }
+  }
+
+  // 顯示結果
+  const c = $('fruitContent');
+  let html = `<div style="text-align:center;margin-bottom:8px;"><b style="color:#ffd54f;">抽果結果</b></div>`;
+  html += results.map(r => {
+    const f = FRUITS[r.id];
+    const rarityColor = f.rarity==='神話'?'#ff5252':f.rarity==='傳說'?'#ffd54f':f.rarity==='史詩'?'#ba68c8':f.rarity==='稀有'?'#4fc3f7':'#aaa';
+    return `<div class="fruit-card">
+      <span class="fruit-name">${f.icon} ${f.name}</span>
+      <span style="color:${rarityColor};font-size:12px;">[${f.rarity}]</span>
+      ${r.isNew ? '<span style="color:#4caf50;font-size:12px;"> NEW!</span>' : '<span style="color:#888;font-size:12px;">（重複，經驗+50）</span>'}
+    </div>`;
+  }).join('');
+  html += `<div class="actions"><button class="fruit" onclick="renderFruit()">返回</button></div>`;
+  c.innerHTML = html;
+
+  log(`抽果 ${times} 次，消耗 ${cost} 金幣。`, 'fruit-text');
+  updateTownUI();
+}
+
+function pickFruit() {
+  const total = FRUIT_POOL.reduce((s, p) => s + p.weight, 0);
+  let r = Math.random() * total;
+  for (const p of FRUIT_POOL) {
+    r -= p.weight;
+    if (r <= 0) return p.id;
+  }
+  return FRUIT_POOL[0].id;
+}
+
+function equipFruit(id) {
+  S.activeFruit = id;
+  log(`裝備果實：${FRUITS[id].name}`, 'fruit-text');
+  renderFruit();
+}
+function unequipFruit() {
+  S.activeFruit = null;
+  log('已卸下果實。', 'system');
+  renderFruit();
+}
+
+function trainFruit(id) {
+  const data = S.fruits[id];
+  const cost = trainCost(data.level);
+  if (S.money < cost) { log('金幣不足！', 'lose'); return; }
+  S.money -= cost;
+  data.exp += rand(30, 80);
+  let leveled = false;
+  while (data.exp >= fruitExpNeeded(data.level)) {
+    data.exp -= fruitExpNeeded(data.level);
+    data.level++;
+    leveled = true;
+    // 檢查是否解鎖新技能
+    const f = FRUITS[id];
+    const unlocked = f.skills.find(sk => sk.lv === data.level);
+    if (unlocked) {
+      log(`★ ${f.name} 解鎖新技能：${unlocked.name}！`, 'fruit-text');
+    }
+  }
+  log(`練果成功！${FRUITS[id].name} 經驗 +，目前 Lv.${data.level}`, 'fruit-text');
+  renderFruit();
+  updateTownUI();
+}
+
+function trainFruit10(id) {
+  const data = S.fruits[id];
+  const cost = trainCost(data.level) * 10;
+  if (S.money < cost) { log('金幣不足！', 'lose'); return; }
+  S.money -= cost;
+  for (let i = 0; i < 10; i++) {
+    data.exp += rand(30, 80);
+    while (data.exp >= fruitExpNeeded(data.level)) {
+      data.exp -= fruitExpNeeded(data.level);
+      data.level++;
+      const f = FRUITS[id];
+      const unlocked = f.skills.find(sk => sk.lv === data.level);
+      if (unlocked) {
+        log(`★ ${f.name} 解鎖新技能：${unlocked.name}！`, 'fruit-text');
+      }
+    }
+  }
+  log(`練果 10 次完成！${FRUITS[id].name} 目前 Lv.${data.level}`, 'fruit-text');
+  renderFruit();
+  updateTownUI();
+}
+
+// ============================================================
 //  冒險
 // ============================================================
 function goAdventure() {
@@ -536,7 +948,6 @@ function goAdventure() {
   log('你踏入了荒野...', 'system');
   setTimeout(nextEncounter, 500);
 }
-
 function updateAdventureUI() {
   $('advHp').textContent = `${S.hp}/${S.maxHp}`;
   $('advMoney').textContent = S.money;
@@ -546,26 +957,17 @@ function updateAdventureUI() {
 
 function nextEncounter() {
   if (S.hp <= 0) { handleDeath(); return; }
-
-  // 隨機事件 30%
   if (!S.isBossFight && roll(30)) {
     triggerRandomEvent();
     if (S.hp <= 0) { handleDeath(); return; }
   }
-
-  // BOSS 判定
   S.isBossFight = false;
   if (S.level >= S.chapter * 10 && S.chapter <= 5) {
     S.isBossFight = true;
     log(`★ 第 ${S.chapter} 章 BOSS 出現！`, 'boss');
   }
-
-  if (S.isBossFight) {
-    spawnBoss(S.chapter);
-  } else {
-    spawnMonster();
-  }
-
+  if (S.isBossFight) spawnBoss(S.chapter);
+  else spawnMonster();
   startBattle();
 }
 
@@ -578,7 +980,6 @@ function spawnMonster() {
 
   let tpl;
   if (S.level >= 50 && type === 7) {
-    // 最終魔王
     tpl = {
       name: "【最終魔王】毀滅之龍",
       skill: "吐出終結一切的黑炎！",
@@ -588,8 +989,7 @@ function spawnMonster() {
   } else {
     const base = MONSTERS[type];
     tpl = {
-      name: base.name,
-      skill: base.skill,
+      name: base.name, skill: base.skill,
       hp: base.hp + (base.hp * 0.3 | 0) * lv,
       atk: base.atk + (base.atk * 0.3 | 0) * lv,
       def: base.def + (base.def * 0.3 | 0) * lv,
@@ -598,22 +998,23 @@ function spawnMonster() {
     };
   }
 
-  // 詞綴
+  // 詞綴（30% 機率，12 種）
   let prefixType = 0, prefix = "";
   if (type !== 7 && roll(30)) {
-    prefixType = rand(1, 5);
-    prefix = PREFIXES[prefixType];
+    prefixType = rand(1, 12);
+    prefix = PREFIXES[prefixType].name;
+    // 套用詞綴效果
+    if (prefixType === 6) tpl.def = Math.floor(tpl.def * 1.5);
+    if (prefixType === 10) { tpl.hp = Math.floor(tpl.hp * 1.5); tpl.atk = Math.floor(tpl.atk * 1.2); }
+    if (prefixType === 11) tpl.dodge += 20;
   }
 
   S.monster = {
-    ...tpl,
-    maxHp: tpl.hp,
-    lv, type,
-    prefixType, prefix,
+    ...tpl, maxHp: tpl.hp, lv, type, prefixType, prefix,
     name: prefix + tpl.name,
   };
 
-  if (prefixType) log(`詞綴：${prefix}（${prefixDesc(prefixType)}）`, 'skill-text');
+  if (prefixType) log(`詞綴：${prefix}（${PREFIXES[prefixType].desc}）`, 'skill-text');
 }
 
 function spawnBoss(ch) {
@@ -627,14 +1028,9 @@ function spawnBoss(ch) {
     exp: b.exp * lv, money: b.money * lv,
     maxHp: 0, lv, type: 100 + ch,
     weak: b.weak, res: b.res, dodge: 10,
-    prefixType: 0, prefix: "",
-    isBoss: true,
+    prefixType: 0, prefix: "", isBoss: true,
   };
   S.monster.maxHp = S.monster.hp;
-}
-
-function prefixDesc(p) {
-  return { 1:"狂暴（低血時攻擊×2）", 2:"荊棘（攻擊時受反傷）", 3:"迅捷（可能攻擊兩次）", 4:"吸血（攻擊時回血）", 5:"詛咒（技能CD+1）" }[p] || "";
 }
 
 // ============================================================
@@ -644,19 +1040,21 @@ function startBattle() {
   S.inBattle = true;
   S.gameOver = false;
   S.skillCD = 0;
+  S.fruitSkillCD = 0;
   S.isDefending = false;
   S.isShieldActive = false;
   S.monsterFrozen = false;
   S.monsterCharging = false;
   S.poisonTurns = 0; S.poisonDamage = 0;
   S.burnTurns = 0; S.burnDamage = 0;
+  S.bleedTurns = 0; S.bleedDamage = 0;
+  S.weakenTurns = 0;
 
-  // 刺客閃避加成
   S.playerDodge = 5;
   if (S.roleType === 3) S.playerDodge += 10;
+  if (S.roleType === 12) S.playerDodge += 5;
   if (S.playerDodge > 40) S.playerDodge = 40;
 
-  // 詛咒詞綴
   if (S.monster.prefixType === 5) {
     S.skillCD += 1;
     log(`【詛咒】${S.monster.name} 的詛咒讓你技能冷卻變慢！`, 'skill-text');
@@ -678,7 +1076,6 @@ function enableButtons(on) {
 }
 
 function renderBattleUI() {
-  // 玩家
   const hpPct = Math.max(0, S.hp / S.maxHp * 100);
   const bar = $('playerHpBar');
   bar.style.width = hpPct + '%';
@@ -690,71 +1087,65 @@ function renderBattleUI() {
   $('battleDef').textContent = S.def;
   $('battlePotion').textContent = S.potion;
 
-  // 怪物
   const m = S.monster;
-  if (!m) return;
-  const mPct = Math.max(0, m.hp / m.maxHp * 100);
-  const mBar = $('monsterHpBar');
-  mBar.style.width = mPct + '%';
-  mBar.className = 'hp-fill ' + (mPct > 60 ? 'green' : mPct > 30 ? 'yellow' : 'red');
-  $('monsterHpText').textContent = `${Math.max(0,m.hp)} / ${m.maxHp}`;
-  $('monsterName').textContent = m.name;
-  $('monsterLv').textContent = m.lv;
-  $('monsterWeak').textContent = elemName(m.weak);
-  $('monsterRes').textContent = elemName(m.res);
-  $('monsterSkill').textContent = m.skill;
+  if (m) {
+    const mPct = Math.max(0, m.hp / m.maxHp * 100);
+    const mBar = $('monsterHpBar');
+    mBar.style.width = mPct + '%';
+    mBar.className = 'hp-fill ' + (mPct > 60 ? 'green' : mPct > 30 ? 'yellow' : 'red');
+    $('monsterHpText').textContent = `${Math.max(0,m.hp)} / ${m.maxHp}`;
+    $('monsterName').textContent = m.name;
+    $('monsterLv').textContent = m.lv;
+    $('monsterWeak').textContent = elemName(m.weak);
+    $('monsterRes').textContent = elemName(m.res);
+    $('monsterSkill').textContent = m.skill;
 
-  // 詞綴 / BOSS 標籤
-  const pBadge = $('monsterPrefix');
-  if (m.prefixType) { pBadge.textContent = m.prefix; pBadge.classList.remove('hidden'); }
-  else pBadge.classList.add('hidden');
+    const pBadge = $('monsterPrefix');
+    if (m.prefixType) { pBadge.textContent = m.prefix; pBadge.classList.remove('hidden'); }
+    else pBadge.classList.add('hidden');
 
-  const bBadge = $('monsterBoss');
-  if (m.isBoss) { bBadge.textContent = `第 ${S.chapter} 章 BOSS`; bBadge.classList.remove('hidden'); }
-  else bBadge.classList.add('hidden');
-
-  // 技能按鈕 CD
-  const sk = $('btnSkill');
-  if (S.skillCD > 0) {
-    sk.textContent = `職業技能 (CD:${S.skillCD})`;
-    sk.disabled = true;
-  } else {
-    sk.textContent = '職業技能';
-    sk.disabled = false;
+    const bBadge = $('monsterBoss');
+    if (m.isBoss) { bBadge.textContent = `第 ${S.chapter} 章 BOSS`; bBadge.classList.remove('hidden'); }
+    else bBadge.classList.add('hidden');
   }
 
-  // 自動模式標籤
-  $('autoBadge').classList.toggle('hidden', !S.autoMode);
+  const sk = $('btnSkill');
+  if (S.skillCD > 0) { sk.textContent = `職業技能 (CD:${S.skillCD})`; sk.disabled = true; }
+  else { sk.textContent = '職業技能'; sk.disabled = false; }
+
+  // 果實技能列
+  renderFruitSkillBar();
 }
 
-function elemName(e) {
-  return { 1:'火', 2:'冰', 3:'雷', 4:'物理' }[e] || '無';
+function renderFruitSkillBar() {
+  const bar = $('fruitSkillBar');
+  if (!S.activeFruit || !S.fruits[S.activeFruit]) {
+    bar.innerHTML = '<span class="subtitle">尚未裝備果實（可至村莊的果實系統裝備）</span>';
+    return;
+  }
+  const f = FRUITS[S.activeFruit];
+  const data = S.fruits[S.activeFruit];
+  // 找當前最高解鎖技能
+  let usable = null;
+  for (const sk of f.skills) {
+    if (data.level >= sk.lv) usable = sk;
+  }
+  if (!usable) { bar.innerHTML = '<span class="subtitle">果實技能未解鎖</span>'; return; }
+
+  const cdText = S.fruitSkillCD > 0 ? `(CD:${S.fruitSkillCD})` : '';
+  bar.innerHTML = `<button id="btnFruitSkill" class="fruit" ${S.fruitSkillCD>0?'disabled':''} onclick="playerFruitSkill()">
+    ${f.icon} ${usable.name} ${cdText}
+  </button>`;
 }
 
-// ============================================================
-//  玩家行動
-// ============================================================
-function playerAttack() {
-  if (!S.inBattle || S.gameOver) return;
-  playerAction(1);
-}
-
+function playerAttack() { if (S.inBattle && !S.gameOver) playerAction(1); }
 function playerSkill() {
   if (!S.inBattle || S.gameOver) return;
   if (S.skillCD > 0) { log(`技能還在冷卻中（剩 ${S.skillCD} 回合）`, 'system'); return; }
   playerAction(2);
 }
-
-function playerPower() {
-  if (!S.inBattle || S.gameOver) return;
-  playerAction(3);
-}
-
-function playerDefend() {
-  if (!S.inBattle || S.gameOver) return;
-  playerAction(4);
-}
-
+function playerPower() { if (S.inBattle && !S.gameOver) playerAction(3); }
+function playerDefend() { if (S.inBattle && !S.gameOver) playerAction(4); }
 function playerPotion() {
   if (!S.inBattle || S.gameOver) return;
   if (S.potion <= 0) { log('沒有藥水了！', 'lose'); return; }
@@ -766,11 +1157,58 @@ function playerPotion() {
   setTimeout(monsterTurn, 600);
 }
 
+function playerFruitSkill() {
+  if (!S.inBattle || S.gameOver) return;
+  if (S.fruitSkillCD > 0) { log(`果實技能冷卻中（剩 ${S.fruitSkillCD} 回合）`, 'system'); return; }
+  if (!S.activeFruit || !S.fruits[S.activeFruit]) return;
+
+  const f = FRUITS[S.activeFruit];
+  const data = S.fruits[S.activeFruit];
+  let usable = null;
+  for (const sk of f.skills) if (data.level >= sk.lv) usable = sk;
+  if (!usable) { log('果實技能未解鎖', 'lose'); return; }
+
+  enableButtons(false);
+  const m = S.monster;
+  let pDmg = Math.round(S.atk * usable.mult);
+  let element = f.element;
+
+  log(`【${f.name}·${usable.name}】${usable.desc}`, 'fruit-text');
+
+  // 弱點/抗性
+  let mult = 1.0;
+  if (element === m.weak) { mult = 1.5; log('【弱點命中！】傷害 ×1.5', 'crit'); }
+  else if (element === m.res) { mult = 0.7; log('【抗性】傷害 ×0.7', 'system'); }
+  pDmg = Math.max(1, Math.round(pDmg * mult));
+
+  // 特殊效果
+  if (S.activeFruit === 'ice' || S.activeFruit === 'void') {
+    if (roll(30)) { S.monsterFrozen = true; log('敵人被凍結！', 'skill-text'); }
+  }
+  if (S.activeFruit === 'flame' || S.activeFruit === 'phoenix') {
+    S.burnTurns = 3; S.burnDamage = Math.floor(S.maxHp * 0.02) + 5;
+    log('敵人被點燃！', 'skill-text');
+  }
+  if (S.activeFruit === 'dark' || S.activeFruit === 'phoenix' || S.activeFruit === 'light' || S.activeFruit === 'void') {
+    const steal = Math.floor(pDmg * 0.2);
+    S.hp = Math.min(S.maxHp, S.hp + steal);
+    log(`吸收精氣，回復 ${steal} 點 HP！`, 'win');
+  }
+
+  m.hp -= pDmg;
+  log(`造成 ${pDmg} 點傷害！`, 'dmg-player');
+
+  S.fruitSkillCD = usable.cd;
+  renderBattleUI();
+
+  if (m.hp <= 0) { m.hp = 0; renderBattleUI(); setTimeout(onMonsterDefeated, 400); return; }
+  setTimeout(monsterTurn, 600);
+}
+
 function playerAction(action) {
   enableButtons(false);
   const m = S.monster;
 
-  // ===== 防禦 =====
   if (action === 4) {
     S.isDefending = true;
     log('【防禦】你擺出防禦姿態，準備迎接攻擊。', 'system');
@@ -780,80 +1218,67 @@ function playerAction(action) {
 
   let pDmg = 0;
   let element = 4;
-  let actionName = '';
 
-  // ===== 技能 =====
   if (action === 2) {
-    if (S.roleType === 1) {
-      pDmg = Math.round(S.atk * 2.3) * 2;
-      S.skillCD = 3;
-      log(`【會心一擊】你屏氣凝神，一劍貫穿弱點！造成 ${pDmg} 點傷害！`, 'skill-text');
-    } else if (S.roleType === 2) {
-      pDmg = S.atk * 1;
-      S.skillCD = 5;
-      S.isShieldActive = true;
-      log(`【鐵壁嘲諷】你高舉巨盾，造成 ${pDmg} 點傷害，下回合減傷 70%！`, 'skill-text');
-    } else if (S.roleType === 3) {
-      pDmg = S.atk * 3;
-      S.skillCD = 4;
-      log(`【影襲】你化為殘影，瞬間出現在怪物背後！造成 ${pDmg} 點傷害！`, 'skill-text');
-    } else if (S.roleType === 4) {
-      S.skillCD = 1;
-      const trueDmg = S.level * 4;
-      pDmg = S.atk + trueDmg;
-      log(`【厚積薄發】你使出渾身解數，造成 ${pDmg} 點傷害！（含 ${trueDmg} 等級加成）`, 'skill-text');
-    } else if (S.roleType === 5) {
-      S.skillCD = 4;
-      pDmg = Math.round(S.atk * 3.5);
-      element = 1;
-      if (roll(20)) {
-        S.monsterFrozen = true;
-        log(`【冰凍】${m.name} 被凍結，下回合無法行動！`, 'skill-text');
-      }
-      const backfire = Math.floor(S.hp * 0.10);
-      S.hp -= backfire;
-      log(`【奧術隕石】你召喚隕石，造成 ${pDmg} 點毀滅傷害！`, 'skill-text');
-      log(`【副作用】魔能反噬，你受到 ${backfire} 點傷害！`, 'lose');
-    } else {
-      S.skillCD = 3;
-      pDmg = Math.round(S.atk * 1.8);
-      element = 3;
-      const steal = Math.round(pDmg * 0.6);
-      S.hp = Math.min(S.maxHp, S.hp + steal);
-      log(`【暗影吸魂斬】造成 ${pDmg} 點傷害，吸取 ${steal} 點 HP！`, 'skill-text');
+    // 各職業技能
+    switch (S.roleType) {
+      case 1: pDmg = Math.round(S.atk * 2.3) * 2; S.skillCD = 3;
+        log(`【會心一擊】你屏氣凝神，一劍貫穿弱點！造成 ${pDmg} 點傷害！`, 'skill-text'); break;
+      case 2: pDmg = S.atk; S.skillCD = 5; S.isShieldActive = true;
+        log(`【鐵壁嘲諷】你高舉巨盾，造成 ${pDmg} 點傷害，下回合減傷 70%！`, 'skill-text'); break;
+      case 3: pDmg = S.atk * 3; S.skillCD = 4;
+        log(`【影襲】你化為殘影，瞬間出現在怪物背後！造成 ${pDmg} 點傷害！`, 'skill-text'); break;
+      case 4: { S.skillCD = 1; const td = S.level * 4; pDmg = S.atk + td;
+        log(`【厚積薄發】你使出渾身解數，造成 ${pDmg} 點傷害！（含 ${td} 等級加成）`, 'skill-text'); break; }
+      case 5: { S.skillCD = 4; pDmg = Math.round(S.atk * 3.5); element = 1;
+        if (roll(20)) { S.monsterFrozen = true; log('【冰凍】敵人被凍結！', 'skill-text'); }
+        const bf = Math.floor(S.hp * 0.10); S.hp -= bf;
+        log(`【奧術隕石】造成 ${pDmg} 點毀滅傷害！`, 'skill-text');
+        log(`【副作用】魔能反噬，你受到 ${bf} 點傷害！`, 'lose'); break; }
+      case 6: { S.skillCD = 3; pDmg = Math.round(S.atk * 1.8); element = 3;
+        const st = Math.round(pDmg * 0.6); S.hp = Math.min(S.maxHp, S.hp + st);
+        log(`【暗影吸魂斬】造成 ${pDmg} 點傷害，吸取 ${st} 點 HP！`, 'skill-text'); break; }
+      case 7: { S.skillCD = 3; pDmg = Math.round(S.atk * 1.5);
+        const heal = Math.floor(S.maxHp * 0.3); S.hp = Math.min(S.maxHp, S.hp + heal);
+        log(`【聖光治癒】你釋放聖光，造成 ${pDmg} 點傷害並回復 ${heal} 點 HP！`, 'skill-text'); break; }
+      case 8: { S.skillCD = 3; const ratio = 1 + (1 - S.hp/S.maxHp) * 2; pDmg = Math.round(S.atk * ratio);
+        log(`【狂暴斬】你越戰越勇！造成 ${pDmg} 點傷害！（傷害倍率 ${ratio.toFixed(2)}x）`, 'skill-text'); break; }
+      case 9: { S.skillCD = 3; element = rand(1, 4); pDmg = Math.round(S.atk * 2.6);
+        log(`【元素爆發】你釋放${elemName(element)}元素！造成 ${pDmg} 點傷害！`, 'skill-text'); break; }
+      case 10: { S.skillCD = 4; pDmg = Math.round(S.atk * 3.0); element = 1;
+        S.burnTurns = 3; S.burnDamage = Math.floor(S.maxHp * 0.02) + 5;
+        log(`【龍息】你噴吐龍息，造成 ${pDmg} 點傷害並附加燃燒！`, 'skill-text'); break; }
+      case 11: { S.skillCD = 4; pDmg = Math.round(S.atk * 2.5);
+        const st = Math.round(pDmg * 0.4); S.hp = Math.min(S.maxHp, S.hp + st);
+        log(`【亡靈汲取】造成 ${pDmg} 點傷害，吸取 ${st} 點 HP！`, 'skill-text'); break; }
+      case 12: { S.skillCD = 3; pDmg = Math.round(S.atk * 2.8); element = 4;
+        log(`【狙擊】你精準射擊，造成 ${pDmg} 點傷害（無視 30% 防禦）！`, 'skill-text'); break; }
+      default: pDmg = S.atk * 2; S.skillCD = 3;
+        log(`【技能】造成 ${pDmg} 點傷害！`, 'skill-text');
     }
-    actionName = '技能';
   }
-  // ===== 全力一擊 =====
   else if (action === 3) {
-    if (roll(20)) {
-      log(`【全力一擊】你全力揮出，但 ${m.name} 靈巧地躲開了！(MISS)`, 'lose');
-      pDmg = 0;
-    } else {
+    if (roll(20)) { log(`【全力一擊】你全力揮出，但 ${m.name} 靈巧地躲開了！(MISS)`, 'lose'); pDmg = 0; }
+    else {
       pDmg = Math.round((S.atk * S.atk / (S.atk + m.def)) * 1.5);
       log(`【全力一擊】你孤注一擲，全力揮出！`, 'system');
     }
-    actionName = '全力一擊';
   }
-  // ===== 普通攻擊 =====
   else {
     pDmg = Math.round(S.atk * S.atk / (S.atk + m.def));
-    actionName = '普通攻擊';
   }
 
-  // 暴擊判定
   let critRate = 15;
   if (action === 3) critRate += 50;
+  if (S.roleType === 12) critRate += 15;
   const isCrit = pDmg > 0 && roll(critRate);
   if (isCrit) pDmg *= 2;
 
-  // 怪物閃避
   if (pDmg > 0 && roll(m.dodge)) {
     log(`【閃避】${m.name} 靈巧地躲開了你的攻擊！`, 'system');
     pDmg = 0;
   }
 
-  // 弱點 / 抗性
   if (pDmg > 0) {
     let mult = 1.0;
     if (element === m.weak) { mult = 1.5; log('【弱點命中！】傷害 ×1.5', 'crit'); }
@@ -861,14 +1286,12 @@ function playerAction(action) {
     pDmg = Math.max(1, Math.round(pDmg * mult));
     m.hp -= pDmg;
 
-    // 荊棘
     if (m.prefixType === 2 && pDmg > 0) {
       const reflect = Math.max(1, Math.floor(pDmg * 0.05));
       S.hp -= reflect;
       log(`【荊棘】${m.name} 的反傷讓你受到 ${reflect} 點傷害！`, 'lose');
     }
 
-    // 傷害描述
     if (isCrit) log(`★ 致命一擊！對 ${m.name} 造成 ${pDmg} 點傷害！`, 'crit');
     else log(`你對 ${m.name} 造成 ${pDmg} 點傷害！`, 'dmg-player');
   } else {
@@ -877,14 +1300,7 @@ function playerAction(action) {
 
   renderBattleUI();
 
-  // 怪物死亡
-  if (m.hp <= 0) {
-    m.hp = 0;
-    renderBattleUI();
-    setTimeout(() => onMonsterDefeated(), 400);
-    return;
-  }
-
+  if (m.hp <= 0) { m.hp = 0; renderBattleUI(); setTimeout(onMonsterDefeated, 400); return; }
   setTimeout(monsterTurn, 600);
 }
 
@@ -896,7 +1312,6 @@ function monsterTurn() {
   const m = S.monster;
   if (m.hp <= 0) { onMonsterDefeated(); return; }
 
-  // 冰凍
   if (S.monsterFrozen) {
     log(`${m.name} 被冰凍，無法行動！`, 'system');
     S.monsterFrozen = false;
@@ -904,11 +1319,9 @@ function monsterTurn() {
     return;
   }
 
-  // 蓄力
   if (S.monsterCharging) {
     S.monsterCharging = false;
-    let dmg = Math.round(m.atk * 2.5 - S.def);
-    dmg = Math.max(1, dmg);
+    let dmg = Math.max(1, Math.round(m.atk * 2.5 - S.def));
     if (S.isDefending) { dmg = Math.max(1, Math.floor(dmg * 0.2)); log('【防禦】你擋下了大部分傷害！', 'system'); S.isDefending = false; }
     if (S.isShieldActive) { dmg = Math.max(1, Math.floor(dmg * 0.3)); log('【格擋】盾牌發揮效果！', 'system'); S.isShieldActive = false; }
     if (roll(S.playerDodge)) { log('【閃避】你靈巧地閃過了攻擊！', 'system'); }
@@ -917,7 +1330,6 @@ function monsterTurn() {
     return;
   }
 
-  // 蓄力準備
   if (m.type < 100 && roll(15)) {
     S.monsterCharging = true;
     log(`【蓄力】${m.name} 正在凝聚力量……下回合將發動大招！`, 'system');
@@ -925,11 +1337,8 @@ function monsterTurn() {
     return;
   }
 
-  // 怪物攻擊
-  let mDmg = Math.round(m.atk - S.def);
-  mDmg = Math.max(1, mDmg);
+  let mDmg = Math.max(1, Math.round(m.atk - S.def));
 
-  // 技能
   if (roll(30) && m.type !== 7) {
     log(`${m.name} 發動技能：【${m.skill}】`, 'system');
     switch (m.type) {
@@ -938,47 +1347,50 @@ function monsterTurn() {
       case 3: mDmg = Math.round(m.atk - S.def*0.5); break;
       case 4: { mDmg = Math.round(m.atk - S.def); const heal = m.lv * 20; m.hp = Math.min(m.maxHp, m.hp + heal); log(`石像鬼恢復了 ${heal} 點 HP！`, 'win'); break; }
       case 5: mDmg = Math.round(m.atk - S.def) * 2; log('這一箭直擊你的要害！', 'system'); break;
-      case 6: { mDmg = Math.round(m.atk - S.def); const heal = Math.floor(mDmg/2); m.hp = Math.min(m.maxHp, m.hp + heal); log(`迷幻蘑菇吸收了你的精氣，回復 ${heal} 點 HP！`, 'win'); break; }
+      case 6: { mDmg = Math.round(m.atk - S.def); const heal = Math.floor(mDmg/2); m.hp = Math.min(m.maxHp, m.hp + heal); log(`迷幻蘑菇回復 ${heal} 點 HP！`, 'win'); break; }
     }
   }
 
   mDmg = Math.max(1, mDmg);
 
-  // 狂暴 / 迅捷
-  if (m.prefixType === 1 && m.hp < m.maxHp * 0.3) { mDmg *= 2; log(`【狂暴】${m.name} 發出怒吼，攻擊力倍增！`, 'lose'); }
+  // 詞綴效果
+  if (m.prefixType === 1 && m.hp < m.maxHp * 0.3) { mDmg *= 2; log(`【狂暴】${m.name} 攻擊力倍增！`, 'lose'); }
   if (m.prefixType === 3 && roll(25)) { mDmg *= 2; log(`【迅捷】${m.name} 連續攻擊了兩次！`, 'lose'); }
+  if (m.prefixType === 12) { const heal = Math.floor(m.maxHp * 0.05); m.hp = Math.min(m.maxHp, m.hp + heal); log(`【詛咒血脈】${m.name} 回復 ${heal} 點 HP！`, 'win'); }
 
-  // 格擋 / 防禦
   if (S.isShieldActive) { mDmg = Math.max(1, Math.floor(mDmg * 0.3)); log('【格擋】盾牌發揮效果，免除了 70% 傷害！', 'system'); S.isShieldActive = false; }
   if (S.isDefending) { mDmg = Math.max(1, Math.floor(mDmg * 0.2)); log('【防禦】你擋下了大部分傷害！', 'system'); S.isDefending = false; }
 
-  // 閃避
   if (roll(S.playerDodge)) {
     log(`【閃避】你靈巧地閃過了 ${m.name} 的攻擊！`, 'system');
   } else {
     S.hp -= mDmg;
     log(`${m.name} 攻擊你，造成 ${mDmg} 點傷害！`, 'dmg-monster');
-    // 吸血
     if (m.prefixType === 4) {
       const steal = Math.max(1, Math.floor(mDmg * 0.3));
       m.hp = Math.min(m.maxHp, m.hp + steal);
-      log(`【吸血】${m.name} 吸取了你的精氣，回復 ${steal} 點 HP！`, 'win');
+      log(`【吸血】${m.name} 回復 ${steal} 點 HP！`, 'win');
     }
   }
 
   // 負面狀態
   if (m.type === 6 && roll(40)) {
-    S.poisonTurns = 3;
-    S.poisonDamage = Math.floor(S.maxHp * 0.05);
-    log(`【中毒】你被毒孢子感染，每回合將損失 ${S.poisonDamage} 點 HP！`, 'lose');
+    S.poisonTurns = 3; S.poisonDamage = Math.floor(S.maxHp * 0.05);
+    log(`【中毒】你被毒孢子感染，每回合損失 ${S.poisonDamage} 點 HP！`, 'lose');
   }
-  if ((m.name.includes('巨龍') || m.name.includes('魔王')) && roll(50)) {
-    S.burnTurns = 3;
-    S.burnDamage = Math.floor(S.maxHp * 0.03) + 10;
-    log(`【燃燒】你被黑炎點燃，每回合將損失 ${S.burnDamage} 點 HP！`, 'lose');
+  if (m.prefixType === 7 && roll(40)) {
+    S.poisonTurns = 3; S.poisonDamage = Math.floor(S.maxHp * 0.04);
+    log(`【劇毒】你中毒了！`, 'lose');
+  }
+  if (m.prefixType === 8 && roll(40)) {
+    S.burnTurns = 3; S.burnDamage = Math.floor(S.maxHp * 0.03) + 5;
+    log(`【燃燒】你被點燃了！`, 'lose');
+  }
+  if (m.prefixType === 9 && roll(30)) {
+    S.weakenTurns = 3;
+    log(`【虛弱】你的攻擊力被削弱了！`, 'lose');
   }
 
-  // 狀態結算
   if (S.poisonTurns > 0) {
     S.hp -= S.poisonDamage; S.poisonTurns--;
     log(`【中毒】你受到 ${S.poisonDamage} 點毒傷${S.poisonTurns>0?`（剩餘 ${S.poisonTurns} 回合）`:'（中毒結束）'}`, 'lose');
@@ -993,6 +1405,8 @@ function monsterTurn() {
 
 function endMonsterTurn() {
   if (S.skillCD > 0) S.skillCD--;
+  if (S.fruitSkillCD > 0) S.fruitSkillCD--;
+  if (S.weakenTurns > 0) S.weakenTurns--;
   renderBattleUI();
 
   if (S.hp <= 0) {
@@ -1003,11 +1417,8 @@ function endMonsterTurn() {
     return;
   }
 
-  // 自動模式
   if (S.autoMode) {
-    setTimeout(() => {
-      if (S.autoMode && S.inBattle) autoDecide();
-    }, 500);
+    setTimeout(() => { if (S.autoMode && S.inBattle) autoDecide(); }, 500);
   } else {
     enableButtons(true);
   }
@@ -1020,24 +1431,20 @@ function toggleAuto() {
   S.autoMode = !S.autoMode;
   log(S.autoMode ? '【系統】切換為自動模式。' : '【系統】已切換為手動模式。', 'system');
   renderBattleUI();
-  if (S.autoMode && S.inBattle) {
-    enableButtons(false);
-    autoDecide();
-  }
+  if (S.autoMode && S.inBattle) { enableButtons(false); autoDecide(); }
 }
 
 function autoDecide() {
   if (!S.inBattle || S.gameOver) return;
-  // 血量低於 30% 喝水
   if (S.hp < S.maxHp * 0.3 && S.potion > 0) { playerPotion(); return; }
-  // 技能可用就用
+  // 果實技能優先
+  if (S.activeFruit && S.fruits[S.activeFruit] && S.fruitSkillCD === 0) { playerFruitSkill(); return; }
   if (S.skillCD === 0) { playerSkill(); return; }
-  // 否則普攻
   playerAttack();
 }
 
 // ============================================================
-//  怪物擊敗
+//  怪物擊敗 / 戰後
 // ============================================================
 function onMonsterDefeated() {
   const m = S.monster;
@@ -1053,22 +1460,14 @@ function onMonsterDefeated() {
 
   log(`擊敗 ${m.name}！獲得 ${totalExp} 經驗（基礎 ${m.exp} + 加成 ${bonus}）與 ${m.money} 金幣。`, 'win');
 
-  // 寶箱
   let dropRate = 25;
   if (m.prefixType > 0) dropRate += 25;
   if (m.type === 7) dropRate = 100;
   if (m.isBoss) dropRate = 100;
-  if (roll(dropRate)) {
-    setTimeout(() => offerLoot(), 500);
-    return;
-  }
-
+  if (roll(dropRate)) { setTimeout(() => offerLoot(), 500); return; }
   afterBattle();
 }
 
-// ============================================================
-//  寶箱三選一
-// ============================================================
 function offerLoot() {
   const pool = [
     { name: '攻擊力 +', type:1, val: rand(3,8) },
@@ -1086,21 +1485,16 @@ function offerLoot() {
   }
 
   log('★ 怪物掉落了寶箱！請選擇獎勵：', 'loot');
-  const list = $('shopList');
-  // 借用商店畫面
   showScreen('screen-shop');
   $('shopMoney').textContent = '寶箱三選一';
+  const list = $('shopList');
   list.innerHTML = '';
   chosen.forEach((idx, i) => {
     const l = pool[idx];
     const row = document.createElement('div');
     row.className = 'shop-item';
     row.innerHTML = `<span>(${i+1}) ${l.name}${l.val}</span><button>選擇</button>`;
-    row.querySelector('button').onclick = () => {
-      applyLoot(l);
-      closeShop();
-      afterBattle();
-    };
+    row.querySelector('button').onclick = () => { applyLoot(l); closeShop(); afterBattle(); };
     list.appendChild(row);
   });
 }
@@ -1117,11 +1511,7 @@ function applyLoot(l) {
   }
 }
 
-// ============================================================
-//  戰後處理
-// ============================================================
 function afterBattle() {
-  // 升級
   while (S.exp >= S.expNeeded) {
     S.exp -= S.expNeeded;
     S.level++;
@@ -1132,9 +1522,12 @@ function afterBattle() {
     S.maxHp += hpGain; S.hp = S.maxHp;
     S.atk += atkGain; S.def += defGain;
     log(`★ 【等級提升】你升到了 Lv.${S.level}！ HP+${hpGain} 攻擊+${atkGain} 防禦+${defGain}`, 'win');
+    // 升級提示解鎖果實
+    if (S.level === 15) log('🍇 已解鎖果實系統！可至村莊的果實區抽果。', 'fruit-text');
+    if (S.level === 50) log('🍇 抽果費用提升，可獲得更高稀有度果實！', 'fruit-text');
+    if (S.level === 100) log('🍇 抽果費用再提升，可獲得神話級果實！', 'fruit-text');
   }
 
-  // BOSS 通關
   if (S.isBossFight && S.monster && S.monster.hp <= 0) {
     S.chapter++;
     log(`★ 第 ${S.chapter-1} 章通關！進入第 ${S.chapter} 章！`, 'win');
@@ -1144,7 +1537,6 @@ function afterBattle() {
     return;
   }
 
-  // 顯示繼續 / 返回按鈕
   $('btnContinue').classList.remove('hidden');
   $('btnReturn').classList.remove('hidden');
   log('是否繼續探索？', 'system');
@@ -1154,13 +1546,8 @@ function continueAdventure() {
   $('btnContinue').classList.add('hidden');
   $('btnReturn').classList.add('hidden');
   if (S.hp <= 0) { handleDeath(); return; }
-  // 自動模式判定
   if (S.autoMode) {
-    if (S.hp < S.maxHp * 0.3) {
-      log('【自動】血量過低，返回村莊。', 'system');
-      returnToTown();
-      return;
-    }
+    if (S.hp < S.maxHp * 0.3) { log('【自動】血量過低，返回村莊。', 'system'); returnToTown(); return; }
     log('【自動】繼續探索...', 'system');
     setTimeout(nextEncounter, 600);
     return;
@@ -1180,14 +1567,12 @@ function returnToTown() {
 }
 
 // ============================================================
-//  死亡處理
+//  死亡
 // ============================================================
 function handleDeath() {
   S.inBattle = false;
   S.gameOver = true;
   log('【你倒下了】', 'lose');
-
-  // 簡單重生
   const lostMoney = Math.floor(S.money * 0.25);
   S.money -= lostMoney;
   S.hp = S.maxHp;
@@ -1206,43 +1591,12 @@ function triggerRandomEvent() {
   const e = rand(1, 6);
   log('[事件] ', 'system');
   switch (e) {
-    case 1: {
-      const heal = Math.floor(S.maxHp * 0.3);
-      S.hp = Math.min(S.maxHp, S.hp + heal);
-      log(`你發現了生命藥水！回復 ${heal} 點 HP。`, 'win');
-      break;
-    }
-    case 2: {
-      const dmg = 10 + 2 * S.level;
-      S.hp -= dmg;
-      log(`踩到毒箭陷阱！受到 ${dmg} 點傷害！`, 'lose');
-      break;
-    }
-    case 3: {
-      const gain = 3 * S.level;
-      S.atk += gain;
-      log(`磨利了武器！攻擊力永久 +${gain}（目前 ${S.atk}）`, 'win');
-      break;
-    }
-    case 4: {
-      const gain = Math.floor(50 * (S.playexp / 100) * S.level);
-      S.exp += gain;
-      log(`撿到失傳卷軸！獲得 ${gain} 點經驗。`, 'win');
-      break;
-    }
-    case 5: {
-      S.playexp += 5;
-      log(`受到高人指點！經驗加成提升至 ${S.playexp}%。`, 'win');
-      break;
-    }
-    case 6: {
-      log('找到隱藏商店！', 'loot');
-      // 簡單給一些好處
-      S.money += 100;
-      S.potion++;
-      log('神秘商人送了你 100 金幣和 1 瓶藥水。', 'win');
-      break;
-    }
+    case 1: { const heal = Math.floor(S.maxHp * 0.3); S.hp = Math.min(S.maxHp, S.hp + heal); log(`你發現了生命藥水！回復 ${heal} 點 HP。`, 'win'); break; }
+    case 2: { const dmg = 10 + 2 * S.level; S.hp -= dmg; log(`踩到毒箭陷阱！受到 ${dmg} 點傷害！`, 'lose'); break; }
+    case 3: { const gain = 3 * S.level; S.atk += gain; log(`磨利了武器！攻擊力永久 +${gain}（目前 ${S.atk}）`, 'win'); break; }
+    case 4: { const gain = Math.floor(50 * (S.playexp / 100) * S.level); S.exp += gain; log(`撿到失傳卷軸！獲得 ${gain} 點經驗。`, 'win'); break; }
+    case 5: { S.playexp += 5; log(`受到高人指點！經驗加成提升至 ${S.playexp}%。`, 'win'); break; }
+    case 6: { log('找到隱藏商店！', 'loot'); S.money += 100; S.potion++; log('神秘商人送了你 100 金幣和 1 瓶藥水。', 'win'); break; }
   }
   if (S.hp <= 0) { S.hp = 0; }
 }
@@ -1251,14 +1605,14 @@ function triggerRandomEvent() {
 //  鍵盤快捷鍵
 // ============================================================
 document.addEventListener('keydown', e => {
-  if (!S.inBattle || S.gameOver) return;
-  if (S.autoMode) return;
+  if (!S.inBattle || S.gameOver || S.autoMode) return;
   switch (e.key) {
     case '1': if (!$('btnAttack').disabled) playerAttack(); break;
     case '2': if (!$('btnSkill').disabled) playerSkill(); break;
     case '3': if (!$('btnPower').disabled) playerPower(); break;
     case '4': if (!$('btnDefend').disabled) playerDefend(); break;
     case '5': if (!$('btnPotion').disabled) playerPotion(); break;
+    case '6': if ($('btnFruitSkill') && !$('btnFruitSkill').disabled) playerFruitSkill(); break;
   }
 });
 
@@ -1266,7 +1620,6 @@ document.addEventListener('keydown', e => {
 //  初始化
 // ============================================================
 (function init() {
-  // 嘗試讀取存檔
   if (loadGame()) {
     log(`歡迎回來，${S.playerName}！`, 'system');
     updateTownUI();
@@ -1274,7 +1627,7 @@ document.addEventListener('keydown', e => {
   } else {
     showScreen('screen-start');
   }
-  log('按 1-5 可使用快捷鍵行動。', 'system');
+  log('按 1-6 可使用快捷鍵行動（戰鬥中）。', 'system');
 })();
 </script>
 </body>
