@@ -69,7 +69,6 @@ input[type="text"] { background:#1a1a25; border:1px solid #333; color:#eee; padd
 ::-webkit-scrollbar { width:6px; }
 ::-webkit-scrollbar-track { background:#111; }
 ::-webkit-scrollbar-thumb { background:#444; border-radius:3px; }
-
 .equip-slot { display:flex; justify-content:space-between; align-items:center; padding:10px; background:#1a1a25; border:1px solid #2a2a3a; border-radius:6px; margin:6px 0; gap:8px; }
 .equip-slot .slot-name { color:#888; font-size:12px; min-width:50px; }
 .equip-item-name { font-weight:bold; font-size:13px; }
@@ -77,7 +76,6 @@ input[type="text"] { background:#1a1a25; border:1px solid #333; color:#eee; padd
 .rarity-1 { color:#aaa; } .rarity-2 { color:#4caf50; } .rarity-3 { color:#4fc3f7; }
 .rarity-4 { color:#ba68c8; } .rarity-5 { color:#ffd54f; } .rarity-6 { color:#ff5252; }
 .equip-bag-item { background:#1a1a25; border:1px solid #2a2a3a; border-radius:6px; padding:8px 10px; margin:6px 0; display:flex; justify-content:space-between; align-items:center; gap:8px; }
-
 .talent-branch { background:#1a1a25; border:1px solid #2a2a3a; border-radius:8px; padding:12px; margin:8px 0; }
 .talent-branch-title { font-weight:bold; margin-bottom:8px; font-size:14px; }
 .talent-item { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #222; gap:10px; }
@@ -86,18 +84,13 @@ input[type="text"] { background:#1a1a25; border:1px solid #333; color:#eee; padd
 .talent-name { font-weight:bold; font-size:13px; }
 .talent-desc { font-size:11px; color:#aaa; }
 .talent-lv { color:#ffd54f; font-size:12px; }
-
 .abyss-floor { text-align:center; padding:20px 0; }
 .abyss-floor-num { font-size:3em; color:#ff5252; font-weight:bold; text-shadow:0 0 20px rgba(255,82,82,0.6); }
 .abyss-record { text-align:center; color:#ffd54f; font-size:14px; margin:10px 0; }
-
-/* 寶箱界面 */
 .loot-card { background:#1a1a25; border:2px solid #4a148c; border-radius:8px; padding:16px; margin:10px 0; cursor:pointer; transition:all 0.15s; display:flex; justify-content:space-between; align-items:center; }
 .loot-card:hover { border-color:#ffd54f; background:#22223a; transform:translateY(-2px); }
 .loot-card .loot-name { color:#ffd54f; font-weight:bold; font-size:15px; }
 .loot-card .loot-val { color:#80cbc4; font-size:13px; }
-
-/* 成就彈窗 */
 .achievement-popup {
   position:fixed; top:-120px; right:20px;
   background:linear-gradient(135deg,#1a1a2e,#2a2a4e);
@@ -154,7 +147,6 @@ input[type="text"] { background:#1a1a25; border:1px solid #333; color:#eee; padd
   <div class="actions" style="margin-top:10px;"><button onclick="closeShop()">離開商店</button></div>
 </div>
 
-<!-- 獨立寶箱界面 -->
 <div id="screen-loot" class="panel hidden">
   <div class="panel-title">🎁 寶箱三選一</div>
   <div class="subtitle" style="text-align:center;margin-bottom:10px;">選擇一個獎勵（選完可繼續探索）</div>
@@ -283,7 +275,7 @@ const S = {
   poisonTurns:0, poisonDamage:0, burnTurns:0, burnDamage:0,
   autoMode:false, inBattle:false, gameOver:false, isBossFight:false,
   playerDodge:5,
-  buttonLocked:false,  // ★ 新增：按鈕鎖定標誌
+  buttonLocked:false,
 };
 
 const ROLES = {
@@ -596,7 +588,6 @@ const hide = id => $(id).classList.add('hidden');
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const roll = pct => Math.random() * 100 < pct;
 
-// ★ 日誌限制 60 條
 const LOG_LIMIT = 60;
 function log(msg, cls = '') {
   const logDiv = $('log');
@@ -682,7 +673,6 @@ function updateTownUI() {
 
 function saveGame() {
   try {
-    // 存檔時不要存戰鬥中的怪物
     const save = {...S, monster:null, inBattle:false, gameOver:false};
     localStorage.setItem('rpg_save_v4', JSON.stringify(save));
     log('【系統】遊戲已存檔。', 'system');
@@ -691,7 +681,6 @@ function saveGame() {
 
 function loadGame() {
   try {
-    // 清除舊版存檔
     localStorage.removeItem('rpg_save_v3');
     const data = localStorage.getItem('rpg_save_v4');
     if (data) {
@@ -702,7 +691,6 @@ function loadGame() {
       if (!S.talents) S.talents = {};
       if (!S.achievements) S.achievements = {};
       if (!S.fruits) S.fruits = {};
-      // ★ 強制清空戰鬥狀態
       S.monster = null;
       S.inBattle = false;
       S.gameOver = false;
@@ -715,9 +703,6 @@ function loadGame() {
   return false;
 }
 
-// ============================================================
-//  商店
-// ============================================================
 function openShop() { showScreen('screen-shop'); renderShop(); }
 function closeShop() { updateTownUI(); showScreen('screen-town'); }
 
@@ -802,9 +787,6 @@ function renderShop() {
   });
 }
 
-// ============================================================
-//  果實
-// ============================================================
 let fruitTab = 'draw';
 function openFruit() { showScreen('screen-fruit'); renderFruit(); }
 function closeFruit() { updateTownUI(); showScreen('screen-town'); }
@@ -953,9 +935,6 @@ function trainFruit10(id) {
   renderFruit(); updateTownUI();
 }
 
-// ============================================================
-//  裝備 UI
-// ============================================================
 let equipTab = 'worn';
 function openEquip() { showScreen('screen-equip'); renderEquip(); }
 function closeEquip() { updateTownUI(); showScreen('screen-town'); }
@@ -1020,9 +999,6 @@ function equipItemById(uid) { const item = S.inventory.find(i => i.uid === uid);
 function sellItemById(uid) { const item = S.inventory.find(i => i.uid === uid); if (item) sellItem(item); }
 function unequipSlotById(slot) { unequipSlot(slot); }
 
-// ============================================================
-//  天賦 UI
-// ============================================================
 function openTalent() { showScreen('screen-talent'); renderTalent(); }
 function closeTalent() { updateTownUI(); showScreen('screen-town'); }
 function renderTalent() {
@@ -1069,9 +1045,6 @@ function resetTalents() {
   updateTownUI();
 }
 
-// ============================================================
-//  深淵
-// ============================================================
 function openAbyss() { showScreen('screen-abyss'); renderAbyss(); }
 function closeAbyss() { updateTownUI(); showScreen('screen-town'); }
 function renderAbyss() {
@@ -1166,9 +1139,6 @@ function abyssNextFloor() {
   setTimeout(() => abyssEncounter(), 600);
 }
 
-// ============================================================
-//  冒險
-// ============================================================
 function goAdventure() {
   if (S.hp <= 0) S.hp = effMaxHp();
   S.inAbyss = false;
@@ -1200,7 +1170,7 @@ function nextEncounter() {
 }
 function spawnMonster() {
   const type = rand(1, 7);
-  const lv = Math.max(1, S.level + rand(-1, 1));  // ★ 確保 ≥1
+  const lv = Math.max(1, S.level + rand(-1, 1));
   let tpl;
   if (S.level >= 50 && type === 7) {
     tpl = {name:"【最終魔王】毀滅之龍",skill:"吐出終結一切的黑炎！",
@@ -1229,7 +1199,7 @@ function spawnMonster() {
 }
 function spawnBoss(ch) {
   const b = BOSSES[ch] || BOSSES[5];
-  const lv = Math.max(1, ch * 10);  // ★ 確保 ≥1
+  const lv = Math.max(1, ch * 10);
   S.monster = {
     name:b.name, skill:b.skill,
     hp:b.hp + Math.floor(b.hp*0.1)*lv,
@@ -1243,9 +1213,6 @@ function spawnBoss(ch) {
   S.monster.maxHp = S.monster.hp;
 }
 
-// ============================================================
-//  戰鬥 - 按鈕控制重構
-// ============================================================
 function startBattle() {
   S.inBattle = true;
   S.gameOver = false;
@@ -1285,7 +1252,6 @@ function startBattle() {
   }
 }
 
-// ★ 統一按鈕狀態控制
 function setButtonsEnabled(on) {
   S.buttonLocked = !on;
   if (!on) {
@@ -1293,7 +1259,6 @@ function setButtonsEnabled(on) {
     $('btnAuto').disabled = false;
     return;
   }
-  // 開啟時，根據實際狀態決定
   $('btnAttack').disabled = false;
   $('btnSkill').disabled = S.skillCD > 0;
   $('btnPower').disabled = false;
@@ -1323,7 +1288,7 @@ function renderBattleUI() {
     mBar.className = 'hp-fill ' + (mPct > 60 ? 'green' : mPct > 30 ? 'yellow' : 'red');
     $('monsterHpText').textContent = `${Math.max(0,m.hp)} / ${m.maxHp}`;
     $('monsterName').textContent = m.name;
-    $('monsterLv').textContent = Math.max(1, m.lv);  // ★ 強制 ≥1
+    $('monsterLv').textContent = Math.max(1, m.lv);
     $('monsterWeak').textContent = elemName(m.weak);
     $('monsterRes').textContent = elemName(m.res);
     $('monsterSkill').textContent = m.skill;
@@ -1335,12 +1300,10 @@ function renderBattleUI() {
     else bBadge.classList.add('hidden');
   }
 
-  // ★ 只改文字，不改 disabled（disabled 由 setButtonsEnabled 統一控制）
   const sk = $('btnSkill');
   if (S.skillCD > 0) sk.textContent = `職業技能 (CD:${S.skillCD})`;
   else sk.textContent = '職業技能';
 
-  // 藥水文字
   $('btnPotion').textContent = `藥水 (${S.potion})`;
 
   const cb = $('comboBadge');
@@ -1366,23 +1329,26 @@ function renderFruitSkillBar() {
   for (const sk of f.skills) if (data.level >= sk.lv) usable = sk;
   if (!usable) { bar.innerHTML = '<span class="subtitle">果實技能未解鎖</span>'; return; }
   const cdText = S.fruitSkillCD > 0 ? `(CD:${S.fruitSkillCD})` : '';
-  // 果實技能也要受 buttonLocked 控制
   const disabled = S.fruitSkillCD > 0 || S.buttonLocked;
   bar.innerHTML = `<button id="btnFruitSkill" class="fruit" ${disabled?'disabled':''} onclick="playerFruitSkill()">
     ${f.icon} ${usable.name} ${cdText}
   </button>`;
 }
 
-function playerAttack() { if (S.inBattle && !S.gameOver && !S.buttonLocked) playerAction(1); }
+// ============================================================
+//  ★★★ 修復：移除 !S.buttonLocked 檢查 ★★★
+//  autoDecide 需要能呼叫這些函式，按鈕本身已有 disabled 擋玩家誤觸
+// ============================================================
+function playerAttack() { if (S.inBattle && !S.gameOver) playerAction(1); }
 function playerSkill() {
-  if (!S.inBattle || S.gameOver || S.buttonLocked) return;
+  if (!S.inBattle || S.gameOver) return;
   if (S.skillCD > 0) { log(`技能還在冷卻中（剩 ${S.skillCD} 回合）`,'system'); return; }
   playerAction(2);
 }
-function playerPower() { if (S.inBattle && !S.gameOver && !S.buttonLocked) playerAction(3); }
-function playerDefend() { if (S.inBattle && !S.gameOver && !S.buttonLocked) playerAction(4); }
+function playerPower() { if (S.inBattle && !S.gameOver) playerAction(3); }
+function playerDefend() { if (S.inBattle && !S.gameOver) playerAction(4); }
 function playerCombo() {
-  if (!S.inBattle || S.gameOver || S.buttonLocked) return;
+  if (!S.inBattle || S.gameOver) return;
   if (S.combo < 5) { log('連擊不足！','system'); return; }
   setButtonsEnabled(false);
   const m = S.monster;
@@ -1396,7 +1362,7 @@ function playerCombo() {
   setTimeout(monsterTurn, 600);
 }
 function playerPotion() {
-  if (!S.inBattle || S.gameOver || S.buttonLocked) return;
+  if (!S.inBattle || S.gameOver) return;
   if (S.potion <= 0) { log('沒有藥水了！','lose'); return; }
   setButtonsEnabled(false);
   const maxHp = effMaxHp();
@@ -1408,7 +1374,7 @@ function playerPotion() {
   setTimeout(monsterTurn, 600);
 }
 function playerFruitSkill() {
-  if (!S.inBattle || S.gameOver || S.buttonLocked) return;
+  if (!S.inBattle || S.gameOver) return;
   if (S.fruitSkillCD > 0) { log(`果實技能冷卻中（剩 ${S.fruitSkillCD} 回合）`,'system'); return; }
   if (!S.activeFruit || !S.fruits[S.activeFruit]) return;
   const f = FRUITS[S.activeFruit];
@@ -1667,25 +1633,36 @@ function endMonsterTurn() {
   }
 }
 
+// ★★★ 修復：關閉自動時恢復按鈕 ★★★
 function toggleAuto() {
   S.autoMode = !S.autoMode;
   log(S.autoMode ? '【系統】自動模式。' : '【系統】手動模式。','system');
   renderBattleUI();
-  if (S.autoMode && S.inBattle) { setButtonsEnabled(false); autoDecide(); }
+  if (S.autoMode && S.inBattle) {
+    setButtonsEnabled(false);
+    autoDecide();
+  } else if (S.inBattle && !S.gameOver) {
+    setButtonsEnabled(true);  // 關閉自動 → 恢復手動按鈕
+  }
 }
 
+// ★★★ 修復：檢查果實技能真的可用 ★★★
 function autoDecide() {
   if (!S.inBattle || S.gameOver) return;
   if (S.hp < effMaxHp()*0.3 && S.potion > 0) { playerPotion(); return; }
   if (S.combo >= 5) { playerCombo(); return; }
-  if (S.activeFruit && S.fruits[S.activeFruit] && S.fruitSkillCD === 0) { playerFruitSkill(); return; }
+
+  if (S.activeFruit && S.fruits[S.activeFruit] && S.fruitSkillCD === 0) {
+    const f = FRUITS[S.activeFruit];
+    const data = S.fruits[S.activeFruit];
+    const hasSkill = f.skills.some(sk => data.level >= sk.lv);
+    if (hasSkill) { playerFruitSkill(); return; }
+  }
+
   if (S.skillCD === 0) { playerSkill(); return; }
   playerAttack();
 }
 
-// ============================================================
-//  怪物擊敗
-// ============================================================
 function onMonsterDefeated() {
   const m = S.monster;
   S.inBattle = false;
@@ -1704,7 +1681,6 @@ function onMonsterDefeated() {
   log(`擊敗 ${m.name}！獲得 ${totalExp} 經驗與 ${totalGold} 金幣。`,'win');
   checkAchievements();
 
-  // 深淵模式
   if (S.inAbyss) {
     const dropRarity = pickRarity(S.abyssFloor / 3);
     const item = genEquipment(S.level, dropRarity);
@@ -1712,12 +1688,10 @@ function onMonsterDefeated() {
     log(`🌀 深淵掉落：${item.name}`,'loot');
     if (S.abyssFloor % 5 === 0) { S.potion++; log(`🌀 深淵獎勵：治療藥水 +1`,'win'); }
     if (roll(35)) { setTimeout(() => offerLoot(true), 500); return; }
-    // 沒寶箱就直接下一層
     setTimeout(() => abyssNextFloor(), 800);
     return;
   }
 
-  // 一般模式掉落
   let dropRate = 25;
   if (m.prefixType > 0) dropRate += 25;
   if (m.type === 7) dropRate = 100;
@@ -1734,7 +1708,6 @@ function onMonsterDefeated() {
   afterBattle();
 }
 
-// ★ 寶箱用獨立界面
 function offerLoot(fromAbyss) {
   const pool = [
     {name:'攻擊力 +',type:1,val:rand(3,8)},
@@ -1764,7 +1737,6 @@ function offerLoot(fromAbyss) {
     card.onclick = () => {
       applyLoot(l);
       if (fromAbyss) {
-        // 深淵寶箱：選完直接下一層
         setTimeout(() => abyssNextFloor(), 400);
       } else {
         afterBattle();
@@ -1787,15 +1759,12 @@ function applyLoot(l) {
 }
 
 function afterBattle() {
-  // ★ 修復：先切回戰鬥畫面，否則按鈕會被寶箱畫面蓋住
   showScreen('screen-battle');
-  // ★ 深淵模式：直接下一層
   if (S.inAbyss) {
     setTimeout(() => abyssNextFloor(), 600);
     return;
   }
 
-  // 升級
   while (S.exp >= S.expNeeded) {
     S.exp -= S.expNeeded;
     S.level++;
@@ -1815,7 +1784,6 @@ function afterBattle() {
     checkAchievements();
   }
 
-  // BOSS 通關
   if (S.isBossFight && S.monster && S.monster.hp <= 0) {
     S.chapter++;
     log(`★ 第 ${S.chapter-1} 章通關！進入第 ${S.chapter} 章！`,'win');
@@ -1825,7 +1793,6 @@ function afterBattle() {
     return;
   }
 
-  // ★ 顯示繼續探索選項，不強制回村
   $('btnContinue').classList.remove('hidden');
   $('btnReturn').classList.remove('hidden');
   log('是否繼續探索？','system');
@@ -1888,7 +1855,7 @@ function triggerRandomEvent() {
 }
 
 document.addEventListener('keydown', e => {
-  if (!S.inBattle || S.gameOver || S.autoMode || S.buttonLocked) return;
+  if (!S.inBattle || S.gameOver || S.autoMode) return;
   switch(e.key) {
     case '1': playerAttack(); break;
     case '2': if (S.skillCD === 0) playerSkill(); break;
