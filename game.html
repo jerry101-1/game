@@ -801,6 +801,27 @@ function drawCost() {
   if (S.level < 100) return 1500;
   return 3000;
 }
+// ★ 新增：果實獲得經驗（打怪時呼叫）
+function gainFruitExp(baseExp) {
+  if (!S.activeFruit || !S.fruits[S.activeFruit]) return 0;
+  const data = S.fruits[S.activeFruit];
+  const f = FRUITS[S.activeFruit];
+  if (!f || !data) return 0;
+
+  const gained = Math.max(1, Math.floor(baseExp));
+  data.exp += gained;
+
+  let leveledUp = false;
+  while (data.exp >= fruitExpNeeded(data.level)) {
+    data.exp -= fruitExpNeeded(data.level);
+    data.level++;
+    leveledUp = true;
+    const unlocked = f.skills.find(sk => sk.lv === data.level);
+    if (unlocked) log(`🍇 ${f.name} 解鎖新技能：${unlocked.name}！`, 'fruit-text');
+  }
+  if (leveledUp) log(`🍇 ${f.name} 升到 Lv.${data.level}！`, 'fruit-text');
+  return gained;
+}
 function fruitExpNeeded(lv) { return Math.floor(100 * Math.pow(lv, 1.4)); }
 function trainCost(lv) { return 50 + lv * 20; }
 function pickFruit() {
@@ -845,25 +866,6 @@ function renderFruit() {
         <div class="fruit-bar"><div class="fruit-bar-fill" style="width:${Math.min(100, Math.floor(data.exp/fruitExpNeeded(data.level)*100))}%"></div></div>
         <div class="subtitle">${f.desc}</div>${skills}
         <div style="margin-top:8px;">${isActive?'<button class="gold small" onclick="unequipFruit()">卸下</button>':`<button class="fruit small" onclick="equipFruit('${id}')">裝備</button>`}</div>
-      </div>`;
-    }).join('');
-    return;
-  }
-  if (fruitTab === 'train') {
-    const owned = Object.keys(S.fruits);
-    if (!owned.length) { c.innerHTML = `<div class="subtitle" style="padding:20px;text-align:center;">🎒 沒有果實可以練</div>`; return; }
-    c.innerHTML = owned.map(id => {
-      const f = FRUITS[id], data = S.fruits[id];
-      const cost = trainCost(data.level);
-      const canTrain = S.money >= cost;
-      return `<div class="fruit-card">
-        <div class="fruit-name">${f.icon} ${f.name} Lv.${data.level}</div>
-        <div class="fruit-bar"><div class="fruit-bar-fill" style="width:${Math.min(100, Math.floor(data.exp/fruitExpNeeded(data.level)*100))}%"></div></div>
-        <div class="subtitle">經驗 ${data.exp} / ${fruitExpNeeded(data.level)}</div>
-        <div style="margin-top:8px;">
-          <button class="fruit small" ${canTrain?'':'disabled'} onclick="trainFruit('${id}')">練果（${cost} 金）</button>
-          <button class="fruit small" ${canTrain?'':'disabled'} onclick="trainFruit10('${id}')">練 10 次（${cost*10} 金）</button>
-        </div>
       </div>`;
     }).join('');
     return;
@@ -1257,6 +1259,7 @@ function setButtonsEnabled(on) {
   if (!on) {
     ['btnAttack','btnSkill','btnPower','btnDefend','btnPotion'].forEach(id => $(id).disabled = true);
     $('btnAuto').disabled = false;
+    renderFruitSkillBar();   // ★ 同步更新果實按鈕
     return;
   }
   $('btnAttack').disabled = false;
@@ -1265,6 +1268,7 @@ function setButtonsEnabled(on) {
   $('btnDefend').disabled = false;
   $('btnPotion').disabled = S.potion <= 0;
   $('btnAuto').disabled = false;
+  renderFruitSkillBar();     // ★ 關鍵：重新渲染果實按鈕
 }
 
 function renderBattleUI() {
@@ -1679,6 +1683,15 @@ function onMonsterDefeated() {
   S.money += totalGold;
   S.killCount++;
   log(`擊敗 ${m.name}！獲得 ${totalExp} 經驗與 ${totalGold} 金幣。`,'win');
+  // ★ 果實也獲得經驗（依怪物強度）
+  if (S.activeFruit && S.fruits[S.activeFruit]) {
+    // 普通怪：exp 的 10%；BOSS：exp 的 15%；深淵：額外 +20%
+    let fruitExpRatio = m.isBoss ? 0.15 : 0.10;
+    if (S.inAbyss) fruitExpRatio += 0.05;
+    const fruitExp = Math.max(1, Math.floor(m.exp * fruitExpRatio));
+    const gained = gainFruitExp(fruitExp);
+    log(`🍇 果實吸收戰鬥精華，獲得 ${gained} 點經驗。`, 'fruit-text');
+  }
   checkAchievements();
 
   if (S.inAbyss) {
