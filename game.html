@@ -1787,6 +1787,8 @@ function applyLoot(l) {
 }
 
 function afterBattle() {
+  // ★ 修復：先切回戰鬥畫面，否則按鈕會被寶箱畫面蓋住
+  showScreen('screen-battle');
   // ★ 深淵模式：直接下一層
   if (S.inAbyss) {
     setTimeout(() => abyssNextFloor(), 600);
