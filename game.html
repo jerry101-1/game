@@ -2297,16 +2297,16 @@ document.addEventListener('keydown', e => {
   }
   log('按 1-6 可使用快捷鍵（戰鬥中），Q 連擊爆發。','system');
 })();
+/* 新增職業	ROLES 加 key → startGame 加分配機率 → playerAction 的 switch(S.roleType) 加技能
+   新增怪物	MONSTERS 加 key → spawnMonster 的 rand(1,7) 改上限
+   新增詞綴	PREFIXES 加 key → spawnMonster 的 rand(1,12) 改上限 → monsterTurn 加對應效果
+   新增果實	FRUITS 加 key → FRUIT_POOL 加權重
+   新增天賦	TALENTS 加 key → getTalentBonus 的 b 物件加欄位
+   新增突破里程碑	BREAKTHROUGH_MILESTONES 加 key → getBreakthroughBonus 加效果
+   新增成就	ACHIEVEMENTS 加 key（check 回傳 bool）
+   掉落率調整	onMonsterDefeated 的 dropRate / equipDropRate
+   經驗公式	afterBattle 的 expNeeded = 100 * level^1.5
+   抽果費用	drawCost() 一個函式搞定                                                              */
 </script>
 </body>
-// 新增職業	ROLES 加 key → startGame 加分配機率 → playerAction 的 switch(S.roleType) 加技能
-// 新增怪物	MONSTERS 加 key → spawnMonster 的 rand(1,7) 改上限
-// 新增詞綴	PREFIXES 加 key → spawnMonster 的 rand(1,12) 改上限 → monsterTurn 加對應效果
-// 新增果實	FRUITS 加 key → FRUIT_POOL 加權重
-// 新增天賦	TALENTS 加 key → getTalentBonus 的 b 物件加欄位
-// 新增突破里程碑	BREAKTHROUGH_MILESTONES 加 key → getBreakthroughBonus 加效果
-// 新增成就	ACHIEVEMENTS 加 key（check 回傳 bool）
-// 掉落率調整	onMonsterDefeated 的 dropRate / equipDropRate
-// 經驗公式	afterBattle 的 expNeeded = 100 * level^1.5
-// 抽果費用	drawCost() 一個函式搞定
 </html>
